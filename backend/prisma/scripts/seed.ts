@@ -4,10 +4,20 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Hashing de senha
-  const passwordHash = await bcrypt.hash('password', 10);
+  // Criação de Tenants
+  const tenant1 = await prisma.tenant.upsert({
+    where: { id: 1 },
+    update: {},
+    create: { id: 1, name: 'Tenant 1' },
+  });
 
-  // Inserir dados na tabela Role
+  const tenant2 = await prisma.tenant.upsert({
+    where: { id: 2 },
+    update: {},
+    create: { id: 2, name: 'Tenant 2' },
+  });
+
+  // Criação de Roles
   const adminRole = await prisma.role.upsert({
     where: { name: 'admin' },
     update: {},
@@ -20,21 +30,10 @@ async function main() {
     create: { name: 'user' },
   });
 
-  // Inserir dados na tabela Tenant
-  const tenant1 = await prisma.tenant.upsert({
-    where: { name: 'Tenant1' },
-    update: {},
-    create: { name: 'Tenant1' },
-  });
+  // Criação de Usuários
+  const passwordHash = await bcrypt.hash('password', 10);
 
-  const tenant2 = await prisma.tenant.upsert({
-    where: { name: 'Tenant2' },
-    update: {},
-    create: { name: 'Tenant2' },
-  });
-
-  // Inserir dados na tabela User
-  await prisma.user.upsert({
+  const user1 = await prisma.user.upsert({
     where: { email: 'admin@tenant1.com' },
     update: {},
     create: {
@@ -45,7 +44,7 @@ async function main() {
     },
   });
 
-  await prisma.user.upsert({
+  const user2 = await prisma.user.upsert({
     where: { email: 'user@tenant1.com' },
     update: {},
     create: {
@@ -56,7 +55,7 @@ async function main() {
     },
   });
 
-  await prisma.user.upsert({
+  const user3 = await prisma.user.upsert({
     where: { email: 'admin@tenant2.com' },
     update: {},
     create: {
@@ -67,7 +66,7 @@ async function main() {
     },
   });
 
-  await prisma.user.upsert({
+  const user4 = await prisma.user.upsert({
     where: { email: 'user@tenant2.com' },
     update: {},
     create: {
@@ -78,55 +77,75 @@ async function main() {
     },
   });
 
-  // Inserir dados na tabela Driver
-  const driver1 = await prisma.driver.upsert({
-    where: { cpf_tenantId: { cpf: '123.456.789-00', tenantId: tenant1.id } },
+  // Criar motoristas
+  await prisma.driver.upsert({
+    where: { cpf_tenantId: { cpf: '123.456.789-00', tenantId: 1 } },
     update: {},
     create: {
-      name: 'John Doe',
+      name: 'Driver One',
       license: 'ABC123456',
       cpf: '123.456.789-00',
-      tenantId: tenant1.id,
+      tenantId: 1,
     },
   });
 
-  const driver2 = await prisma.driver.upsert({
-    where: { cpf_tenantId: { cpf: '987.654.321-00', tenantId: tenant2.id } },
+  await prisma.driver.upsert({
+    where: { cpf_tenantId: { cpf: '987.654.321-00', tenantId: 2 } },
     update: {},
     create: {
-      name: 'Jane Smith',
-      license: 'DEF789101',
+      name: 'Driver Two',
+      license: 'DEF654321',
       cpf: '987.654.321-00',
-      tenantId: tenant2.id,
+      tenantId: 2,
     },
   });
 
-  // Inserir dados na tabela Vehicle
+  // Criar categorias
+  await prisma.category.upsert({
+    where: { id: 1 },
+    update: {},
+    create: { id: 1, name: 'Category A', valor: 100 },
+  });
+
+  await prisma.category.upsert({
+    where: { id: 2 },
+    update: {},
+    create: { id: 2, name: 'Category B', valor: 200 },
+  });
+
+  // Criar veículos
   await prisma.vehicle.upsert({
-    where: { plate_tenantId: { plate: 'XYZ9876', tenantId: tenant1.id } },
+    where: { plate_tenantId: { plate: 'XYZ9876', tenantId: 1 } },
     update: {},
     create: {
       model: 'Toyota Corolla',
       plate: 'XYZ9876',
-      driverId: driver1.id,
-      tenantId: tenant1.id,
+      driverId: 1,
+      tenantId: 1,
+      categoryId: 1,
     },
   });
 
   await prisma.vehicle.upsert({
-    where: { plate_tenantId: { plate: 'ABC1234', tenantId: tenant2.id } },
+    where: { plate_tenantId: { plate: 'ABC1234', tenantId: 2 } },
     update: {},
     create: {
       model: 'Honda Civic',
       plate: 'ABC1234',
-      driverId: driver2.id,
-      tenantId: tenant2.id,
+      driverId: 2,
+      tenantId: 2,
+      categoryId: 2,
     },
   });
+
+  console.log('Seed data created successfully');
 }
 
 main()
-  .catch(e => console.error(e))
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
   .finally(async () => {
     await prisma.$disconnect();
   });

@@ -14,13 +14,13 @@ POST http://localhost:4000/auth/login
 Content-Type: application/json
 
 {
-  "email": "user@tenant2.com",
+  "email": "admin@tenant1.com",
   "password": "password"
 }
 
 ### Obter todos os usuários usando o token JWT
 GET http://localhost:4000/users
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODA0MDAwLCJleHAiOjE3MTk4MDc2MDB9.UewEn7xgQQFHWYV3IuYFVd2_mRpC-eZ-Mpc2huQHXoQ
 
 ### Logout usando o token JWT
 POST http://localhost:4000/auth/logout
@@ -29,7 +29,7 @@ Authorization: Bearer YOUR_JWT_TOKEN_HERE
 ### Criar um novo motorista
 POST http://localhost:4000/drivers
 Content-Type: application/json
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODA0MDAwLCJleHAiOjE3MTk4MDc2MDB9.UewEn7xgQQFHWYV3IuYFVd2_mRpC-eZ-Mpc2huQHXoQ
 
 {
   "name": "Max Doe",
@@ -39,22 +39,28 @@ Authorization: Bearer YOUR_JWT_TOKEN_HERE
 
 ### Obter todos os motoristas usando o token JWT
 GET http://localhost:4000/drivers
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODA0MDAwLCJleHAiOjE3MTk4MDc2MDB9.UewEn7xgQQFHWYV3IuYFVd2_mRpC-eZ-Mpc2huQHXoQ
 
 ### Criar um novo veículo
 POST http://localhost:4000/vehicles
 Content-Type: application/json
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODA0MDAwLCJleHAiOjE3MTk4MDc2MDB9.UewEn7xgQQFHWYV3IuYFVd2_mRpC-eZ-Mpc2huQHXoQ
 
 {
   "model": "Chevrolet Onix",
   "plate": "AYZ9876",
-  "driverId": 5
+  "driverId": 4,
+  "categoryId": 1
 }
+
+### Obter todas as categorias usando o token JWT
+GET http://localhost:4000/category
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODA0MDAwLCJleHAiOjE3MTk4MDc2MDB9.UewEn7xgQQFHWYV3IuYFVd2_mRpC-eZ-Mpc2huQHXoQ
+
 
 ### Obter todos os veículos usando o token JWT
 GET http://localhost:4000/vehicles
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODA0MDAwLCJleHAiOjE3MTk4MDc2MDB9.UewEn7xgQQFHWYV3IuYFVd2_mRpC-eZ-Mpc2huQHXoQ
 
 ### Criar uma nova direção
 POST http://localhost:4000/directions
@@ -91,4 +97,31 @@ Authorization: Bearer YOUR_JWT_TOKEN_HERE
 
 ### Obter todos os pedidos usando o token JWT
 GET http://localhost:4000/orders
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODA3MjM4LCJleHAiOjE3MTk4MTA4Mzh9.LMR_i67E1gfNmjOYPXW1unstq5xNqIEPFhVhmqqWAgY
+
+
+### Obter todos os roteiros usando o token JWT
+GET http://localhost:4000/deliveries
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAdGVuYW50Mi5jb20iLCJzdWIiOjQsInJvbGUiOiJ1c2VyIiwidGVuYW50SWQiOjIsImlhdCI6MTcxOTgwMDc0NCwiZXhwIjoxNzE5ODA0MzQ0fQ.iulWvmGha48dIJSqcd07KOlx3ILUZb9jCI2oZmVKxD0
+
+### Criar um novo delivery
+POST http://localhost:4000/delivery
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODA3MjM4LCJleHAiOjE3MTk4MTA4Mzh9.LMR_i67E1gfNmjOYPXW1unstq5xNqIEPFhVhmqqWAgY
+
+{
+  "motoristaId": 3, 
+  "veiculoId": 3,
+  "orders": [5]
+}
+
+### Obter os delivery
+GET  http://localhost:4000/delivery
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODA3MjM4LCJleHAiOjE3MTk4MTA4Mzh9.LMR_i67E1gfNmjOYPXW1unstq5xNqIEPFhVhmqqWAgY
+
+
+### Obter categorias
+GET  http://localhost:4000/category
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODA3MjM4LCJleHAiOjE3MTk4MTA4Mzh9.LMR_i67E1gfNmjOYPXW1unstq5xNqIEPFhVhmqqWAgY

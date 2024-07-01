@@ -33,6 +33,7 @@ model Tenant {
   vehicles  Vehicle[]
   orders    Order[]
   directions Directions[]
+  deliveries Delivery[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @default(now())
 }
@@ -45,6 +46,7 @@ model Driver {
   tenantId  Int
   Tenant    Tenant    @relation(fields: [tenantId], references: [id])
   vehicles  Vehicle[]
+  deliveries Delivery[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @default(now())
 
@@ -52,15 +54,18 @@ model Driver {
 }
 
 model Vehicle {
-  id        Int       @id @default(autoincrement())
-  model     String
-  plate     String
-  driverId  Int
-  tenantId  Int
-  Driver    Driver    @relation(fields: [driverId], references: [id])
-  Tenant    Tenant    @relation(fields: [tenantId], references: [id])
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @default(now())
+  id         Int        @id @default(autoincrement())
+  model      String
+  plate      String
+  driverId   Int
+  tenantId   Int
+  categoryId Int
+  Driver     Driver     @relation(fields: [driverId], references: [id])
+  Tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  Category   Category   @relation(fields: [categoryId], references: [id])
+  deliveries Delivery[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @default(now())
 
   @@unique([plate, tenantId]) // Garantir que a placa é única por tenant
 }
@@ -87,9 +92,10 @@ model Order {
   cpfCnpj           String
   cep               String
   status            String
-  roteiroId         Int?
+  deliveryId        Int?
   tenantId          Int
   Tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  Delivery          Delivery? @relation(fields: [deliveryId], references: [id])
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
@@ -104,4 +110,30 @@ model Directions {
   Tenant        Tenant   @relation(fields: [tenantId], references: [id])
   createdAt     DateTime @default(now())
   updatedAt     DateTime @default(now())
+}
+
+model Delivery {
+  id            Int       @id @default(autoincrement())
+  motoristaId   Int
+  veiculoId     Int
+  valorFrete    Float
+  totalPeso     Float
+  totalValor    Float
+  dataInicio    DateTime  @default(now())
+  dataFim       DateTime?
+  status        String
+  tenantId      Int
+  Tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  orders        Order[]
+  Driver        Driver    @relation(fields: [motoristaId], references: [id])
+  Vehicle       Vehicle   @relation(fields: [veiculoId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now())
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String
+  valor     Float
+  vehicles  Vehicle[]
 }
