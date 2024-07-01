@@ -1,7 +1,7 @@
-### Criar um novo usuário psql -U mathex -d lynx
+### Criar um novo usuário
 POST http://localhost:4000/users
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAdGVuYW50NC5jb20iLCJzdWIiOjYsInJvbGUiOiJ1c2VyIiwidGVuYW50SWQiOjEsImlhdCI6MTcxOTc5NzI0OCwiZXhwIjoxNzE5ODAwODQ4fQ.yWGrUxytzp-MTf5JYGewvciQWkKgdpQ_uLueSVGJciU
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
 
 {
   "email": "user@tenant5.com",
@@ -20,16 +20,16 @@ Content-Type: application/json
 
 ### Obter todos os usuários usando o token JWT
 GET http://localhost:4000/users
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAdGVuYW50NC5jb20iLCJzdWIiOjYsInJvbGUiOiJ1c2VyIiwidGVuYW50SWQiOjEsImlhdCI6MTcxOTc5NzI0OCwiZXhwIjoxNzE5ODAwODQ4fQ.yWGrUxytzp-MTf5JYGewvciQWkKgdpQ_uLueSVGJciU
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
 
 ### Logout usando o token JWT
 POST http://localhost:4000/auth/logout
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5Nzk2MTQ3LCJleHAiOjE3MTk3OTk3NDd9.G2_73ltMJp8oXhj6m52Q1EUI1w6xce-S9wqyG5PFCZ4
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
 
 ### Criar um novo motorista
 POST http://localhost:4000/drivers
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAdGVuYW50NC5jb20iLCJzdWIiOjYsInJvbGUiOiJ1c2VyIiwidGVuYW50SWQiOjEsImlhdCI6MTcxOTc5NzI0OCwiZXhwIjoxNzE5ODAwODQ4fQ.yWGrUxytzp-MTf5JYGewvciQWkKgdpQ_uLueSVGJciU
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
 
 {
   "name": "Max Doe",
@@ -37,15 +37,14 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAd
   "cpf": "123.456.789-08"
 }
 
-
 ### Obter todos os motoristas usando o token JWT
 GET http://localhost:4000/drivers
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAdGVuYW50NC5jb20iLCJzdWIiOjYsInJvbGUiOiJ1c2VyIiwidGVuYW50SWQiOjEsImlhdCI6MTcxOTc5NzI0OCwiZXhwIjoxNzE5ODAwODQ4fQ.yWGrUxytzp-MTf5JYGewvciQWkKgdpQ_uLueSVGJciU
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
 
 ### Criar um novo veículo
 POST http://localhost:4000/vehicles
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAdGVuYW50NC5jb20iLCJzdWIiOjYsInJvbGUiOiJ1c2VyIiwidGVuYW50SWQiOjEsImlhdCI6MTcxOTc5NzI0OCwiZXhwIjoxNzE5ODAwODQ4fQ.yWGrUxytzp-MTf5JYGewvciQWkKgdpQ_uLueSVGJciU
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
 
 {
   "model": "Chevrolet Onix",
@@ -53,12 +52,43 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAd
   "driverId": 5
 }
 
-
 ### Obter todos os veículos usando o token JWT
 GET http://localhost:4000/vehicles
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAdGVuYW50NC5jb20iLCJzdWIiOjYsInJvbGUiOiJ1c2VyIiwidGVuYW50SWQiOjEsImlhdCI6MTcxOTc5NzI0OCwiZXhwIjoxNzE5ODAwODQ4fQ.yWGrUxytzp-MTf5JYGewvciQWkKgdpQ_uLueSVGJciU
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
 
+### Criar uma nova direção
+POST http://localhost:4000/directions
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
 
-### Obter todos os veículos usando o token JWT
+{
+  "rangeInicio": "01000000",
+  "rangeFim": "01259999",
+  "valorDirecao": "1",
+  "regiao": "Zona Central"
+}
+
+### Obter todas as direções usando o token JWT
+GET http://localhost:4000/directions
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAdGVuYW50Mi5jb20iLCJzdWIiOjQsInJvbGUiOiJ1c2VyIiwidGVuYW50SWQiOjIsImlhdCI6MTcxOTgwMDc0NCwiZXhwIjoxNzE5ODA0MzQ0fQ.iulWvmGha48dIJSqcd07KOlx3ILUZb9jCI2oZmVKxD0
+
+### Obter uma direção por ID usando o token JWT
+GET http://localhost:4000/directions/1
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+### Atualizar uma direção
+PATCH http://localhost:4000/directions/1
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+{
+  "valorDirecao": "2"
+}
+
+### Remover uma direção
+DELETE http://localhost:4000/directions/1
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+### Obter todos os pedidos usando o token JWT
 GET http://localhost:4000/orders
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAdGVuYW50NC5jb20iLCJzdWIiOjYsInJvbGUiOiJ1c2VyIiwidGVuYW50SWQiOjEsImlhdCI6MTcxOTc5OTIwNCwiZXhwIjoxNzE5ODAyODA0fQ.1sAn8UeLV9WTpN3skOApGMJ_l0mkdLkcUfFgpzaaZSM
+Authorization: Bearer YOUR_JWT_TOKEN_HERE

@@ -32,6 +32,7 @@ model Tenant {
   drivers   Driver[]
   vehicles  Vehicle[]
   orders    Order[]
+  directions Directions[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @default(now())
 }
@@ -91,4 +92,16 @@ model Order {
   Tenant            Tenant   @relation(fields: [tenantId], references: [id])
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+}
+
+model Directions {
+  id            Int      @id @default(autoincrement())
+  rangeInicio   String
+  rangeFim      String
+  valorDirecao  String
+  regiao        String
+  tenantId      Int
+  Tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now())
 }
