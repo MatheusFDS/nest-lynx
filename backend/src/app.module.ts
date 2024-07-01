@@ -9,10 +9,12 @@ import { DirectionsModule } from './directions/directions.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { CategoryModule } from './category/category.module';
 import { PaymentsModule } from './payments/payments.module';
+import { StatisticsModule } from './statistics/statistics.module';
 
 @Module({
   imports: [
     OrdersModule,
+    StatisticsModule,
     PaymentsModule,
     CategoryModule,
     DirectionsModule,
