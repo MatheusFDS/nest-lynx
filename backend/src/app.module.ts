@@ -8,10 +8,12 @@ import { OrdersModule } from './orders/orders.module';
 import { DirectionsModule } from './directions/directions.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { CategoryModule } from './category/category.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
     OrdersModule,
+    PaymentsModule,
     CategoryModule,
     DirectionsModule,
     PrismaModule,

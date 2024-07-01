@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { UpdateDeliveryDto } from './dto/update-delivery.dto';
@@ -8,85 +8,127 @@ export class DeliveryService {
   constructor(private prisma: PrismaService) {}
 
   async create(createDeliveryDto: CreateDeliveryDto, tenantId: number) {
-    // Validação para garantir que o motorista não está em rota
+    const { motoristaId, orders, veiculoId, ...rest } = createDeliveryDto;
+
     const existingDelivery = await this.prisma.delivery.findFirst({
-      where: {
-        motoristaId: createDeliveryDto.motoristaId,
-        status: 'Em rota',
-      },
+      where: { motoristaId, status: 'Em rota' },
     });
 
     if (existingDelivery) {
       throw new BadRequestException('O motorista já está em uma rota.');
     }
 
-    const orders = await this.prisma.order.findMany({
+    const orderRecords = await this.prisma.order.findMany({
       where: {
-        id: { in: createDeliveryDto.orders },
-        tenantId,
+        id: { in: orders },
         status: { in: ['Pendente', 'Reentrega'] },
+        tenantId: tenantId,
       },
     });
 
-    if (orders.length !== createDeliveryDto.orders.length) {
-      throw new BadRequestException('Alguns pedidos não estão em status Pendente ou Reentrega.');
+    if (orderRecords.length !== orders.length) {
+      throw new BadRequestException('Alguns pedidos não são válidos.');
     }
 
-    const totalPeso = orders.reduce((acc, order) => acc + order.peso, 0);
-    const totalValor = orders.reduce((acc, order) => acc + order.valor, 0);
-
-    const motorista = await this.prisma.driver.findUnique({
-      where: { id: createDeliveryDto.motoristaId },
-    });
-
-    const veiculo = await this.prisma.vehicle.findUnique({
-      where: { id: createDeliveryDto.veiculoId, driverId: createDeliveryDto.motoristaId },
-      include: { Category: true },
-    });
-
-    if (!veiculo) {
-      throw new BadRequestException('O veículo não está associado ao motorista.');
-    }
+    const totalPeso = orderRecords.reduce((sum, order) => sum + order.peso, 0);
+    const totalValor = orderRecords.reduce((sum, order) => sum + order.valor, 0);
 
     let maxDirectionValue = 0;
-    for (const order of orders) {
-      const direction = await this.prisma.directions.findFirst({
+
+    for (const order of orderRecords) {
+      const directionValue = await this.prisma.directions.findFirst({
         where: {
-          tenantId,
+          tenantId: tenantId,
           rangeInicio: { lte: order.cep },
           rangeFim: { gte: order.cep },
         },
+        orderBy: { valorDirecao: 'desc' },
       });
-      if (direction) {
-        const directionValue = parseFloat(direction.valorDirecao);
-        if (directionValue > maxDirectionValue) {
-          maxDirectionValue = directionValue;
-        }
+
+      if (directionValue && Number(directionValue.valorDirecao) > maxDirectionValue) {
+        maxDirectionValue = Number(directionValue.valorDirecao);
       }
     }
 
-    const valorFrete = maxDirectionValue + veiculo.Category.valor;
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: veiculoId },
+      include: { Category: true },
+    });
+
+    const valorFrete = maxDirectionValue + (vehicle?.Category?.valor ?? 0);
 
     const delivery = await this.prisma.delivery.create({
       data: {
-        motoristaId: createDeliveryDto.motoristaId,
-        veiculoId: createDeliveryDto.veiculoId,
+        motoristaId,
+        veiculoId,
+        tenantId,
         valorFrete,
         totalPeso,
         totalValor,
         status: 'Em rota',
-        tenantId,
+        ...rest,
         orders: {
-          connect: createDeliveryDto.orders.map((id) => ({ id })),
+          connect: orders.map(orderId => ({ id: orderId })),
         },
+      },
+      include: {
+        orders: true,
+        Driver: true,
+        Vehicle: true,
       },
     });
 
-    // Atualizar o status dos pedidos para "Em rota" e o deliveryId
     await this.prisma.order.updateMany({
-      where: { id: { in: createDeliveryDto.orders } },
-      data: { status: 'Em rota', deliveryId: delivery.id },
+      where: { id: { in: orders } },
+      data: { status: 'Em Rota', deliveryId: delivery.id },
     });
+
+    return delivery;
+  }
+
+  async update(id: number, updateDeliveryDto: UpdateDeliveryDto, tenantId: number) {
+    const { motoristaId, veiculoId, orders, ...rest } = updateDeliveryDto;
+
+    const delivery = await this.prisma.delivery.update({
+      where: { id },
+      data: {
+        ...rest,
+        tenantId,
+        motoristaId,
+        veiculoId,
+        orders: {
+          connect: orders?.map(orderId => ({ id: orderId })) ?? [],
+        },
+      },
+      include: {
+        orders: true,
+        Driver: true,
+        Vehicle: true,
+      },
+    });
+
+    if (updateDeliveryDto.status === 'Finalizado') {
+      await this.prisma.order.updateMany({
+        where: { deliveryId: id },
+        data: { status: 'Finalizado' },
+      });
+
+      const existingPayment = await this.prisma.accountsPayable.findFirst({
+        where: { deliveryId: delivery.id },
+      });
+
+      if (!existingPayment) {
+        await this.prisma.accountsPayable.create({
+          data: {
+            deliveryId: delivery.id,
+            amount: delivery.valorFrete,
+            status: 'Pendente',
+            tenantId,
+            motoristaId: delivery.motoristaId,
+          },
+        });
+      }
+    }
 
     return delivery;
   }
@@ -94,81 +136,30 @@ export class DeliveryService {
   async findAll(tenantId: number) {
     return this.prisma.delivery.findMany({
       where: { tenantId },
-      include: {
-        orders: true,
-        Driver: true,
-        Vehicle: true,
-      },
+      include: { orders: true, Driver: true, Vehicle: true },
     });
   }
 
   async findOne(id: number, tenantId: number) {
-    return this.prisma.delivery.findFirst({
-      where: { id, tenantId },
-      include: {
-        orders: true,
-        Driver: true,
-        Vehicle: true,
-      },
-    });
-  }
-
-  async update(id: number, updateDeliveryDto: UpdateDeliveryDto, tenantId: number) {
-    const updateData: any = {
-      motoristaId: updateDeliveryDto.motoristaId,
-      veiculoId: updateDeliveryDto.veiculoId,
-      status: updateDeliveryDto.status,
-      dataFim: updateDeliveryDto.dataFim,
-    };
-
-    if (updateDeliveryDto.orders) {
-      const orders = await this.prisma.order.findMany({
-        where: {
-          id: { in: updateDeliveryDto.orders },
-          tenantId,
-          status: { in: ['Pendente', 'Reentrega'] },
-        },
-      });
-
-      if (orders.length !== updateDeliveryDto.orders.length) {
-        throw new BadRequestException('Alguns pedidos não estão em status Pendente ou Reentrega.');
-      }
-
-      updateData.orders = {
-        connect: updateDeliveryDto.orders.map((orderId) => ({ id: orderId })),
-      };
-
-      // Atualizar o status dos pedidos para "Em rota" e o deliveryId
-      await this.prisma.order.updateMany({
-        where: { id: { in: updateDeliveryDto.orders } },
-        data: { status: 'Em rota', deliveryId: id },
-      });
-    }
-
-    return this.prisma.delivery.update({
-      where: { id, tenantId },
-      data: updateData,
-    });
-  }
-
-  async remove(id: number, tenantId: number) {
     const delivery = await this.prisma.delivery.findFirst({
       where: { id, tenantId },
-      include: { orders: true },
+      include: { orders: true, Driver: true, Vehicle: true },
     });
 
     if (!delivery) {
-      throw new BadRequestException('Roteiro não encontrado.');
+      throw new NotFoundException('Delivery not found');
     }
 
-    // Atualizar o status dos pedidos para "Reentrega" e remover o deliveryId
-    await this.prisma.order.updateMany({
-      where: { id: { in: delivery.orders.map((order) => order.id) } },
-      data: { status: 'Reentrega', deliveryId: null },
-    });
+    return delivery;
+  }
 
-    return this.prisma.delivery.delete({
-      where: { id, tenantId },
-    });
+  async remove(id: number, tenantId: number) {
+    const delivery = await this.findOne(id, tenantId);
+
+    if (!delivery) {
+      throw new NotFoundException('Delivery not found');
+    }
+
+    return this.prisma.delivery.delete({ where: { id } });
   }
 }

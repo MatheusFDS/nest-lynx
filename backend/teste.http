@@ -97,31 +97,55 @@ Authorization: Bearer YOUR_JWT_TOKEN_HERE
 
 ### Obter todos os pedidos usando o token JWT
 GET http://localhost:4000/orders
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODA3MjM4LCJleHAiOjE3MTk4MTA4Mzh9.LMR_i67E1gfNmjOYPXW1unstq5xNqIEPFhVhmqqWAgY
-
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODUyMDQ1LCJleHAiOjE3MTk4NTU2NDV9.d_mcQ4NkTt4Zp370AvEa-3LgVjyAugyM43KMChx_OHw
 
 ### Obter todos os roteiros usando o token JWT
-GET http://localhost:4000/deliveries
+GET http://localhost:4000/delivery
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJAdGVuYW50Mi5jb20iLCJzdWIiOjQsInJvbGUiOiJ1c2VyIiwidGVuYW50SWQiOjIsImlhdCI6MTcxOTgwMDc0NCwiZXhwIjoxNzE5ODA0MzQ0fQ.iulWvmGha48dIJSqcd07KOlx3ILUZb9jCI2oZmVKxD0
 
 ### Criar um novo delivery
 POST http://localhost:4000/delivery
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODA3MjM4LCJleHAiOjE3MTk4MTA4Mzh9.LMR_i67E1gfNmjOYPXW1unstq5xNqIEPFhVhmqqWAgY
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODQyNzI1LCJleHAiOjE3MTk4NDYzMjV9.6HGk55Igj4lE-czYYAlCUdqTr5WzIWvE9svd4TfxP-o
 
 {
-  "motoristaId": 3, 
-  "veiculoId": 3,
-  "orders": [5]
+  "motoristaId": 1, 
+  "veiculoId": 1,
+  "orders": [1,2]
 }
 
 ### Obter os delivery
 GET  http://localhost:4000/delivery
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODA3MjM4LCJleHAiOjE3MTk4MTA4Mzh9.LMR_i67E1gfNmjOYPXW1unstq5xNqIEPFhVhmqqWAgY
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODUyMDQ1LCJleHAiOjE3MTk4NTU2NDV9.d_mcQ4NkTt4Zp370AvEa-3LgVjyAugyM43KMChx_OHw
 
+### Obter os delivery
+PATCH  http://localhost:4000/delivery/4
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODUyMDQ1LCJleHAiOjE3MTk4NTU2NDV9.d_mcQ4NkTt4Zp370AvEa-3LgVjyAugyM43KMChx_OHw
+
+{
+  "status": "Finalizado", 
+  "dataFim": "2024-08-01T14:09:29.913Z"
+}
 
 ### Obter categorias
 GET  http://localhost:4000/category
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODA3MjM4LCJleHAiOjE3MTk4MTA4Mzh9.LMR_i67E1gfNmjOYPXW1unstq5xNqIEPFhVhmqqWAgY
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODUyMDQ1LCJleHAiOjE3MTk4NTU2NDV9.d_mcQ4NkTt4Zp370AvEa-3LgVjyAugyM43KMChx_OHw
+
+### Obter payments
+GET  http://localhost:4000/payments
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODUyMDQ1LCJleHAiOjE3MTk4NTU2NDV9.d_mcQ4NkTt4Zp370AvEa-3LgVjyAugyM43KMChx_OHw
+
+### Criar um novo payment
+POST http://localhost:4000/delivery
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODQyNzI1LCJleHAiOjE3MTk4NDYzMjV9.6HGk55Igj4lE-czYYAlCUdqTr5WzIWvE9svd4TfxP-o
+
+{
+  "motoristaId": 1, 
+  "veiculoId": 1,
+  "orders": [1,2]
+}

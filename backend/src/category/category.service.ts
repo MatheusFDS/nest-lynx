@@ -8,18 +8,26 @@ export class CategoryService {
   constructor(private prisma: PrismaService) {}
 
   async create(createCategoryDto: CreateCategoryDto) {
+    const { tenantId, ...data } = createCategoryDto;
     return this.prisma.category.create({
-      data: createCategoryDto,
+      data: {
+        ...data,
+        Tenant: {
+          connect: { id: tenantId },
+        },
+      },
     });
   }
 
-  async findAll() {
-    return this.prisma.category.findMany();
+  async findAll(tenantId: number) {
+    return this.prisma.category.findMany({
+      where: { tenantId },
+    });
   }
 
-  async findOne(id: number) {
-    return this.prisma.category.findUnique({
-      where: { id },
+  async findOne(id: number, tenantId: number) {
+    return this.prisma.category.findFirst({
+      where: { id, tenantId },
     });
   }
 

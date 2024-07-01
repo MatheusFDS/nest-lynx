@@ -26,29 +26,32 @@ model Role {
 }
 
 model Tenant {
-  id        Int       @id @default(autoincrement())
-  name      String    @unique
-  users     User[]
-  drivers   Driver[]
-  vehicles  Vehicle[]
-  orders    Order[]
-  directions Directions[]
-  deliveries Delivery[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @default(now())
+  id             Int             @id @default(autoincrement())
+  name           String          @unique
+  users          User[]
+  drivers        Driver[]
+  vehicles       Vehicle[]
+  orders         Order[]
+  directions     Directions[]
+  deliveries     Delivery[]
+  categories     Category[]
+  accountsPayable AccountsPayable[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @default(now())
 }
 
 model Driver {
-  id        Int       @id @default(autoincrement())
-  name      String
-  license   String
-  cpf       String
-  tenantId  Int
-  Tenant    Tenant    @relation(fields: [tenantId], references: [id])
-  vehicles  Vehicle[]
-  deliveries Delivery[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @default(now())
+  id            Int       @id @default(autoincrement())
+  name          String
+  license       String
+  cpf           String
+  tenantId      Int
+  Tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  vehicles      Vehicle[]
+  deliveries    Delivery[]
+  accountsPayable AccountsPayable[]  // Adicione esta linha
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now())
 
   @@unique([cpf, tenantId]) // Garantir que o CPF é único por tenant
 }
@@ -127,6 +130,7 @@ model Delivery {
   orders        Order[]
   Driver        Driver    @relation(fields: [motoristaId], references: [id])
   Vehicle       Vehicle   @relation(fields: [veiculoId], references: [id])
+  accountsPayable AccountsPayable[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now())
 }
@@ -135,5 +139,28 @@ model Category {
   id        Int      @id @default(autoincrement())
   name      String
   valor     Float
+  tenantId  Int
+  Tenant    Tenant   @relation(fields: [tenantId], references: [id])
   vehicles  Vehicle[]
 }
+
+model AccountsPayable {
+  id           Int       @id @default(autoincrement())
+  deliveryId   Int
+  amount       Float
+  status       String
+  tenantId     Int
+  motoristaId  Int
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now())
+
+  Tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  Driver       Driver    @relation(fields: [motoristaId], references: [id])
+  Delivery     Delivery  @relation(fields: [deliveryId], references: [id])
+
+  @@index([tenantId])
+  @@index([motoristaId])
+  @@index([deliveryId])
+}
+
+
