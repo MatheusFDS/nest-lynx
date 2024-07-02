@@ -12,7 +12,6 @@ export class DirectionsController {
   constructor(private readonly directionsService: DirectionsService) {}
 
   @Post()
-  @Roles('admin')
   async create(@Body() createDirectionsDto: CreateDirectionsDto, @Req() req) {
     const tenantId = req.user.tenantId;
     return this.directionsService.create(createDirectionsDto, tenantId);

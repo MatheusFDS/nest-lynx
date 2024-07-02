@@ -14,7 +14,7 @@ POST http://localhost:4000/auth/login
 Content-Type: application/json
 
 {
-  "email": "admin@tenant2.com",
+  "email": "admin@tenant1.com",
   "password": "password"
 }
 
@@ -153,4 +153,4 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQ
 
 ### Get Statistics
 GET http://localhost:4000/statistics?startDate=2024-01-01&endDate=2024-12-31
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODU0MTIzLCJleHAiOjE3MTk4NTc3MjN9.qLsyGX0_gvwt7T1kjivt5nd7OltDfYaMq90mM5RmeRk
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODk2MzM3LCJleHAiOjE3MTk4OTk5Mzd9.M8Ruxv9ntvNMkz0eI9xkSJpXGLVdpu8s_lsJZtHGQI4
