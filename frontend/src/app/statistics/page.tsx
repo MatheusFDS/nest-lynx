@@ -74,9 +74,6 @@ const StatisticsPage = () => {
 
   return (
     <Box sx={{ flexGrow: 1, padding: 2 }}>
-      <Typography variant="h4" gutterBottom>
-        Statistics
-      </Typography>
       <DateFilter
         startDate={startDate}
         endDate={endDate}

@@ -78,9 +78,6 @@ const DirectionsPage = () => {
 
   return (
     <Container>
-      <Typography variant="h4" gutterBottom>
-        Directions
-      </Typography>
       {error && <Typography color="error">{error}</Typography>}
       <Grid container spacing={3} style={{ marginTop: '16px' }}>
         <Grid item xs={12}>

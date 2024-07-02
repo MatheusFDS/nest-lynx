@@ -97,7 +97,7 @@ Authorization: Bearer YOUR_JWT_TOKEN_HERE
 
 ### Obter todos os pedidos usando o token JWT
 GET http://localhost:4000/orders
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODk4Mjc2LCJleHAiOjE3MTk5MDE4NzZ9.hrFdEPDULDrIU-NymNc7fxfAQSZp4UUZhnlvvIhvFH8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5OTI2NDAyLCJleHAiOjE3MTk5MzAwMDJ9.9XoQJlkk9UWGolH_8FdT6j5zdw6Pi-LQHk_NolGsmMo
 
 ### Obter todos os roteiros usando o token JWT
 GET http://localhost:4000/delivery
@@ -117,7 +117,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQ
 ### Obter os delivery
 GET  http://localhost:4000/delivery
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODk4Mjc2LCJleHAiOjE3MTk5MDE4NzZ9.hrFdEPDULDrIU-NymNc7fxfAQSZp4UUZhnlvvIhvFH8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5OTI2NDAyLCJleHAiOjE3MTk5MzAwMDJ9.9XoQJlkk9UWGolH_8FdT6j5zdw6Pi-LQHk_NolGsmMo
 
 
 ### Obter os delivery
@@ -138,7 +138,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQ
 ### Obter payments
 GET  http://localhost:4000/payments
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODQyNzI1LCJleHAiOjE3MTk4NDYzMjV9.6HGk55Igj4lE-czYYAlCUdqTr5WzIWvE9svd4TfxP-o
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5OTMwMjkwLCJleHAiOjE3MTk5MzM4OTB9.qyOwr0LbvJiUduvX_anmtER6FAtFDsY7_oUTHAKAmQc
 
 
 ### Criar um novo payment

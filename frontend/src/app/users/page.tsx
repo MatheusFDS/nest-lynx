@@ -40,9 +40,6 @@ const UsersPage = () => {
 
   return (
     <Container>
-      <Typography variant="h4" gutterBottom>
-        Users
-      </Typography>
       {error && <Typography color="error">{error}</Typography>}
       <Grid container spacing={3} style={{ marginTop: '16px' }}>
         {users.map((user) => (

@@ -1,100 +1,153 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Typography, Container, Button, Grid, Paper, TextField } from '@mui/material';
-import { Driver } from '../../types';
+import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import { Driver } from '../../types'; // Certifique-se de que Driver está corretamente importado
 import withAuth from '../components/withAuth';
+import { fetchDrivers, addDriver, updateDriver, deleteDriver } from '../../services/driverService';
+import { Delete, Edit } from '@mui/icons-material';
 
-const DriversPage = () => {
+const DriversPage: React.FC = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [newDriver, setNewDriver] = useState<string>('');
+  const [filteredDrivers, setFilteredDrivers] = useState<Driver[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [newDriver, setNewDriver] = useState<Partial<Driver>>({});
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+  const [showForm, setShowForm] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const fetchDrivers = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return;
-    }
+  const token = localStorage.getItem('token') || '';
 
+  const loadDrivers = async () => {
     try {
-      const response = await fetch('http://localhost:4000/drivers', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch drivers');
-      }
-
-      const data = await response.json();
+      const data = await fetchDrivers(token);
       setDrivers(data);
+      setFilteredDrivers(data);
     } catch (error) {
       setError('Failed to fetch drivers.');
     }
   };
 
   useEffect(() => {
-    fetchDrivers();
+    loadDrivers();
   }, []);
 
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    const filtered = drivers.filter(driver =>
+      driver.name.toLowerCase().includes(e.target.value.toLowerCase())
+    );
+    setFilteredDrivers(filtered);
+  };
+
   const handleAddDriver = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return;
-    }
-
     try {
-      const response = await fetch('http://localhost:4000/drivers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: newDriver }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add driver');
+      if (selectedDriver) {
+        await updateDriver(token, selectedDriver.id, newDriver as Driver);
+      } else {
+        await addDriver(token, newDriver as Driver);
       }
-
-      setNewDriver('');
-      fetchDrivers();
+      setNewDriver({});
+      setSelectedDriver(null);
+      setShowForm(false);
+      loadDrivers();
     } catch (error) {
-      setError('Failed to add driver.');
+      setError('Failed to submit driver.');
     }
+  };
+
+  const handleEdit = (driver: Driver) => {
+    setSelectedDriver(driver);
+    setNewDriver(driver);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteDriver(token, id);
+      loadDrivers();
+    } catch (error) {
+      setError('Failed to delete driver.');
+    }
+  };
+
+  const handleFormClose = () => {
+    setSelectedDriver(null);
+    setNewDriver({});
+    setShowForm(false);
   };
 
   return (
     <Container>
-      <Typography variant="h4" gutterBottom>
-        Drivers
-      </Typography>
       {error && <Typography color="error">{error}</Typography>}
-      <Grid container spacing={3} style={{ marginTop: '16px' }}>
-        <Grid item xs={12}>
-          <Paper elevation={3} style={{ padding: '16px' }}>
-            <TextField
-              label="New Driver"
-              value={newDriver}
-              onChange={(e) => setNewDriver(e.target.value)}
-              fullWidth
-              margin="normal"
-            />
-            <Button variant="contained" color="primary" onClick={handleAddDriver}>
-              Add Driver
-            </Button>
-          </Paper>
-        </Grid>
-        {drivers.map((driver) => (
-          <Grid item xs={12} sm={6} md={4} key={driver.id}>
-            <Paper elevation={3} style={{ padding: '16px' }}>
-              <Typography variant="h6">{driver.name}</Typography>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
+      <TextField
+        label="Search Drivers"
+        value={searchTerm}
+        onChange={handleSearch}
+        fullWidth
+        margin="normal"
+      />
+      <Button variant="contained" color="primary" onClick={() => setShowForm(true)}>
+        Add Driver
+      </Button>
+      {showForm && (
+        <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
+          <TextField
+            label="Driver Name"
+            value={newDriver.name || ''}
+            onChange={(e) => setNewDriver({ ...newDriver, name: e.target.value })}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="License"
+            value={newDriver.license || ''}
+            onChange={(e) => setNewDriver({ ...newDriver, license: e.target.value })}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="CPF"
+            value={newDriver.cpf || ''}
+            onChange={(e) => setNewDriver({ ...newDriver, cpf: e.target.value })}
+            fullWidth
+            margin="normal"
+          />
+          <Button variant="contained" color="primary" onClick={handleAddDriver}>
+            {selectedDriver ? 'Update Driver' : 'Add Driver'}
+          </Button>
+          <Button onClick={handleFormClose}>Cancel</Button>
+        </Paper>
+      )}
+      <TableContainer component={Paper} style={{ marginTop: '16px' }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>License</TableCell>
+              <TableCell>CPF</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredDrivers.map((driver) => (
+              <TableRow key={driver.id}>
+                <TableCell>{driver.name}</TableCell>
+                <TableCell>{driver.license}</TableCell>
+                <TableCell>{driver.cpf}</TableCell>
+                <TableCell>
+                  <IconButton onClick={() => handleEdit(driver)}>
+                    <Edit />
+                  </IconButton>
+                  <IconButton onClick={() => handleDelete(driver.id)}>
+                    <Delete />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Container>
   );
 };

@@ -1,111 +1,145 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Typography, Container, Button, Grid, Paper, TextField } from '@mui/material';
+import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import { Category } from '../../types';
 import withAuth from '../components/withAuth';
+import { fetchCategories, addCategory, updateCategory, deleteCategory } from '../../services/categoryService';
+import { Delete, Edit } from '@mui/icons-material';
 
-const CategoriesPage = () => {
+const CategoriesPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [newCategory, setNewCategory] = useState<string>('');
-  const [newValue, setNewValue] = useState<number>(0);
+  const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [newCategory, setNewCategory] = useState<Partial<Category>>({});
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [showForm, setShowForm] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const fetchCategories = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return;
-    }
+  const token = localStorage.getItem('token') || '';
 
+  const loadCategories = async () => {
     try {
-      const response = await fetch('http://localhost:4000/category', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch categories');
-      }
-
-      const data = await response.json();
+      const data = await fetchCategories(token);
       setCategories(data);
+      setFilteredCategories(data);
     } catch (error) {
       setError('Failed to fetch categories.');
     }
   };
 
   useEffect(() => {
-    fetchCategories();
+    loadCategories();
   }, []);
 
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    const filtered = categories.filter(category =>
+      category.name.toLowerCase().includes(e.target.value.toLowerCase())
+    );
+    setFilteredCategories(filtered);
+  };
+
   const handleAddCategory = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return;
-    }
-
     try {
-      const response = await fetch('http://localhost:4000/category', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: newCategory, valor: newValue }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add category');
+      if (selectedCategory) {
+        await updateCategory(token, selectedCategory.id, newCategory as { name: string; valor: number });
+      } else {
+        await addCategory(token, newCategory as { name: string; valor: number });
       }
-
-      setNewCategory('');
-      setNewValue(0);
-      fetchCategories();
+      setNewCategory({});
+      setSelectedCategory(null);
+      setShowForm(false);
+      loadCategories();
     } catch (error) {
-      setError('Failed to add category.');
+      setError('Failed to submit category.');
     }
+  };
+
+  const handleEdit = (category: Category) => {
+    setSelectedCategory(category);
+    setNewCategory(category);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteCategory(token, id);
+      loadCategories();
+    } catch (error) {
+      setError('Failed to delete category.');
+    }
+  };
+
+  const handleFormClose = () => {
+    setSelectedCategory(null);
+    setNewCategory({});
+    setShowForm(false);
   };
 
   return (
     <Container>
-      <Typography variant="h4" gutterBottom>
-        Categories
-      </Typography>
       {error && <Typography color="error">{error}</Typography>}
-      <Grid container spacing={3} style={{ marginTop: '16px' }}>
-        <Grid item xs={12}>
-          <Paper elevation={3} style={{ padding: '16px' }}>
-            <TextField
-              label="New Category"
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              label="Value"
-              value={newValue}
-              onChange={(e) => setNewValue(parseFloat(e.target.value))}
-              type="number"
-              fullWidth
-              margin="normal"
-            />
-            <Button variant="contained" color="primary" onClick={handleAddCategory}>
-              Add Category
-            </Button>
-          </Paper>
-        </Grid>
-        {categories.map((category) => (
-          <Grid item xs={12} sm={6} md={4} key={category.id}>
-            <Paper elevation={3} style={{ padding: '16px' }}>
-              <Typography variant="h6">{category.name}</Typography>
-              <Typography variant="body1">Value: {category.valor}</Typography>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
+      <TextField
+        label="Search Categories"
+        value={searchTerm}
+        onChange={handleSearch}
+        fullWidth
+        margin="normal"
+      />
+      <Button variant="contained" color="primary" onClick={() => setShowForm(true)}>
+        Add Category
+      </Button>
+      {showForm && (
+        <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
+          <TextField
+            label="Category Name"
+            value={newCategory.name || ''}
+            onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Value"
+            value={newCategory.valor !== undefined ? newCategory.valor : ''}
+            onChange={(e) => setNewCategory({ ...newCategory, valor: parseFloat(e.target.value) })}
+            type="number"
+            fullWidth
+            margin="normal"
+          />
+          <Button variant="contained" color="primary" onClick={handleAddCategory}>
+            {selectedCategory ? 'Update Category' : 'Add Category'}
+          </Button>
+          <Button onClick={handleFormClose}>Cancel</Button>
+        </Paper>
+      )}
+      <TableContainer component={Paper} style={{ marginTop: '16px' }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>Value</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredCategories.map((category) => (
+              <TableRow key={category.id}>
+                <TableCell>{category.name}</TableCell>
+                <TableCell>{category.valor}</TableCell>
+                <TableCell>
+                  <IconButton onClick={() => handleEdit(category)}>
+                    <Edit />
+                  </IconButton>
+                  <IconButton onClick={() => handleDelete(category.id)}>
+                    <Delete />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Container>
   );
 };

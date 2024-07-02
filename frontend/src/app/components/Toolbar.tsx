@@ -64,6 +64,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
               <MenuItem onClick={() => handleNavigation('/directions')}>Directions</MenuItem>
               <MenuItem onClick={() => handleNavigation('/drivers')}>Drivers</MenuItem>
               <MenuItem onClick={() => handleNavigation('/orders')}>Orders</MenuItem>
+              <MenuItem onClick={() => handleNavigation('/routing')}>Routing</MenuItem>
               <MenuItem onClick={() => handleNavigation('/payments')}>Payments</MenuItem>
               {userRole === 'admin' && (
                 <MenuItem onClick={() => handleNavigation('/users')}>Users</MenuItem>
