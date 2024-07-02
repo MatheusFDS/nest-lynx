@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Typography, Grid, Box } from '@mui/material';
+import { Typography, Grid, Box, Paper } from '@mui/material';
 import DateFilter from '../components/DateFilter';
 import StatisticsChart from '../components/StatisticsChart';
+import withAuth from '../components/withAuth';
 
 const StatisticsPage = () => {
   const [statistics, setStatistics] = useState<any>({
@@ -83,14 +84,30 @@ const StatisticsPage = () => {
         setEndDate={setEndDate}
         fetchStatistics={fetchStatistics}
       />
-      <Grid container spacing={3}>
-        <StatisticsChart title="Total Orders" data={ordersData} />
-        <StatisticsChart title="Freights" data={freightsData} />
-        <StatisticsChart title="Deliveries by Driver" data={deliveriesByDriverData} />
-        <StatisticsChart title="Notes by Region" data={notesByRegionData} />
+      <Grid container spacing={3} sx={{ marginTop: 2 }}>
+        <Grid item xs={12} sm={6} md={6}>
+          <Paper elevation={3} sx={{ padding: 2 }}>
+            <StatisticsChart title="Total Orders" data={ordersData} />
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={6}>
+          <Paper elevation={3} sx={{ padding: 2 }}>
+            <StatisticsChart title="Freights" data={freightsData} />
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={6}>
+          <Paper elevation={3} sx={{ padding: 2 }}>
+            <StatisticsChart title="Deliveries by Driver" data={deliveriesByDriverData} />
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={6} md={6}>
+          <Paper elevation={3} sx={{ padding: 2 }}>
+            <StatisticsChart title="Notes by Region" data={notesByRegionData} />
+          </Paper>
+        </Grid>
       </Grid>
     </Box>
   );
 };
 
-export default StatisticsPage;
+export default withAuth(StatisticsPage);
