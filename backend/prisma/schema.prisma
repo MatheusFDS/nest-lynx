@@ -8,16 +8,27 @@ generator client {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+  id        Int           @id @default(autoincrement())
+  email     String        @unique
   password  String
-  role      Role     @relation(fields: [roleId], references: [id])
+  role      Role          @relation(fields: [roleId], references: [id])
   roleId    Int
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenant    Tenant        @relation(fields: [tenantId], references: [id])
   tenantId  Int
+  settings  UserSettings?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model UserSettings {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  user      User     @relation(fields: [userId], references: [id])
+  settings  Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 
 model Role {
   id    Int    @id @default(autoincrement())
@@ -162,5 +173,4 @@ model AccountsPayable {
   @@index([motoristaId])
   @@index([deliveryId])
 }
-
 

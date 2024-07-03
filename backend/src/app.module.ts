@@ -10,6 +10,7 @@ import { DeliveryModule } from './delivery/delivery.module';
 import { CategoryModule } from './category/category.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StatisticsModule } from './statistics/statistics.module';
+import { UserSettingsModule } from './user-settings/user-settings.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { StatisticsModule } from './statistics/statistics.module';
     DriversModule,
     VehiclesModule,
     DeliveryModule,
+    UserSettingsModule,
   ],
 })
 export class AppModule {}
