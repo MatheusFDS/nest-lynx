@@ -10,6 +10,8 @@ export class DeliveryService {
   async create(createDeliveryDto: CreateDeliveryDto, tenantId: number) {
     const { motoristaId, orders, veiculoId, ...rest } = createDeliveryDto;
 
+    console.log('Received CreateDeliveryDto:', createDeliveryDto);
+
     const existingDelivery = await this.prisma.delivery.findFirst({
       where: { motoristaId, status: 'Em rota' },
     });
@@ -20,7 +22,7 @@ export class DeliveryService {
 
     const orderRecords = await this.prisma.order.findMany({
       where: {
-        id: { in: orders },
+        id: { in: orders.map(order => order.id) },
         status: { in: ['Pendente', 'Reentrega'] },
         tenantId: tenantId,
       },
@@ -68,7 +70,7 @@ export class DeliveryService {
         status: 'Em rota',
         ...rest,
         orders: {
-          connect: orders.map(orderId => ({ id: orderId })),
+          connect: orders.map(order => ({ id: order.id })),
         },
       },
       include: {
@@ -79,7 +81,7 @@ export class DeliveryService {
     });
 
     await this.prisma.order.updateMany({
-      where: { id: { in: orders } },
+      where: { id: { in: orders.map(order => order.id) } },
       data: { status: 'Em Rota', deliveryId: delivery.id },
     });
 
@@ -97,7 +99,7 @@ export class DeliveryService {
         motoristaId,
         veiculoId,
         orders: {
-          connect: orders?.map(orderId => ({ id: orderId })) ?? [],
+          connect: orders?.map(order => ({ id: order.id })) ?? [],
         },
       },
       include: {
@@ -133,6 +135,7 @@ export class DeliveryService {
     return delivery;
   }
 
+
   async findAll(tenantId: number) {
     return this.prisma.delivery.findMany({
       where: { tenantId },
@@ -155,11 +158,44 @@ export class DeliveryService {
 
   async remove(id: number, tenantId: number) {
     const delivery = await this.findOne(id, tenantId);
-
+  
     if (!delivery) {
       throw new NotFoundException('Delivery not found');
     }
-
+  
+    await this.prisma.order.updateMany({
+      where: { deliveryId: id },
+      data: { status: 'Reentrega', deliveryId: null },
+    });
+  
     return this.prisma.delivery.delete({ where: { id } });
+  }
+
+  async removeOrderFromDelivery(deliveryId: number, orderId: number, tenantId: number) {
+    const delivery = await this.prisma.delivery.findFirst({
+      where: { id: deliveryId, tenantId },
+      include: { orders: true },
+    });
+  
+    if (!delivery) {
+      throw new NotFoundException('Delivery not found');
+    }
+  
+    const updatedDelivery = await this.prisma.delivery.update({
+      where: { id: deliveryId },
+      data: {
+        orders: {
+          disconnect: { id: orderId },
+        },
+      },
+      include: { orders: true },
+    });
+  
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'Reentrega', deliveryId: null },
+    });
+  
+    return updatedDelivery;
   }
 }

@@ -1,5 +1,8 @@
-import { IsNotEmpty, IsNumber, IsArray, ValidateNested } from 'class-validator';
+// src/delivery/dto/create-delivery.dto.ts
+
+import { IsNumber, IsArray, ValidateNested, IsString, IsOptional, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
+import { OrderDto } from '../../orders/dto/order.dto';
 
 export class CreateDeliveryDto {
   @IsNotEmpty()
@@ -28,6 +31,6 @@ export class CreateDeliveryDto {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => Number)
-  orders: number[];
+  @Type(() => OrderDto)
+  orders: OrderDto[];
 }

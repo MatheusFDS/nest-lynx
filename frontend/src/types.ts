@@ -1,3 +1,5 @@
+import { ReactNode } from "react";
+
 export interface Category {
   id: number;
   name: string;
@@ -5,21 +7,31 @@ export interface Category {
   tenantId: number;
 }
 
+// types.ts
 export interface Delivery {
-  id: number;
-  deliveryId: number;
-  amount: number;
-  status: string;
-  tenantId: number;
+  dataFim: string | number | Date;
+  dataInicio: string | number | Date;
+  id: any;
+
   motoristaId: number;
   veiculoId: number;
-  createdAt: string;
-  updatedAt: string;
   valorFrete: number;
   totalPeso: number;
   totalValor: number;
-  orders: { id: number; numero: string; cliente: string; valor: number; peso: number }[];
+  tenantId: number;
+  orders: {
+    endereco: any;
+    cep: string;
+    peso: any;
+    valor: any;
+    cliente: any;
+    numero: any; id: number 
+}[];
+  status?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
+
 
 export interface Direction {
   id: number;

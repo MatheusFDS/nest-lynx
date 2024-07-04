@@ -1,6 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateDeliveryDto } from './create-delivery.dto';
-import { IsOptional, IsNumber, IsString, IsArray, ValidateNested } from 'class-validator';
+import { IsOptional, IsString, IsArray, ValidateNested, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateDeliveryDto extends PartialType(CreateDeliveryDto) {
@@ -11,6 +11,6 @@ export class UpdateDeliveryDto extends PartialType(CreateDeliveryDto) {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => Number)
-  orders?: number[];
+  @Type(() => Object)
+  orders?: { id: number; cliente: string; numero: string }[];
 }

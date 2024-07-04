@@ -19,28 +19,31 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  TextField,
   Tabs,
   Tab,
 } from '@mui/material';
-import { Delete, Map, Info } from '@mui/icons-material';
+import { Delete, Info, Map } from '@mui/icons-material';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { fetchOrders, fetchDirections, fetchDrivers, fetchVehicles } from '../../services/auxiliaryService';
-import { Order, Driver, Vehicle, Direction } from '../../types';
+import { fetchOrders, fetchDirections, fetchDrivers, fetchVehicles, fetchCategories } from '../../services/auxiliaryService';
+import { Order, Driver, Vehicle, Direction, Category } from '../../types';
 import withAuth from '../components/withAuth';
 import { SelectChangeEvent } from '@mui/material/Select';
+import { addDelivery } from '../../services/deliveryService';
 
 const RoutingPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [directions, setDirections] = useState<Direction[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedOrders, setSelectedOrders] = useState<{ [key: number]: Order[] }>({});
   const [selectedDriver, setSelectedDriver] = useState<number | string>('');
   const [selectedVehicle, setSelectedVehicle] = useState<number | string>('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [error, setError] = useState<string>('');
   const [currentDirectionId, setCurrentDirectionId] = useState<number | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [tabIndex, setTabIndex] = useState(0);
   const [additionalValue, setAdditionalValue] = useState<number>(0);
   const [tollValue, setTollValue] = useState<number>(0);
@@ -51,21 +54,25 @@ const RoutingPage: React.FC = () => {
 
   const loadInitialData = async () => {
     try {
-      const [ordersData, directionsData, driversData, vehiclesData] = await Promise.all([
+      const [ordersData, directionsData, driversData, vehiclesData, categoriesData] = await Promise.all([
         fetchOrders(token),
         fetchDirections(token),
         fetchDrivers(token),
         fetchVehicles(token),
+        fetchCategories(token),
       ]);
 
-      setOrders(ordersData);
+      const filteredOrders = ordersData.filter((order: { status: string; }) => ['Pendente', 'Reentrega'].includes(order.status));
+
+      setOrders(filteredOrders);
       setDirections(directionsData);
       setDrivers(driversData);
       setVehicles(vehiclesData);
+      setCategories(categoriesData);
 
       const initialOrders: { [key: number]: Order[] } = {};
       directionsData.forEach((direction: Direction) => {
-        initialOrders[direction.id] = ordersData.filter((order: Order) => {
+        initialOrders[direction.id] = filteredOrders.filter((order: Order) => {
           return (
             parseInt(order.cep) >= parseInt(direction.rangeInicio) &&
             parseInt(order.cep) <= parseInt(direction.rangeFim)
@@ -73,7 +80,7 @@ const RoutingPage: React.FC = () => {
         });
       });
       setSelectedOrders(initialOrders);
-    } catch (error) {
+    } catch (error: unknown) {
       setError('Failed to load initial data.');
     }
   };
@@ -96,12 +103,35 @@ const RoutingPage: React.FC = () => {
 
   const handleGenerateDelivery = (directionId: number) => {
     setCurrentDirectionId(directionId);
+    const directionOrders = selectedOrders[directionId];
+    if (directionOrders && directionOrders.length > 0) {
+      const order = directionOrders[0];
+      const driver = drivers.find(driver => driver.id === order.id);
+      if (driver) {
+        const vehicle = vehicles.find(vehicle => vehicle.driverId === driver.id);
+        if (vehicle) {
+          setSelectedDriver(driver.id);
+          setSelectedVehicle(vehicle.id);
+          setVehicleValue(vehicle.categoryId);
+        }
+      }
+    }
     setDialogOpen(true);
   };
 
   const handleDialogClose = () => {
     setDialogOpen(false);
     setCurrentDirectionId(null);
+  };
+
+  const handleDetailsDialogOpen = (order: Order) => {
+    setSelectedOrder(order);
+    setDetailsDialogOpen(true);
+  };
+
+  const handleDetailsDialogClose = () => {
+    setDetailsDialogOpen(false);
+    setSelectedOrder(null);
   };
 
   const openGoogleMaps = (cep: string) => {
@@ -128,10 +158,32 @@ const RoutingPage: React.FC = () => {
     }
   };
 
+  const handleDriverChange = (e: SelectChangeEvent<number | string>) => {
+    const driverId = e.target.value as number;
+    setSelectedDriver(driverId);
+    const driver = drivers.find(driver => driver.id === driverId);
+    if (driver) {
+      const vehicle = vehicles.find(vehicle => vehicle.driverId === driver.id);
+      if (vehicle) {
+        setSelectedVehicle(vehicle.id);
+        setVehicleValue(vehicle.categoryId); // Utilize o categoryId para obter o valor da categoria
+      } else {
+        setSelectedVehicle('');
+        setVehicleValue(0);
+      }
+    }
+  };
+
+  const handleVehicleChange = (e: SelectChangeEvent<number | string>) => {
+    const vehicleId = e.target.value as number;
+    setSelectedVehicle(vehicleId);
+    setVehicleValue(getVehicleValue(vehicleId));
+  };
+
   const getVehicleValue = (vehicleId: number | string) => {
     const vehicle = vehicles.find(vehicle => vehicle.id === vehicleId);
     if (vehicle) {
-      const category = vehicle.categoryId ? vehicles.find(v => v.id === vehicle.categoryId) : null;
+      const category = categories.find(c => c.id === vehicle.categoryId);
       return category ? category.valor : 0;
     }
     return 0;
@@ -156,72 +208,65 @@ const RoutingPage: React.FC = () => {
 
   const calculateFreightValue = () => {
     const ordersInDirection = selectedOrders[currentDirectionId!] || [];
-    return getVehicleValue(selectedVehicle) + getMaxDirectionValue(ordersInDirection) + additionalValue + tollValue;
-  };
-
-  const handleDriverChange = (e: SelectChangeEvent<number | string>) => {
-    const driverId = e.target.value as number;
-    setSelectedDriver(driverId);
-    const driver = drivers.find(driver => driver.id === driverId);
-    if (driver) {
-      const vehicle = vehicles.find(vehicle => vehicle.driverId === driver.id);
-      if (vehicle) {
-        setSelectedVehicle(vehicle.id);
-        setVehicleValue(vehicle.categoryId); // Utilize o categoryId para obter o valor da categoria
-      } else {
-        setSelectedVehicle('');
-        setVehicleValue(0);
-      }
-    }
-  };
-
-  const handleVehicleChange = (e: SelectChangeEvent<number | string>) => {
-    const vehicleId = e.target.value as number;
-    setSelectedVehicle(vehicleId);
-    setVehicleValue(getVehicleValue(vehicleId));
+    const maxDirectionValue = getMaxDirectionValue(ordersInDirection);
+    const vehicleCategoryValue = getVehicleValue(selectedVehicle);
+    return maxDirectionValue + vehicleCategoryValue + tollValue;
   };
 
   const handleConfirmDelivery = async () => {
     if (!currentDirectionId) return;
-
+  
     const ordersInDirection = selectedOrders[currentDirectionId];
     if (!ordersInDirection || ordersInDirection.length === 0) return;
-
+  
     const { totalWeight, totalValue } = calculateTotalWeightAndValue(ordersInDirection);
     const freightValue = calculateFreightValue();
-
+  
     const deliveryData = {
       motoristaId: selectedDriver as number,
-      veiculoId: selectedVehicle as number,
+      veiculoId: Number(selectedVehicle), // Garantir que veiculoId é um número
       valorFrete: freightValue,
       totalPeso: totalWeight,
       totalValor: totalValue,
-      tenantId: tenantId, // Defina o tenantId adequadamente
-      orders: ordersInDirection.map(order => order.id),
+      tenantId: tenantId,
+      orders: ordersInDirection.map(order => ({
+        id: order.id,
+        cliente: order.cliente,
+        numero: order.numero,
+        // Adicione outros campos necessários
+      })), // Incluindo os campos necessários
     };
-
+  
+    console.log('Delivery data being sent:', JSON.stringify(deliveryData, null, 2));
+  
     try {
-      const response = await fetch('http://localhost:4000/delivery', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(deliveryData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create delivery');
-      }
-
+      await addDelivery(token, deliveryData);
       setDialogOpen(false);
       setCurrentDirectionId(null);
+  
+      // Atualize os pedidos para remover os confirmados
+      setSelectedOrders(prevState => {
+        const updatedOrders = { ...prevState };
+        updatedOrders[currentDirectionId!] = updatedOrders[currentDirectionId!].filter(order => !deliveryData.orders.map(o => o.id).includes(order.id));
+        return updatedOrders;
+      });
+  
+      // Atualize a lista principal de pedidos
+      setOrders(prevOrders => prevOrders.filter(order => !deliveryData.orders.map(o => o.id).includes(order.id)));
+  
+      // Recarregar dados iniciais
       loadInitialData();
-    } catch (error) {
-      setError('Failed to create delivery.');
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Failed to create delivery:', error.message);
+        setError(error.message);
+      } else {
+        console.error('Failed to create delivery:', error);
+        setError('Failed to create delivery.');
+      }
     }
   };
-
+    
   return (
     <Container>
       {error && <Typography color="error">{error}</Typography>}
@@ -232,11 +277,15 @@ const RoutingPage: React.FC = () => {
             const ordersInDirection = selectedOrders[direction.id] || [];
             if (ordersInDirection.length === 0) return null;
 
+            const { totalWeight, totalValue } = calculateTotalWeightAndValue(ordersInDirection);
+
             return (
               <Grid item xs={12} sm={6} md={4} key={direction.id}>
                 <Paper elevation={3} style={{ padding: '16px' }}>
                   <Typography variant="h6">{direction.regiao}</Typography>
                   <Typography variant="body1">CEP: {direction.rangeInicio} - {direction.rangeFim}</Typography>
+                  <Typography variant="body1">Total Valor: R$ {totalValue.toFixed(2)}</Typography>
+                  <Typography variant="body1">Total Peso: {totalWeight.toFixed(2)} kg</Typography>
                   <Button
                     variant="contained"
                     color="primary"
@@ -245,20 +294,12 @@ const RoutingPage: React.FC = () => {
                   >
                     Gerar Rota
                   </Button>
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    style={{ marginTop: '16px', marginLeft: '8px' }}
-                    onClick={() => openGoogleMaps(direction.rangeInicio)}
-                  >
-                    Mapa
-                  </Button>
                   <Droppable droppableId={directionId}>
-                    {(provided, snapshot) => (
+                    {(provided) => (
                       <div ref={provided.innerRef} {...provided.droppableProps} style={{ marginTop: '16px' }}>
                         {ordersInDirection.map((order, index) => (
                           <Draggable key={order.id.toString()} draggableId={order.id.toString()} index={index}>
-                            {(provided, snapshot) => (
+                            {(provided) => (
                               <ListItem ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
                                 <Paper style={{ padding: '8px', marginBottom: '8px', width: '100%' }}>
                                   <ListItemText
@@ -267,9 +308,9 @@ const RoutingPage: React.FC = () => {
                                   />
                                   <IconButton
                                     edge="end"
-                                    onClick={() => handleOrderTransfer(order.id, parseInt(directionId), parseInt(directionId))}
+                                    onClick={() => handleDetailsDialogOpen(order)} // Exibir detalhes do pedido
                                   >
-                                    <Delete />
+                                    <Info />
                                   </IconButton>
                                 </Paper>
                               </ListItem>
@@ -316,31 +357,6 @@ const RoutingPage: React.FC = () => {
                   ))}
                 </Select>
               </FormControl>
-              <TextField
-                label="Valor do Veículo"
-                value={vehicleValue}
-                onChange={(e) => setVehicleValue(parseFloat(e.target.value))}
-                type="number"
-                fullWidth
-                margin="normal"
-                disabled
-              />
-              <TextField
-                label="Valor Adicional"
-                value={additionalValue}
-                onChange={(e) => setAdditionalValue(parseFloat(e.target.value))}
-                type="number"
-                fullWidth
-                margin="normal"
-              />
-              <TextField
-                label="Valor do Pedágio"
-                value={tollValue}
-                onChange={(e) => setTollValue(parseFloat(e.target.value))}
-                type="number"
-                fullWidth
-                margin="normal"
-              />
               <Typography variant="body1" style={{ marginTop: '16px' }}>
                 Total Peso: {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalWeight.toFixed(2)} kg
               </Typography>
@@ -349,20 +365,40 @@ const RoutingPage: React.FC = () => {
             </div>
           )}
           {tabIndex === 1 && (
-            <List>
-              {selectedOrders[currentDirectionId!]?.map(order => (
-                <ListItem key={order.id}>
-                  <ListItemText
-                    primary={`Pedido ${order.numero} - Cliente: ${order.cliente}`}
-                    secondary={`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}
-                  />
-                </ListItem>
-              ))}
-              <Typography variant="body1" style={{ marginTop: '16px' }}>
-                Total Peso: {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalWeight.toFixed(2)} kg
-              </Typography>
-              <Typography variant="body1">Total Valor: R$ {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalValue.toFixed(2)}</Typography>
-            </List>
+            <div>
+              <List>
+                {selectedOrders[currentDirectionId!]?.map(order => (
+                  <ListItem key={order.id}>
+                    <ListItemText
+                      primary={`Pedido ${order.numero} - Cliente: ${order.cliente}`}
+                      secondary={`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}
+                    />
+                    <IconButton
+                      edge="end"
+                      onClick={() => setSelectedOrders(prevState => {
+                        const updatedOrders = { ...prevState };
+                        updatedOrders[currentDirectionId!] = updatedOrders[currentDirectionId!].filter(o => o.id !== order.id);
+                        return updatedOrders;
+                      })}
+                    >
+                      <Delete />
+                    </IconButton>
+                  </ListItem>
+                ))}
+                <Typography variant="body1" style={{ marginTop: '16px' }}>
+                  Total Peso: {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalWeight.toFixed(2)} kg
+                </Typography>
+                <Typography variant="body1">Total Valor: R$ {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalValue.toFixed(2)}</Typography>
+              </List>
+              <Button
+                variant="contained"
+                color="secondary"
+                style={{ marginTop: '16px' }}
+                onClick={() => openGoogleMaps(selectedOrders[currentDirectionId!]?.[0]?.cep || '')}
+              >
+                Mapa
+              </Button>
+            </div>
           )}
         </DialogContent>
         <DialogActions>
@@ -374,6 +410,49 @@ const RoutingPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {selectedOrder && (
+        <Dialog open={detailsDialogOpen} onClose={handleDetailsDialogClose} fullWidth maxWidth="sm">
+          <DialogTitle>Detalhes do Pedido</DialogTitle>
+          <DialogContent>
+            <Typography variant="body1"><strong>Pedido Número:</strong> {selectedOrder.numero}</Typography>
+            <Typography variant="body1"><strong>Data:</strong> {selectedOrder.data}</Typography>
+            <Typography variant="body1"><strong>ID Cliente:</strong> {selectedOrder.idCliente}</Typography>
+            <Typography variant="body1"><strong>Cliente:</strong> {selectedOrder.cliente}</Typography>
+            <Typography variant="body1"><strong>Endereço:</strong> {selectedOrder.endereco}</Typography>
+            <Typography variant="body1"><strong>Cidade:</strong> {selectedOrder.cidade}</Typography>
+            <Typography variant="body1"><strong>UF:</strong> {selectedOrder.uf}</Typography>
+            <Typography variant="body1"><strong>Peso:</strong> {selectedOrder.peso} kg</Typography>
+            <Typography variant="body1"><strong>Volume:</strong> {selectedOrder.volume} m³</Typography>
+            <Typography variant="body1"><strong>Prazo:</strong> {selectedOrder.prazo}</Typography>
+            <Typography variant="body1"><strong>Prioridade:</strong> {selectedOrder.prioridade}</Typography>
+            <Typography variant="body1"><strong>Telefone:</strong> {selectedOrder.telefone}</Typography>
+            <Typography variant="body1"><strong>Email:</strong> {selectedOrder.email}</Typography>
+            <Typography variant="body1"><strong>Bairro:</strong> {selectedOrder.bairro}</Typography>
+            <Typography variant="body1"><strong>Valor:</strong> R$ {selectedOrder.valor}</Typography>
+            <Typography variant="body1"><strong>Instruções de Entrega:</strong> {selectedOrder.instrucoesEntrega}</Typography>
+            <Typography variant="body1"><strong>Nome do Contato:</strong> {selectedOrder.nomeContato}</Typography>
+            <Typography variant="body1"><strong>CPF/CNPJ:</strong> {selectedOrder.cpfCnpj}</Typography>
+            <Typography variant="body1"><strong>CEP:</strong> {selectedOrder.cep}</Typography>
+            <Typography variant="body1"><strong>Status:</strong> {selectedOrder.status}</Typography>
+            <Typography variant="body1"><strong>Data de Criação:</strong> {selectedOrder.createdAt}</Typography>
+            <Typography variant="body1"><strong>Data de Atualização:</strong> {selectedOrder.updatedAt}</Typography>
+            {selectedOrder.Delivery && (
+              <>
+                <Typography variant="body1"><strong>Data de Entrega:</strong> {selectedOrder.Delivery.dataFim}</Typography>
+                {selectedOrder.Delivery.Driver && (
+                  <Typography variant="body1"><strong>Motorista:</strong> {selectedOrder.Delivery.Driver.name}</Typography>
+                )}
+              </>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleDetailsDialogClose} color="primary">
+              Fechar
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </Container>
   );
 };

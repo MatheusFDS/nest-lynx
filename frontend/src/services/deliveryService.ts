@@ -25,13 +25,32 @@ export const fetchDeliveries = async (token: string): Promise<Delivery[]> => {
       cliente: order.cliente,
       valor: order.valor,
       peso: order.peso,
+      data: order.data,
+      idCliente: order.idCliente,
+      endereco: order.endereco,
+      cidade: order.cidade,
+      uf: order.uf,
+      volume: order.volume,
+      prazo: order.prazo,
+      prioridade: order.prioridade,
+      telefone: order.telefone,
+      email: order.email,
+      bairro: order.bairro,
+      instrucoesEntrega: order.instrucoesEntrega,
+      nomeContato: order.nomeContato,
+      cpfCnpj: order.cpfCnpj,
+      cep: order.cep,
+      status: order.status,
+      tenantId: order.tenantId,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
     })),
   }));
 
   return deliveries;
 };
 
-export const addDelivery = async (token: string, data: Partial<Delivery>): Promise<void> => {
+export const addDelivery = async (token: string, data: any): Promise<void> => {
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -42,11 +61,13 @@ export const addDelivery = async (token: string, data: Partial<Delivery>): Promi
   });
 
   if (!response.ok) {
-    throw new Error('Failed to add delivery');
+    const errorData = await response.json();
+    console.error('Failed to add delivery:', errorData);
+    throw new Error(`Failed to add delivery: ${errorData.message}`);
   }
 };
 
-export const updateDelivery = async (token: string, id: number, data: Partial<Delivery>): Promise<void> => {
+export const updateDelivery = async (token: string, id: number, data: any): Promise<void> => {
   const response = await fetch(`${API_URL}/${id}`, {
     method: 'PATCH',
     headers: {
@@ -57,6 +78,8 @@ export const updateDelivery = async (token: string, id: number, data: Partial<De
   });
 
   if (!response.ok) {
+    const errorData = await response.json();
+    console.error('Failed to update delivery:', errorData);
     throw new Error('Failed to update delivery');
   }
 };
@@ -70,6 +93,24 @@ export const deleteDelivery = async (token: string, id: number): Promise<void> =
   });
 
   if (!response.ok) {
+    const errorData = await response.json();
+    console.error('Failed to delete delivery:', errorData);
     throw new Error('Failed to delete delivery');
+  }
+};
+
+export const removeOrderFromDelivery = async (token: string, deliveryId: number, orderId: number): Promise<void> => {
+  const response = await fetch(`${API_URL}/${deliveryId}/remove-order/${orderId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error('Failed to remove order from delivery:', errorData);
+    throw new Error('Failed to remove order from delivery');
   }
 };

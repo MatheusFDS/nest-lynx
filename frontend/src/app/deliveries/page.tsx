@@ -1,171 +1,342 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Tabs, Tab, Select, MenuItem, FormControl, InputLabel, List, ListItem, ListItemText } from '@mui/material';
-import { Delivery, Driver, Vehicle, Order } from '../../types';
+import {
+  Container,
+  Typography,
+  Grid,
+  Paper,
+  Button,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Tabs,
+  Tab,
+  TextField,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  List,
+  ListItem,
+  ListItemText,
+} from '@mui/material';
+import { Delete, Info, Map, Edit } from '@mui/icons-material';
+import { fetchDeliveries, updateDelivery, removeOrderFromDelivery, deleteDelivery } from '../../services/deliveryService';
+import { fetchDrivers, fetchVehicles, fetchCategories, fetchDirections } from '../../services/auxiliaryService';
+import { Order, Driver, Vehicle, Category, Delivery, Direction } from '../../types';
 import withAuth from '../components/withAuth';
-import { fetchDeliveries, addDelivery, updateDelivery, deleteDelivery } from '../../services/deliveryService';
-import { fetchDrivers, fetchVehicles, fetchOrders } from '../../services/auxiliaryService';
-import { Delete, Edit } from '@mui/icons-material';
 import { SelectChangeEvent } from '@mui/material/Select';
 
 const DeliveriesPage: React.FC = () => {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-  const [filteredDeliveries, setFilteredDeliveries] = useState<Delivery[]>([]);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [newDelivery, setNewDelivery] = useState<Partial<Delivery>>({});
-  const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
-  const [showForm, setShowForm] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [directions, setDirections] = useState<Direction[]>([]);
+  const [selectedDriver, setSelectedDriver] = useState<number | string>('');
+  const [selectedVehicle, setSelectedVehicle] = useState<number | string>('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [error, setError] = useState<string>('');
+  const [currentDelivery, setCurrentDelivery] = useState<Delivery | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [tabIndex, setTabIndex] = useState(0);
+  const [tollValue, setTollValue] = useState<number>(0);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [dateRange, setDateRange] = useState<{ startDate: string; endDate: string }>({ startDate: '', endDate: '' });
 
   const token = localStorage.getItem('token') || '';
 
-  const loadDeliveries = async () => {
+  const loadInitialData = async () => {
     try {
-      const data = await fetchDeliveries(token);
-      setDeliveries(data);
-      setFilteredDeliveries(data);
-    } catch (error) {
-      setError('Failed to fetch deliveries.');
-    }
-  };
-
-  const loadAuxiliaryData = async () => {
-    try {
-      const [driversData, vehiclesData, ordersData] = await Promise.all([
+      const [deliveriesData, driversData, vehiclesData, categoriesData, directionsData] = await Promise.all([
+        fetchDeliveries(token),
         fetchDrivers(token),
         fetchVehicles(token),
-        fetchOrders(token)
+        fetchCategories(token),
+        fetchDirections(token),
       ]);
+
+      setDeliveries(deliveriesData);
       setDrivers(driversData);
       setVehicles(vehiclesData);
-      setOrders(ordersData);
-    } catch (error) {
-      setError('Failed to fetch auxiliary data.');
+      setCategories(categoriesData);
+      setDirections(directionsData);
+    } catch (error: unknown) {
+      setError('Failed to load initial data.');
     }
   };
 
   useEffect(() => {
-    loadDeliveries();
-    loadAuxiliaryData();
+    loadInitialData();
   }, []);
+
+  const handleEditDelivery = (delivery: Delivery) => {
+    setCurrentDelivery({
+      ...delivery,
+      status: delivery.status || 'Em Rota',  // Define 'Em Rota' como valor padrão se o status for indefinido
+    });
+    setSelectedDriver(delivery.motoristaId);
+    setSelectedVehicle(delivery.veiculoId);
+    setTollValue(delivery.valorFrete - getVehicleValue(delivery.veiculoId));
+    setDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setCurrentDelivery(null);
+  };
+
+  const handleDetailsDialogOpen = (order: Order) => {
+    setSelectedOrder(order);
+    setDetailsDialogOpen(true);
+  };
+
+  const handleDetailsDialogClose = () => {
+    setDetailsDialogOpen(false);
+    setSelectedOrder(null);
+  };
+
+  const openGoogleMaps = (cep: string) => {
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${cep}`;
+    window.open(url, '_blank');
+  };
+
+  const calculateTotalWeightAndValue = (orders: Order[]) => {
+    let totalWeight = 0;
+    let totalValue = 0;
+    orders.forEach(order => {
+      totalWeight += order.peso;
+      totalValue += order.valor;
+    });
+    return { totalWeight, totalValue };
+  };
+
+  const handleDriverChange = (e: SelectChangeEvent<number | string>) => {
+    const driverId = e.target.value as number;
+    setSelectedDriver(driverId);
+    const driver = drivers.find(driver => driver.id === driverId);
+    if (driver) {
+      const vehicle = vehicles.find(vehicle => vehicle.driverId === driver.id);
+      if (vehicle) {
+        setSelectedVehicle(vehicle.id);
+      } else {
+        setSelectedVehicle('');
+      }
+    }
+  };
+
+  const handleVehicleChange = (e: SelectChangeEvent<number | string>) => {
+    const vehicleId = e.target.value as number;
+    setSelectedVehicle(vehicleId);
+  };
+
+  const getVehicleValue = (vehicleId: number | string) => {
+    const vehicle = vehicles.find(vehicle => vehicle.id === vehicleId);
+    if (vehicle) {
+      const category = categories.find(c => c.id === vehicle.categoryId);
+      return category ? category.valor : 0;
+    }
+    return 0;
+  };
+
+  const handleConfirmDelivery = async () => {
+    if (!currentDelivery) return;
+
+    const ordersInDelivery: Order[] = currentDelivery.orders as Order[];
+
+    const { totalWeight, totalValue } = calculateTotalWeightAndValue(ordersInDelivery);
+
+    const deliveryData = {
+      motoristaId: selectedDriver as number,
+      veiculoId: Number(selectedVehicle),
+      valorFrete: getVehicleValue(selectedVehicle) + tollValue,
+      totalPeso: totalWeight,
+      totalValor: totalValue,
+      status: currentDelivery.status,
+      dataInicio: currentDelivery.dataInicio,
+      dataFim: currentDelivery.dataFim,
+    };
+
+    try {
+      await updateDelivery(token, currentDelivery.id, deliveryData);
+      setDialogOpen(false);
+      setCurrentDelivery(null);
+      loadInitialData();
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Failed to update delivery:', error.message);
+        setError(error.message);
+      } else {
+        console.error('Failed to update delivery:', error);
+        setError('Failed to update delivery.');
+      }
+    }
+  };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    const filtered = deliveries.filter(delivery =>
-      delivery.id.toString().includes(e.target.value)
-    );
-    setFilteredDeliveries(filtered);
   };
 
-  const handleAddDelivery = async () => {
+  const handleDateFilter = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setDateRange(prevState => ({ ...prevState, [name]: value }));
+  };
+
+  const handleDeleteDelivery = async (deliveryId: number) => {
     try {
-      if (selectedDelivery) {
-        await updateDelivery(token, selectedDelivery.id, { ...newDelivery });
+      await deleteDelivery(token, deliveryId);
+      loadInitialData();
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Failed to delete delivery:', error.message);
+        setError(error.message);
       } else {
-        const tenantId = JSON.parse(atob(token.split('.')[1])).tenantId;
-        await addDelivery(token, { ...newDelivery, tenantId });
+        console.error('Failed to delete delivery:', error);
+        setError('Failed to delete delivery.');
       }
-      setNewDelivery({});
-      setSelectedDelivery(null);
-      setShowForm(false);
-      loadDeliveries();
-    } catch (error) {
-      setError('Failed to submit delivery.');
     }
   };
 
-  const handleEdit = (delivery: Delivery) => {
-    setSelectedDelivery(delivery);
-    setNewDelivery(delivery);
-    setShowForm(true);
-  };
-
-  const handleDelete = async (id: number) => {
-    try {
-      await deleteDelivery(token, id);
-      loadDeliveries();
-    } catch (error) {
-      setError('Failed to delete delivery.');
+  const filteredDeliveries = deliveries.filter((delivery) => {
+    const { startDate, endDate } = dateRange;
+    if (searchTerm) {
+      return delivery.orders.some(order => order.cliente.toLowerCase().includes(searchTerm.toLowerCase()));
     }
-  };
-
-  const handleFormClose = () => {
-    setSelectedDelivery(null);
-    setNewDelivery({});
-    setShowForm(false);
-  };
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabIndex(newValue);
-  };
-
-  const handleRemoveOrder = (orderId: number) => {
-    setNewDelivery(prevState => ({
-      ...prevState,
-      orders: prevState.orders?.filter(order => order.id !== orderId)
-    }));
-  };
-
-  const handleAddOrder = (orderId: number) => {
-    if (!newDelivery.orders?.find(order => order.id === orderId)) {
-      setNewDelivery(prevState => ({
-        ...prevState,
-        orders: [...(prevState.orders || []), { id: orderId, numero: '', cliente: '', valor: 0, peso: 0 }]
-      }));
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const dataInicio = new Date(delivery.dataInicio);
+      return dataInicio >= start && dataInicio <= end;
     }
-  };
+    return true;
+  });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setNewDelivery(prevState => ({
-      ...prevState,
-      [name]: name === 'valorFrete' || name === 'totalPeso' || name === 'totalValor' ? parseFloat(value) : value
-    }));
-  };
-
-  const handleSelectChange = (e: SelectChangeEvent<number | string>) => {
-    const { name, value } = e.target;
-    setNewDelivery(prevState => ({
-      ...prevState,
-      [name as string]: value
-    }));
+  const getRegionName = (delivery: Delivery) => {
+    const orderCep = delivery.orders[0]?.cep;
+    const direction = directions.find(dir => parseInt(orderCep) >= parseInt(dir.rangeInicio) && parseInt(orderCep) <= parseInt(dir.rangeFim));
+    return direction ? direction.regiao : 'N/A';
   };
 
   return (
     <Container>
       {error && <Typography color="error">{error}</Typography>}
-      <TextField
-        label="Search Deliveries"
-        value={searchTerm}
-        onChange={handleSearch}
-        fullWidth
-        margin="normal"
-      />
-      <Button variant="contained" color="primary" onClick={() => setShowForm(true)}>
-        Add Delivery
-      </Button>
-      {showForm && (
-        <Dialog open={showForm} onClose={handleFormClose} fullWidth maxWidth="md">
-          <DialogTitle>{selectedDelivery ? 'Edit Delivery' : 'Add Delivery'}</DialogTitle>
-          <DialogContent>
-            <Tabs value={tabIndex} onChange={handleTabChange}>
-              <Tab label="Data" />
-              <Tab label="Orders" />
-            </Tabs>
-            <TabPanel value={tabIndex} index={0}>
+      <Grid container spacing={2} alignItems="center" style={{ marginBottom: '16px' }}>
+        <Grid item xs={12} md={6}>
+          <TextField
+            label="Buscar"
+            value={searchTerm}
+            onChange={handleSearch}
+            fullWidth
+            margin="normal"
+          />
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <TextField
+            label="Data Início"
+            type="date"
+            InputLabelProps={{ shrink: true }}
+            value={dateRange.startDate}
+            onChange={handleDateFilter}
+            name="startDate"
+            fullWidth
+            margin="normal"
+          />
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <TextField
+            label="Data Fim"
+            type="date"
+            InputLabelProps={{ shrink: true }}
+            value={dateRange.endDate}
+            onChange={handleDateFilter}
+            name="endDate"
+            fullWidth
+            margin="normal"
+          />
+        </Grid>
+      </Grid>
+      <Grid container spacing={3}>
+        <TableContainer component={Paper} style={{ marginTop: '16px' }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>ID</TableCell>
+                <TableCell>Região</TableCell>
+                <TableCell>Motorista</TableCell>
+                <TableCell>Veículo</TableCell>
+                <TableCell>Total Valor</TableCell>
+                <TableCell>Total Peso</TableCell>
+                <TableCell>Data Início</TableCell>
+                <TableCell>Data Finalização</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Ações</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredDeliveries.map(delivery => {
+                const driver = drivers.find(driver => driver.id === delivery.motoristaId);
+                const vehicle = vehicles.find(vehicle => vehicle.id === delivery.veiculoId);
+                const { totalWeight, totalValue } = calculateTotalWeightAndValue(delivery.orders as Order[]);
+                const regionName = getRegionName(delivery);
+
+                return (
+                  <TableRow key={delivery.id}>
+                    <TableCell>{delivery.id}</TableCell>
+                    <TableCell>{regionName}</TableCell>
+                    <TableCell>{driver?.name}</TableCell>
+                    <TableCell>{vehicle?.model}</TableCell>
+                    <TableCell>R$ {totalValue.toFixed(2)}</TableCell>
+                    <TableCell>{totalWeight.toFixed(2)} kg</TableCell>
+                    <TableCell>{delivery.dataInicio ? new Date(delivery.dataInicio).toLocaleDateString() : 'N/A'}</TableCell>
+                    <TableCell>{delivery.dataFim ? new Date(delivery.dataFim).toLocaleDateString() : 'N/A'}</TableCell>
+                    <TableCell>{delivery.status}</TableCell>
+                    <TableCell>
+                      <IconButton onClick={() => handleEditDelivery(delivery)}>
+                        <Edit />
+                      </IconButton>
+                      <IconButton onClick={() => openGoogleMaps(delivery.orders[0]?.cep || '')}>
+                        <Map />
+                      </IconButton>
+                      <IconButton onClick={() => handleDeleteDelivery(delivery.id)}>
+                        <Delete />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Grid>
+
+      <Dialog open={dialogOpen} onClose={handleDialogClose} fullWidth maxWidth="md">
+        <DialogTitle>Editar Roteiro</DialogTitle>
+        <DialogContent>
+          <Tabs value={tabIndex} onChange={(e, newValue) => setTabIndex(newValue)}>
+            <Tab label="DADOS" />
+            <Tab label="NOTAS" />
+          </Tabs>
+          {tabIndex === 0 && currentDelivery && (
+            <div>
+              <div>
+                <Typography variant="h6">Informações da Rota</Typography>
+                <Typography>ID da Rota: {currentDelivery.id}</Typography>
+                <Typography>Nome da Região: {getRegionName(currentDelivery)}</Typography>
+              </div>
               <FormControl fullWidth margin="normal">
                 <InputLabel>Motorista</InputLabel>
-                <Select
-                  name="motoristaId"
-                  value={newDelivery.motoristaId || ''}
-                  onChange={handleSelectChange}
-                >
-                  {drivers.map((driver) => (
+                <Select value={selectedDriver} onChange={handleDriverChange}>
+                  {drivers.map(driver => (
                     <MenuItem key={driver.id} value={driver.id}>
                       {driver.name}
                     </MenuItem>
@@ -174,12 +345,8 @@ const DeliveriesPage: React.FC = () => {
               </FormControl>
               <FormControl fullWidth margin="normal">
                 <InputLabel>Veículo</InputLabel>
-                <Select
-                  name="veiculoId"
-                  value={newDelivery.veiculoId || ''}
-                  onChange={handleSelectChange}
-                >
-                  {vehicles.map((vehicle) => (
+                <Select value={selectedVehicle} onChange={handleVehicleChange}>
+                  {vehicles.map(vehicle => (
                     <MenuItem key={vehicle.id} value={vehicle.id}>
                       {vehicle.model}
                     </MenuItem>
@@ -187,135 +354,134 @@ const DeliveriesPage: React.FC = () => {
                 </Select>
               </FormControl>
               <TextField
-                label="Valor Frete"
-                name="valorFrete"
-                value={newDelivery.valorFrete !== undefined ? newDelivery.valorFrete.toString() : ''}
-                onChange={handleInputChange}
+                label="Valor do Pedágio"
                 type="number"
                 fullWidth
                 margin="normal"
-              />
-              <TextField
-                label="Total Peso"
-                name="totalPeso"
-                value={newDelivery.totalPeso !== undefined ? newDelivery.totalPeso.toString() : ''}
-                onChange={handleInputChange}
-                type="number"
-                fullWidth
-                margin="normal"
-              />
-              <TextField
-                label="Total Valor"
-                name="totalValor"
-                value={newDelivery.totalValor !== undefined ? newDelivery.totalValor.toString() : ''}
-                onChange={handleInputChange}
-                type="number"
-                fullWidth
-                margin="normal"
+                value={tollValue}
+                onChange={(e) => setTollValue(Number(e.target.value))}
               />
               <FormControl fullWidth margin="normal">
-                <InputLabel>Status</InputLabel>
+                <InputLabel id="status-label">Status</InputLabel>
                 <Select
-                  name="status"
-                  value={newDelivery.status || ''}
-                  onChange={handleSelectChange}
+                  labelId="status-label"
+                  value={currentDelivery.status}
+                  onChange={(e) => setCurrentDelivery(currentDelivery ? { ...currentDelivery, status: e.target.value as string } : null)}
                 >
-                  <MenuItem value="Em rota">Em rota</MenuItem>
+                  <MenuItem value="Em Rota">Em Rota</MenuItem>
                   <MenuItem value="Finalizado">Finalizado</MenuItem>
                 </Select>
               </FormControl>
-            </TabPanel>
-            <TabPanel value={tabIndex} index={1}>
+              <TextField
+                label="Data Início"
+                type="date"
+                fullWidth
+                margin="normal"
+                InputLabelProps={{ shrink: true }}
+                value={currentDelivery.dataInicio ? new Date(currentDelivery.dataInicio).toISOString().split('T')[0] : ''}
+                onChange={(e) => setCurrentDelivery({ ...currentDelivery, dataInicio: new Date(e.target.value) })}
+              />
+              <TextField
+                label="Data Finalização"
+                type="date"
+                fullWidth
+                margin="normal"
+                InputLabelProps={{ shrink: true }}
+                value={currentDelivery.dataFim ? new Date(currentDelivery.dataFim).toISOString().split('T')[0] : ''}
+                onChange={(e) => setCurrentDelivery({ ...currentDelivery, dataFim: new Date(e.target.value) })}
+              />
+            </div>
+          )}
+          {tabIndex === 1 && (
+            <div>
               <List>
-                {orders.filter(order => newDelivery.orders?.map(o => o.id).includes(order.id)).map((order) => (
+                {currentDelivery?.orders.map(order => (
                   <ListItem key={order.id}>
                     <ListItemText
                       primary={`Pedido ${order.numero} - Cliente: ${order.cliente}`}
-                      secondary={`Valor: ${order.valor}, Peso: ${order.peso}`}
+                      secondary={`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}
                     />
-                    <IconButton edge="end" onClick={() => handleRemoveOrder(order.id)}>
+                    <IconButton
+                      edge="end"
+                      onClick={async () => {
+                        await removeOrderFromDelivery(token, currentDelivery.id, order.id);
+                        setCurrentDelivery(prevState => {
+                          if (prevState) {
+                            return {
+                              ...prevState,
+                              orders: prevState.orders.filter(o => o.id !== order.id),
+                            };
+                          }
+                          return null;
+                        });
+                      }}
+                    >
                       <Delete />
                     </IconButton>
                   </ListItem>
                 ))}
+                <Typography variant="body1" style={{ marginTop: '16px' }}>
+                  Total Peso: {calculateTotalWeightAndValue(currentDelivery?.orders as Order[] || []).totalWeight.toFixed(2)} kg
+                </Typography>
+                <Typography variant="body1">Total Valor: R$ {calculateTotalWeightAndValue(currentDelivery?.orders as Order[] || []).totalValue.toFixed(2)}</Typography>
               </List>
-              <List>
-                {orders.filter(order => !newDelivery.orders?.map(o => o.id).includes(order.id)).map((order) => (
-                  <ListItem button key={order.id} onClick={() => handleAddOrder(order.id)}>
-                    <ListItemText
-                      primary={`Pedido ${order.numero} - Cliente: ${order.cliente}`}
-                      secondary={`Valor: ${order.valor}, Peso: ${order.peso}`}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </TabPanel>
+            </div>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDialogClose} color="secondary">
+            Cancelar
+          </Button>
+          <Button onClick={handleConfirmDelivery} color="primary">
+            Confirmar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {selectedOrder && (
+        <Dialog open={detailsDialogOpen} onClose={handleDetailsDialogClose} fullWidth maxWidth="sm">
+          <DialogTitle>Detalhes do Pedido</DialogTitle>
+          <DialogContent>
+            <Typography variant="body1"><strong>Pedido Número:</strong> {selectedOrder.numero}</Typography>
+            <Typography variant="body1"><strong>Data:</strong> {selectedOrder.data}</Typography>
+            <Typography variant="body1"><strong>ID Cliente:</strong> {selectedOrder.idCliente}</Typography>
+            <Typography variant="body1"><strong>Cliente:</strong> {selectedOrder.cliente}</Typography>
+            <Typography variant="body1"><strong>Endereço:</strong> {selectedOrder.endereco}</Typography>
+            <Typography variant="body1"><strong>Cidade:</strong> {selectedOrder.cidade}</Typography>
+            <Typography variant="body1"><strong>UF:</strong> {selectedOrder.uf}</Typography>
+            <Typography variant="body1"><strong>Peso:</strong> {selectedOrder.peso} kg</Typography>
+            <Typography variant="body1"><strong>Volume:</strong> {selectedOrder.volume} m³</Typography>
+            <Typography variant="body1"><strong>Prazo:</strong> {selectedOrder.prazo}</Typography>
+            <Typography variant="body1"><strong>Prioridade:</strong> {selectedOrder.prioridade}</Typography>
+            <Typography variant="body1"><strong>Telefone:</strong> {selectedOrder.telefone}</Typography>
+            <Typography variant="body1"><strong>Email:</strong> {selectedOrder.email}</Typography>
+            <Typography variant="body1"><strong>Bairro:</strong> {selectedOrder.bairro}</Typography>
+            <Typography variant="body1"><strong>Valor:</strong> R$ {selectedOrder.valor}</Typography>
+            <Typography variant="body1"><strong>Instruções de Entrega:</strong> {selectedOrder.instrucoesEntrega}</Typography>
+            <Typography variant="body1"><strong>Nome do Contato:</strong> {selectedOrder.nomeContato}</Typography>
+            <Typography variant="body1"><strong>CPF/CNPJ:</strong> {selectedOrder.cpfCnpj}</Typography>
+            <Typography variant="body1"><strong>CEP:</strong> {selectedOrder.cep}</Typography>
+            <Typography variant="body1"><strong>Status:</strong> {selectedOrder.status}</Typography>
+            <Typography variant="body1"><strong>Data de Criação:</strong> {selectedOrder.createdAt}</Typography>
+            <Typography variant="body1"><strong>Data de Atualização:</strong> {selectedOrder.updatedAt}</Typography>
+            {selectedOrder.Delivery && (
+              <>
+                <Typography variant="body1"><strong>Data de Entrega:</strong> {selectedOrder.Delivery.dataFim}</Typography>
+                {selectedOrder.Delivery.Driver && (
+                  <Typography variant="body1"><strong>Motorista:</strong> {selectedOrder.Delivery.Driver.name}</Typography>
+                )}
+              </>
+            )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleFormClose} color="secondary">
-              Cancel
-            </Button>
-            <Button onClick={handleAddDelivery} color="primary">
-              {selectedDelivery ? 'Update Delivery' : 'Add Delivery'}
+            <Button onClick={handleDetailsDialogClose} color="primary">
+              Fechar
             </Button>
           </DialogActions>
         </Dialog>
       )}
-      <TableContainer component={Paper} style={{ marginTop: '16px' }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Delivery ID</TableCell>
-              <TableCell>Motorista ID</TableCell>
-              <TableCell>Veículo ID</TableCell>
-              <TableCell>Valor Frete</TableCell>
-              <TableCell>Total Peso</TableCell>
-              <TableCell>Total Valor</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredDeliveries.map((delivery) => (
-              <TableRow key={delivery.id}>
-                <TableCell>{delivery.id}</TableCell>
-                <TableCell>{delivery.motoristaId}</TableCell>
-                <TableCell>{delivery.veiculoId}</TableCell>
-                <TableCell>{delivery.valorFrete}</TableCell>
-                <TableCell>{delivery.totalPeso}</TableCell>
-                <TableCell>{delivery.totalValor}</TableCell>
-                <TableCell>{delivery.status}</TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleEdit(delivery)}>
-                    <Edit />
-                  </IconButton>
-                  <IconButton onClick={() => handleDelete(delivery.id)}>
-                    <Delete />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
     </Container>
   );
 };
-
-function TabPanel(props: { children?: React.ReactNode; index: number; value: number }) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`tabpanel-${index}`}
-      aria-labelledby={`tab-${index}`}
-      {...other}
-    >
-      {value === index && <div>{children}</div>}
-    </div>
-  );
-}
 
 export default withAuth(DeliveriesPage);
