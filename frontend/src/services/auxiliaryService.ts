@@ -1,5 +1,3 @@
-// src/services/auxiliaryService.ts
-
 export const fetchOrders = async (token: string) => {
   const response = await fetch('http://localhost:4000/orders', {
     method: 'GET',

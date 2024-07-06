@@ -12,17 +12,32 @@ export class PaymentsService {
   async create(createPaymentDto: CreatePaymentDto, tenantId: number) {
     const { deliveryId, amount, status, motoristaId } = createPaymentDto;
 
+    const paymentData: any = {
+      amount,
+      status,
+      tenantId,
+      motoristaId,
+      isGroup: false,
+    };
+
+    if (deliveryId) {
+      paymentData.paymentDeliveries = {
+        create: {
+          deliveryId,
+          tenantId,
+        },
+      };
+    }
+
     return this.prisma.accountsPayable.create({
-      data: {
-        deliveryId,
-        amount,
-        status,
-        tenantId,
-        motoristaId,
-      },
+      data: paymentData,
       include: {
         Driver: true,
-        Delivery: true,
+        paymentDeliveries: {
+          include: {
+            delivery: true,
+          },
+        },
       },
     });
   }
@@ -32,17 +47,33 @@ export class PaymentsService {
       where: { tenantId },
       include: {
         Driver: true,
-        Delivery: true,
+        paymentDeliveries: {
+          include: {
+            delivery: {
+              include: {
+                orders: true,
+              },
+            },
+          },
+        },
       },
     });
   }
 
   async findOne(id: number, tenantId: number) {
     const payment = await this.prisma.accountsPayable.findUnique({
-      where: { id, tenantId },
+      where: { id },
       include: {
         Driver: true,
-        Delivery: true,
+        paymentDeliveries: {
+          include: {
+            delivery: {
+              include: {
+                orders: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -55,11 +86,11 @@ export class PaymentsService {
 
   async update(id: number, updatePaymentDto: UpdatePaymentDto, tenantId: number) {
     const payment = await this.prisma.accountsPayable.findUnique({
-      where: { id, tenantId },
+      where: { id },
     });
 
-    if (!payment) {
-      throw new NotFoundException('Pagamento não encontrado');
+    if (!payment || payment.status === 'Baixado' || payment.isGroup || payment.groupedPaymentId) {
+      throw new BadRequestException('Não é possível atualizar um pagamento baixado, agrupado ou parte de um agrupamento.');
     }
 
     return this.prisma.accountsPayable.update({
@@ -67,74 +98,111 @@ export class PaymentsService {
       data: updatePaymentDto,
       include: {
         Driver: true,
-        Delivery: true,
+        paymentDeliveries: {
+          include: {
+            delivery: {
+              include: {
+                orders: true,
+              },
+            },
+          },
+        },
       },
     });
   }
 
   async remove(id: number, tenantId: number) {
     const payment = await this.prisma.accountsPayable.findUnique({
-      where: { id, tenantId },
+      where: { id },
     });
 
-    if (!payment) {
-      throw new NotFoundException('Pagamento não encontrado');
+    if (!payment || payment.status === 'Baixado' || payment.isGroup || payment.groupedPaymentId) {
+      throw new BadRequestException('Não é possível excluir um pagamento baixado, agrupado ou parte de um agrupamento.');
     }
 
     return this.prisma.accountsPayable.delete({
       where: { id },
       include: {
         Driver: true,
-        Delivery: true,
+        paymentDeliveries: {
+          include: {
+            delivery: {
+              include: {
+                orders: true,
+              },
+            },
+          },
+        },
       },
     });
   }
 
   async groupPayments(paymentIds: number[], tenantId: number) {
     try {
-      // Buscar os pagamentos a serem agrupados
       const payments = await this.prisma.accountsPayable.findMany({
         where: {
           id: { in: paymentIds },
           tenantId,
+          isGroup: false,
+          groupedPaymentId: null,
         },
         include: {
           Driver: true,
-          Delivery: true,
+          paymentDeliveries: {
+            include: {
+              delivery: {
+                include: {
+                  orders: true,
+                },
+              },
+            },
+          },
         },
       });
 
       if (payments.length === 0) {
-        throw new Error('Nenhum pagamento encontrado para os IDs fornecidos.');
+        throw new Error('Nenhum pagamento elegível encontrado para os IDs fornecidos.');
       }
 
-      // Calcular o valor total e outros campos agregados
-      const totalAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
-      const motoristaId = payments[0].motoristaId; // Supondo que todos os pagamentos têm o mesmo motoristaId
-      const deliveryId = payments[0].deliveryId; // Supondo que todos os pagamentos têm o mesmo deliveryId
+      const motoristaId = payments[0].motoristaId;
+      if (!payments.every(payment => payment.motoristaId === motoristaId)) {
+        throw new Error('Todos os pagamentos devem ser do mesmo motorista para serem agrupados.');
+      }
 
-      // Criar o pagamento agrupado
+      const totalAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
+      const deliveryIds = payments.flatMap(payment => payment.paymentDeliveries.map(pd => pd.deliveryId));
+
       const groupedPayment = await this.prisma.accountsPayable.create({
         data: {
           amount: totalAmount,
-          status: 'Baixado',
+          status: 'Pendente',
           tenantId,
           motoristaId,
-          deliveryId,
+          isGroup: true,
+          paymentDeliveries: {
+            create: deliveryIds.map(deliveryId => ({ deliveryId, tenantId })),
+          },
         },
         include: {
           Driver: true,
-          Delivery: true,
+          paymentDeliveries: {
+            include: {
+              delivery: {
+                include: {
+                  orders: true,
+                },
+              },
+            },
+          },
         },
       });
 
-      // Atualizar os pagamentos originais para referenciar o pagamento agrupado
       await this.prisma.accountsPayable.updateMany({
         where: {
           id: { in: paymentIds },
-          tenantId,
         },
         data: {
+          status: 'Baixado',
           groupedPaymentId: groupedPayment.id,
         },
       });
@@ -146,22 +214,39 @@ export class PaymentsService {
     }
   }
 
-  async ungroupPayments(paymentId: number): Promise<any> {
-    const payment = await this.prisma.accountsPayable.findUnique({
-      where: { id: paymentId },
-    });
+  async ungroupPayments(paymentId: number, tenantId: number) {
+    try {
+      const payment = await this.prisma.accountsPayable.findUnique({
+        where: { id: paymentId },
+        include: {
+          Driver: true,
+          paymentDeliveries: {
+            include: {
+              delivery: {
+                include: {
+                  orders: true,
+                },
+              },
+            },
+          },
+        },
+      });
 
-    if (!payment || !payment.groupedPaymentId) {
-      throw new BadRequestException('Pagamento não encontrado ou não é um pagamento agrupado.');
+      if (!payment || !payment.isGroup) {
+        throw new BadRequestException('Pagamento não encontrado ou não é um pagamento agrupado.');
+      }
+
+      await this.prisma.accountsPayable.updateMany({
+        where: { groupedPaymentId: paymentId },
+        data: { status: 'Pendente', groupedPaymentId: null },
+      });
+
+      return this.prisma.accountsPayable.delete({
+        where: { id: paymentId },
+      });
+    } catch (error) {
+      this.logger.error(`Erro ao desagrupar pagamento: ${error.message}`);
+      throw error;
     }
-
-    await this.prisma.accountsPayable.updateMany({
-      where: { groupedPaymentId: paymentId },
-      data: { status: 'Pendente', groupedPaymentId: null },
-    });
-
-    return this.prisma.accountsPayable.delete({
-      where: { id: paymentId },
-    });
   }
 }

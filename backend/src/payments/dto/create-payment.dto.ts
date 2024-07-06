@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsOptional } from 'class-validator';
 
 export class CreatePaymentDto {
   @IsNumber()
@@ -18,6 +18,6 @@ export class CreatePaymentDto {
   motoristaId: number;
 
   @IsNumber()
+  @IsOptional()
   deliveryId?: number;
-  
 }

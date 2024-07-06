@@ -115,18 +115,24 @@ export class DeliveryService {
         data: { status: 'Finalizado' },
       });
 
-      const existingPayment = await this.prisma.accountsPayable.findFirst({
+      const existingPayment = await this.prisma.paymentDelivery.findFirst({
         where: { deliveryId: delivery.id },
       });
 
       if (!existingPayment) {
         await this.prisma.accountsPayable.create({
           data: {
-            deliveryId: delivery.id,
             amount: delivery.valorFrete,
             status: 'Pendente',
             tenantId,
             motoristaId: delivery.motoristaId,
+            isGroup: false,
+            paymentDeliveries: {
+              create: {
+                deliveryId: delivery.id,
+                tenantId,
+              },
+            },
           },
         });
       }
@@ -134,7 +140,6 @@ export class DeliveryService {
 
     return delivery;
   }
-
 
   async findAll(tenantId: number) {
     return this.prisma.delivery.findMany({
@@ -158,16 +163,16 @@ export class DeliveryService {
 
   async remove(id: number, tenantId: number) {
     const delivery = await this.findOne(id, tenantId);
-  
+
     if (!delivery) {
       throw new NotFoundException('Delivery not found');
     }
-  
+
     await this.prisma.order.updateMany({
       where: { deliveryId: id },
       data: { status: 'Reentrega', deliveryId: null },
     });
-  
+
     return this.prisma.delivery.delete({ where: { id } });
   }
 
@@ -176,11 +181,11 @@ export class DeliveryService {
       where: { id: deliveryId, tenantId },
       include: { orders: true },
     });
-  
+
     if (!delivery) {
       throw new NotFoundException('Delivery not found');
     }
-  
+
     const updatedDelivery = await this.prisma.delivery.update({
       where: { id: deliveryId },
       data: {
@@ -190,12 +195,12 @@ export class DeliveryService {
       },
       include: { orders: true },
     });
-  
+
     await this.prisma.order.update({
       where: { id: orderId },
       data: { status: 'Reentrega', deliveryId: null },
     });
-  
+
     return updatedDelivery;
   }
 }

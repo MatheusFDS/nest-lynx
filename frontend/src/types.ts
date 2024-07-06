@@ -7,33 +7,23 @@ export interface Category {
   tenantId: number;
 }
 
-// types.ts
 export interface Delivery {
-  Vehicle: any;
-  Driver: any;
+  Vehicle: Vehicle;
+  Driver: Driver;
   dataFim: string | number | Date;
   dataInicio: string | number | Date;
-  id: any;
-
+  id: number;
   motoristaId: number;
   veiculoId: number;
   valorFrete: number;
   totalPeso: number;
   totalValor: number;
   tenantId: number;
-  orders: {
-    endereco: any;
-    cep: string;
-    peso: any;
-    valor: any;
-    cliente: any;
-    numero: any; id: number 
-}[];
+  orders: Order[];
   status?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
-
 
 export interface Direction {
   id: number;
@@ -91,17 +81,19 @@ export interface Order {
 }
 
 export interface Payment {
-  groupedPaymentId: any;
-  grouped: any;
-  payments: any;
   id: number;
-  deliveryId: number;
   amount: number;
   status: string;
   tenantId: number;
   motoristaId: number;
   createdAt: string;
   updatedAt: string;
+  isGroup: boolean;
+  groupedPaymentId: number | null;
+  Driver: Driver;
+  paymentDeliveries: {
+    delivery: Delivery;
+  }[];
 }
 
 export interface User {
@@ -120,7 +112,7 @@ export interface Vehicle {
   driverId: number;
   tenantId: number;
   categoryId: number;
-  createdAt: number;
-  updatedAt: number;
+  createdAt: string;
+  updatedAt: string;
   valor: number; // Adicionando o valor do veículo
 }

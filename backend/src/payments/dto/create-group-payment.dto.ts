@@ -4,5 +4,4 @@ export class CreateGroupPaymentDto {
   @IsArray()
   @IsInt({ each: true })
   paymentIds: number[];
-  
 }

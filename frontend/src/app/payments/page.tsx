@@ -1,14 +1,30 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Typography, Container, Button, Paper, TextField, Grid, Checkbox, FormControlLabel, Table, TableHead, TableBody, TableRow, TableCell } from '@mui/material';
-import { Payment, Delivery } from '../../types';
+import { Typography, Container, Button, Paper, TextField, Grid, Checkbox, FormControlLabel, Table, TableHead, TableBody, TableRow, TableCell, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { styled } from '@mui/material/styles';
+import { Payment, Direction, Delivery } from '../../types';
 import withAuth from '../components/withAuth';
 import { fetchPayments, updatePaymentStatus, groupPayments, ungroupPayments, fetchDeliveryDetails } from '../../services/paymentService';
+import { fetchDirections } from '../../services/auxiliaryService';
+import InfoIcon from '@mui/icons-material/Info';
+import GetAppIcon from '@mui/icons-material/GetApp';
+import CancelIcon from '@mui/icons-material/Cancel';
+
+const StyledButton = styled(Button)({
+  margin: '0 8px',
+  padding: '8px 16px',
+  backgroundColor: '#1976d2',
+  color: '#fff',
+  '&:hover': {
+    backgroundColor: '#115293',
+  },
+});
 
 const PaymentsPage = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
+  const [directions, setDirections] = useState<Direction[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -17,14 +33,20 @@ const PaymentsPage = () => {
   const [pending, setPending] = useState<boolean>(false);
   const [selectedPayments, setSelectedPayments] = useState<number[]>([]);
   const [error, setError] = useState<string>('');
+  const [detailsOpen, setDetailsOpen] = useState<boolean>(false);
+  const [selectedDeliveries, setSelectedDeliveries] = useState<Delivery[]>([]);
 
   const token = localStorage.getItem('token') || '';
 
   const loadPayments = async () => {
     try {
-      const data = await fetchPayments(token);
-      setPayments(data);
-      setFilteredPayments(data);
+      const [paymentsData, directionsData] = await Promise.all([
+        fetchPayments(token),
+        fetchDirections(token),
+      ]);
+      setPayments(paymentsData);
+      setFilteredPayments(paymentsData);
+      setDirections(directionsData);
     } catch (error) {
       setError('Failed to fetch payments.');
     }
@@ -70,7 +92,7 @@ const PaymentsPage = () => {
     if (searchTerm) {
       filtered = filtered.filter(payment =>
         Object.values(payment).some(value =>
-          value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+          value ? value.toString().toLowerCase().includes(searchTerm.toLowerCase()) : false
         )
       );
     }
@@ -138,14 +160,20 @@ const PaymentsPage = () => {
     }
   };
 
-  const handleViewDetails = async (deliveryId: number) => {
+  const handleViewDetails = async (deliveryIds: number[]) => {
     try {
-      const details = await fetchDeliveryDetails(token, deliveryId);
-      // Mostrar detalhes em um modal ou outra interface de sua escolha
-      console.log(details);
+      const detailsPromises = deliveryIds.map(id => fetchDeliveryDetails(token, id));
+      const details = await Promise.all(detailsPromises);
+      setSelectedDeliveries(details);
+      setDetailsOpen(true);
     } catch (error) {
       setError('Failed to fetch delivery details.');
     }
+  };
+
+  const handleDetailsClose = () => {
+    setDetailsOpen(false);
+    setSelectedDeliveries([]);
   };
 
   return (
@@ -158,6 +186,9 @@ const PaymentsPage = () => {
             fullWidth
             value={searchTerm}
             onChange={handleSearch}
+            variant="outlined"
+            size="small"
+            placeholder="Pesquisar por qualquer campo"
           />
         </Grid>
         <Grid item xs={12} sm={6}>
@@ -169,6 +200,8 @@ const PaymentsPage = () => {
             onChange={handleDateChange}
             name="startDate"
             InputLabelProps={{ shrink: true }}
+            size="small"
+            variant="outlined"
           />
           <TextField
             label="Data Fim"
@@ -178,6 +211,8 @@ const PaymentsPage = () => {
             onChange={handleDateChange}
             name="endDate"
             InputLabelProps={{ shrink: true }}
+            size="small"
+            variant="outlined"
             style={{ marginTop: '16px' }}
           />
         </Grid>
@@ -194,11 +229,20 @@ const PaymentsPage = () => {
             control={<Checkbox checked={pending} onChange={handleStatusFilterChange} name="pending" />}
             label="Pendentes"
           />
+          <StyledButton onClick={loadPayments} style={{ marginLeft: '8px' }}>
+            Aplicar
+          </StyledButton>
         </Grid>
       </Grid>
-      <Button variant="contained" color="primary" onClick={handleGroupPayments} style={{ marginTop: '16px' }}>
+      <StyledButton
+        variant="contained"
+        color="primary"
+        onClick={handleGroupPayments}
+        style={{ marginTop: '16px' }}
+        disabled={selectedPayments.length === 0 || selectedPayments.some(id => payments.find(payment => payment.id === id)?.groupedPaymentId)}
+      >
         Agrupar Selecionados
-      </Button>
+      </StyledButton>
       <Paper elevation={3} style={{ marginTop: '16px' }}>
         <Table>
           <TableHead>
@@ -209,6 +253,8 @@ const PaymentsPage = () => {
               <TableCell>Valor Total</TableCell>
               <TableCell>Data Criação</TableCell>
               <TableCell>Data Baixa</TableCell>
+              <TableCell>Nome Motorista</TableCell>
+              <TableCell>isGroup</TableCell>
               <TableCell>Ações</TableCell>
             </TableRow>
           </TableHead>
@@ -219,25 +265,25 @@ const PaymentsPage = () => {
                   <Checkbox
                     checked={selectedPayments.includes(payment.id)}
                     onChange={() => handlePaymentSelect(payment.id)}
-                    disabled={payment.groupedPaymentId !== null}
+                    disabled={payment.isGroup || payment.groupedPaymentId !== null}
                   />
                 </TableCell>
                 <TableCell>{payment.id}</TableCell>
-                <TableCell>{payment.deliveryId}</TableCell>
+                <TableCell>{payment.paymentDeliveries.map(pd => pd.delivery.id).join(', ')}</TableCell>
                 <TableCell>{payment.amount}</TableCell>
                 <TableCell>{new Date(payment.createdAt).toLocaleDateString()}</TableCell>
                 <TableCell>{payment.status === 'Baixado' ? new Date(payment.updatedAt).toLocaleDateString() : 'N/A'}</TableCell>
+                <TableCell>{payment.Driver?.name || 'N/A'}</TableCell>
+                <TableCell>{payment.isGroup ? 'Sim' : 'Não'}</TableCell>
                 <TableCell>
-                  <Button onClick={() => handleViewDetails(payment.deliveryId)}>Detalhes</Button>
-                  {payment.status === 'Pendente' ? (
-                    <Button onClick={() => handlePaymentStatusChange(payment.id, 'Baixado')}>Baixar</Button>
-                  ) : (
-                    <Button onClick={() => handlePaymentStatusChange(payment.id, 'Pendente')}>Cancelar Baixa</Button>
-                  )}
-                  {payment.groupedPaymentId ? (
-                    <Button onClick={() => handleUngroupPayments(payment.id)}>Desagrupar</Button>
-                  ) : (
-                    <Button disabled>Desagrupar</Button>
+                  <IconButton onClick={() => handleViewDetails(payment.paymentDeliveries.map(pd => pd.delivery.id))}>
+                    <InfoIcon />
+                  </IconButton>
+                  <IconButton onClick={() => handlePaymentStatusChange(payment.id, payment.status === 'Baixado' ? 'Pendente' : 'Baixado')}>
+                    {payment.status === 'Baixado' ? <CancelIcon /> : <GetAppIcon />}
+                  </IconButton>
+                  {payment.isGroup && (
+                    <StyledButton onClick={() => handleUngroupPayments(payment.id)}>Desagrupar</StyledButton>
                   )}
                 </TableCell>
               </TableRow>
@@ -245,6 +291,51 @@ const PaymentsPage = () => {
           </TableBody>
         </Table>
       </Paper>
+
+      <Dialog open={detailsOpen} onClose={handleDetailsClose} fullWidth maxWidth="md">
+        <DialogTitle>Detalhes do Roteiro</DialogTitle>
+        <DialogContent>
+          {selectedDeliveries.length > 0 ? (
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID da Rota</TableCell>
+                  <TableCell>Motorista</TableCell>
+                  <TableCell>Veículo</TableCell>
+                  <TableCell>Valor do Frete</TableCell>
+                  <TableCell>Total Peso</TableCell>
+                  <TableCell>Total Valor</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Data Início</TableCell>
+                  <TableCell>Data Fim</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {selectedDeliveries.map(delivery => (
+                  <TableRow key={delivery.id}>
+                    <TableCell>{delivery.id}</TableCell>
+                    <TableCell>{delivery.Driver?.name || 'N/A'}</TableCell>
+                    <TableCell>{delivery.Vehicle?.model || 'N/A'}</TableCell>
+                    <TableCell>R$ {delivery.valorFrete.toFixed(2)}</TableCell>
+                    <TableCell>{delivery.totalPeso.toFixed(2)} kg</TableCell>
+                    <TableCell>R$ {delivery.totalValor.toFixed(2)}</TableCell>
+                    <TableCell>{delivery.status}</TableCell>
+                    <TableCell>{new Date(delivery.dataInicio).toLocaleDateString()}</TableCell>
+                    <TableCell>{delivery.dataFim ? new Date(delivery.dataFim).toLocaleDateString() : 'N/A'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <Typography>Carregando...</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDetailsClose} color="primary">
+            Fechar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

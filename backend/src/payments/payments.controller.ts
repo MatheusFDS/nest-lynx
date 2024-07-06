@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Req, Get, Patch, Delete, Param, Logger } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Req, Get, Patch, Delete, Param, Logger, BadRequestException } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
@@ -39,7 +39,12 @@ export class PaymentsController {
   @Patch(':id')
   async update(@Param('id') id: string, @Body() updatePaymentDto: UpdatePaymentDto, @Req() req: Request) {
     const tenantId = req.user.tenantId;
-    return this.paymentsService.update(Number(id), updatePaymentDto, tenantId);
+    try {
+      return this.paymentsService.update(Number(id), updatePaymentDto, tenantId);
+    } catch (error) {
+      this.logger.error(`Erro ao atualizar pagamento: ${error.message}`);
+      throw new BadRequestException(error.message);
+    }
   }
 
   @Delete(':id')
@@ -60,7 +65,13 @@ export class PaymentsController {
   }
 
   @Post('ungroup/:id')
-  async ungroupPayments(@Param('id') id: number) {
-    return this.paymentsService.ungroupPayments(id);
+  async ungroupPayments(@Param('id') id: string, @Req() req: Request) {
+    const tenantId = req.user.tenantId;
+    try {
+      return await this.paymentsService.ungroupPayments(Number(id), tenantId);
+    } catch (error) {
+      this.logger.error(`Erro ao desagrupar pagamento: ${error.message}`);
+      throw error;
+    }
   }
 }
