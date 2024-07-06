@@ -156,21 +156,25 @@ model Category {
 }
 
 model AccountsPayable {
-  id           Int       @id @default(autoincrement())
-  deliveryId   Int
-  amount       Float
-  status       String
-  tenantId     Int
-  motoristaId  Int
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @default(now())
+  id               Int       @id @default(autoincrement())
+  deliveryId       Int
+  amount           Float
+  status           String
+  tenantId         Int
+  motoristaId      Int
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now())
+  groupedPaymentId Int?      // Adicionado para rastrear pagamentos agrupados
+  isGroup          Boolean   @default(false) // Indica se é um agrupamento
 
-  Tenant       Tenant    @relation(fields: [tenantId], references: [id])
-  Driver       Driver    @relation(fields: [motoristaId], references: [id])
-  Delivery     Delivery  @relation(fields: [deliveryId], references: [id])
+  Tenant           Tenant    @relation(fields: [tenantId], references: [id])
+  Driver           Driver    @relation(fields: [motoristaId], references: [id])
+  Delivery         Delivery  @relation(fields: [deliveryId], references: [id])
 
   @@index([tenantId])
   @@index([motoristaId])
   @@index([deliveryId])
 }
+
+
 

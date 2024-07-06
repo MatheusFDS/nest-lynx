@@ -9,6 +9,8 @@ export interface Category {
 
 // types.ts
 export interface Delivery {
+  Vehicle: any;
+  Driver: any;
   dataFim: string | number | Date;
   dataInicio: string | number | Date;
   id: any;
@@ -89,6 +91,9 @@ export interface Order {
 }
 
 export interface Payment {
+  groupedPaymentId: any;
+  grouped: any;
+  payments: any;
   id: number;
   deliveryId: number;
   amount: number;

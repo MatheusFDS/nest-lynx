@@ -1,21 +1,22 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Typography, Container, Button, Paper, TextField, Grid, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
-import { Payment, Driver } from '../../types';
+import { Typography, Container, Button, Paper, TextField, Grid, Checkbox, FormControlLabel, Table, TableHead, TableBody, TableRow, TableCell } from '@mui/material';
+import { Payment, Delivery } from '../../types';
 import withAuth from '../components/withAuth';
-import { fetchPayments, updatePaymentStatus } from '../../services/paymentService';
-import { fetchDrivers } from '../../services/auxiliaryService';
-import { SelectChangeEvent } from '@mui/material/Select';
+import { fetchPayments, updatePaymentStatus, groupPayments, ungroupPayments, fetchDeliveryDetails } from '../../services/paymentService';
 
 const PaymentsPage = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
-  const [error, setError] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [grouped, setGrouped] = useState<boolean>(false);
+  const [paid, setPaid] = useState<boolean>(false);
+  const [pending, setPending] = useState<boolean>(false);
+  const [selectedPayments, setSelectedPayments] = useState<number[]>([]);
+  const [error, setError] = useState<string>('');
 
   const token = localStorage.getItem('token') || '';
 
@@ -29,66 +30,123 @@ const PaymentsPage = () => {
     }
   };
 
-  const loadDrivers = async () => {
-    try {
-      const driversData = await fetchDrivers(token);
-      setDrivers(driversData);
-    } catch (error) {
-      setError('Failed to fetch drivers.');
+  useEffect(() => {
+    loadPayments();
+  }, []);
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    filterPayments(e.target.value, startDate, endDate, grouped, paid, pending);
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (name === 'startDate') {
+      setStartDate(value);
+      filterPayments(searchTerm, value, endDate, grouped, paid, pending);
+    } else {
+      setEndDate(value);
+      filterPayments(searchTerm, startDate, value, grouped, paid, pending);
     }
   };
 
-  useEffect(() => {
-    loadPayments();
-    loadDrivers();
-  }, []);
+  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    if (name === 'grouped') {
+      setGrouped(checked);
+      filterPayments(searchTerm, startDate, endDate, checked, paid, pending);
+    } else if (name === 'paid') {
+      setPaid(checked);
+      filterPayments(searchTerm, startDate, endDate, grouped, checked, pending);
+    } else if (name === 'pending') {
+      setPending(checked);
+      filterPayments(searchTerm, startDate, endDate, grouped, paid, checked);
+    }
+  };
 
-  const handleStatusChange = async (paymentId: number, newStatus: string) => {
+  const filterPayments = (searchTerm: string, startDate: string, endDate: string, grouped: boolean, paid: boolean, pending: boolean) => {
+    let filtered = payments;
+
+    if (searchTerm) {
+      filtered = filtered.filter(payment =>
+        Object.values(payment).some(value =>
+          value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
+    }
+
+    if (startDate && endDate) {
+      filtered = filtered.filter(payment => {
+        const paymentDate = new Date(payment.createdAt);
+        return paymentDate >= new Date(startDate) && paymentDate <= new Date(endDate);
+      });
+    }
+
+    if (grouped) {
+      filtered = filtered.filter(payment => payment.groupedPaymentId !== null);
+    }
+
+    if (paid) {
+      filtered = filtered.filter(payment => payment.status === 'Baixado');
+    }
+
+    if (pending) {
+      filtered = filtered.filter(payment => payment.status === 'Pendente');
+    }
+
+    setFilteredPayments(filtered);
+  };
+
+  const handlePaymentSelect = (paymentId: number) => {
+    setSelectedPayments(prevSelected =>
+      prevSelected.includes(paymentId)
+        ? prevSelected.filter(id => id !== paymentId)
+        : [...prevSelected, paymentId]
+    );
+  };
+
+  const handleGroupPayments = async () => {
+    if (selectedPayments.length === 0) {
+      setError('Nenhum pagamento selecionado para agrupar.');
+      return;
+    }
+
     try {
-      await updatePaymentStatus(token, paymentId, newStatus);
+      await groupPayments(token, selectedPayments);
+      loadPayments();
+      setSelectedPayments([]);
+    } catch (error) {
+      setError('Failed to group payments.');
+    }
+  };
+
+  const handleUngroupPayments = async (paymentId: number) => {
+    try {
+      await ungroupPayments(token, paymentId);
+      loadPayments();
+    } catch (error) {
+      setError('Failed to ungroup payment.');
+    }
+  };
+
+  const handlePaymentStatusChange = async (paymentId: number, status: string) => {
+    try {
+      await updatePaymentStatus(token, paymentId, status);
       loadPayments();
     } catch (error) {
       setError('Failed to update payment status.');
     }
   };
 
-  const handleDateFilterChange = () => {
-    if (startDate && endDate) {
-      let filtered = payments.filter(payment => {
-        const paymentDate = new Date(payment.createdAt);
-        return paymentDate >= new Date(startDate) && paymentDate <= new Date(endDate);
-      });
-
-      if (statusFilter) {
-        filtered = filtered.filter(payment => payment.status === statusFilter);
-      }
-
-      setFilteredPayments(filtered);
-    } else {
-      setFilteredPayments(payments);
+  const handleViewDetails = async (deliveryId: number) => {
+    try {
+      const details = await fetchDeliveryDetails(token, deliveryId);
+      // Mostrar detalhes em um modal ou outra interface de sua escolha
+      console.log(details);
+    } catch (error) {
+      setError('Failed to fetch delivery details.');
     }
   };
-
-  const handleStatusFilterChange = (event: SelectChangeEvent<string>) => {
-    setStatusFilter(event.target.value);
-  };
-
-  const groupedPayments = filteredPayments.reduce((acc, payment) => {
-    const driver = drivers.find(driver => driver.id === payment.motoristaId);
-    if (driver) {
-      if (!acc[driver.name]) {
-        acc[driver.name] = {
-          motoristaId: driver.id,
-          name: driver.name,
-          totalAmount: 0,
-          payments: []
-        };
-      }
-      acc[driver.name].totalAmount += payment.amount;
-      acc[driver.name].payments.push(payment);
-    }
-    return acc;
-  }, {} as Record<string, { motoristaId: number, name: string, totalAmount: number, payments: Payment[] }>);
 
   return (
     <Container>
@@ -96,67 +154,97 @@ const PaymentsPage = () => {
       <Grid container spacing={3} style={{ marginTop: '16px' }}>
         <Grid item xs={12} sm={6}>
           <TextField
-            label="Start Date"
-            type="date"
+            label="Buscar"
             fullWidth
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            margin="normal"
+            value={searchTerm}
+            onChange={handleSearch}
           />
         </Grid>
         <Grid item xs={12} sm={6}>
           <TextField
-            label="End Date"
+            label="Data Início"
+            type="date"
+            fullWidth
+            value={startDate}
+            onChange={handleDateChange}
+            name="startDate"
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label="Data Fim"
             type="date"
             fullWidth
             value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+            onChange={handleDateChange}
+            name="endDate"
             InputLabelProps={{ shrink: true }}
-            margin="normal"
+            style={{ marginTop: '16px' }}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={statusFilter}
-              onChange={handleStatusFilterChange}
-            >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="Pendente">Pendente</MenuItem>
-              <MenuItem value="Pago">Pago</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <Button variant="contained" color="primary" onClick={handleDateFilterChange}>
-            Filter
-          </Button>
+        <Grid item xs={12}>
+          <FormControlLabel
+            control={<Checkbox checked={grouped} onChange={handleStatusFilterChange} name="grouped" />}
+            label="Agrupados"
+          />
+          <FormControlLabel
+            control={<Checkbox checked={paid} onChange={handleStatusFilterChange} name="paid" />}
+            label="Baixados"
+          />
+          <FormControlLabel
+            control={<Checkbox checked={pending} onChange={handleStatusFilterChange} name="pending" />}
+            label="Pendentes"
+          />
         </Grid>
       </Grid>
-      {Object.keys(groupedPayments).map(driverName => (
-        <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }} key={groupedPayments[driverName].motoristaId}>
-          <Typography variant="h6">{driverName}</Typography>
-          <Typography variant="body1">Total Amount: {groupedPayments[driverName].totalAmount}</Typography>
-          {groupedPayments[driverName].payments.map((payment) => (
-            <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }} key={payment.id}>
-              <Typography variant="body1">Amount: {payment.amount}</Typography>
-              <Typography variant="body1">Status: {payment.status}</Typography>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Status</InputLabel>
-                <Select
-                  value={payment.status}
-                  onChange={(e: SelectChangeEvent<string>) => handleStatusChange(payment.id, e.target.value)}
-                >
-                  <MenuItem value="Pendente">Pendente</MenuItem>
-                  <MenuItem value="Pago">Pago</MenuItem>
-                </Select>
-              </FormControl>
-            </Paper>
-          ))}
-        </Paper>
-      ))}
+      <Button variant="contained" color="primary" onClick={handleGroupPayments} style={{ marginTop: '16px' }}>
+        Agrupar Selecionados
+      </Button>
+      <Paper elevation={3} style={{ marginTop: '16px' }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Selecionar</TableCell>
+              <TableCell>ID Pagamento</TableCell>
+              <TableCell>ID Roteiros</TableCell>
+              <TableCell>Valor Total</TableCell>
+              <TableCell>Data Criação</TableCell>
+              <TableCell>Data Baixa</TableCell>
+              <TableCell>Ações</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredPayments.map(payment => (
+              <TableRow key={payment.id}>
+                <TableCell>
+                  <Checkbox
+                    checked={selectedPayments.includes(payment.id)}
+                    onChange={() => handlePaymentSelect(payment.id)}
+                    disabled={payment.groupedPaymentId !== null}
+                  />
+                </TableCell>
+                <TableCell>{payment.id}</TableCell>
+                <TableCell>{payment.deliveryId}</TableCell>
+                <TableCell>{payment.amount}</TableCell>
+                <TableCell>{new Date(payment.createdAt).toLocaleDateString()}</TableCell>
+                <TableCell>{payment.status === 'Baixado' ? new Date(payment.updatedAt).toLocaleDateString() : 'N/A'}</TableCell>
+                <TableCell>
+                  <Button onClick={() => handleViewDetails(payment.deliveryId)}>Detalhes</Button>
+                  {payment.status === 'Pendente' ? (
+                    <Button onClick={() => handlePaymentStatusChange(payment.id, 'Baixado')}>Baixar</Button>
+                  ) : (
+                    <Button onClick={() => handlePaymentStatusChange(payment.id, 'Pendente')}>Cancelar Baixa</Button>
+                  )}
+                  {payment.groupedPaymentId ? (
+                    <Button onClick={() => handleUngroupPayments(payment.id)}>Desagrupar</Button>
+                  ) : (
+                    <Button disabled>Desagrupar</Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Paper>
     </Container>
   );
 };
