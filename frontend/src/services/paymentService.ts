@@ -29,7 +29,8 @@ export const updatePaymentStatus = async (token: string, id: number, status: str
   });
 
   if (!response.ok) {
-    throw new Error('Failed to update payment status');
+    const errorMessage = await response.text();
+    throw new Error(`Failed to update payment status: ${errorMessage}`);
   }
 };
 

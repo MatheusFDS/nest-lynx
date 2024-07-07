@@ -39,12 +39,14 @@ export class PaymentsController {
   @Patch(':id')
   async update(@Param('id') id: string, @Body() updatePaymentDto: UpdatePaymentDto, @Req() req: Request) {
     const tenantId = req.user.tenantId;
-    try {
-      return this.paymentsService.update(Number(id), updatePaymentDto, tenantId);
-    } catch (error) {
-      this.logger.error(`Erro ao atualizar pagamento: ${error.message}`);
-      throw new BadRequestException(error.message);
-    }
+    return this.paymentsService.update(Number(id), updatePaymentDto, tenantId);
+  }
+
+  @Patch(':id/status')
+  async updateStatus(@Param('id') id: string, @Body() { status }: { status: string }, @Req() req: Request) {
+    const tenantId = req.user.tenantId;
+    const updatePaymentDto: UpdatePaymentDto = { status };
+    return this.paymentsService.update(Number(id), updatePaymentDto, tenantId);
   }
 
   @Delete(':id')

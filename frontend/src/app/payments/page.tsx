@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Typography, Container, Button, Paper, TextField, Grid, Checkbox, FormControlLabel, Table, TableHead, TableBody, TableRow, TableCell, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import {
+  Typography, Container, Button, Paper, TextField, Grid, Checkbox, FormControlLabel,
+  Table, TableHead, TableBody, TableRow, TableCell, IconButton, Dialog, DialogTitle, DialogContent, DialogActions
+} from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { Payment, Direction, Delivery } from '../../types';
 import withAuth from '../components/withAuth';
@@ -9,7 +12,6 @@ import { fetchPayments, updatePaymentStatus, groupPayments, ungroupPayments, fet
 import { fetchDirections } from '../../services/auxiliaryService';
 import InfoIcon from '@mui/icons-material/Info';
 import GetAppIcon from '@mui/icons-material/GetApp';
-import CancelIcon from '@mui/icons-material/Cancel';
 
 const StyledButton = styled(Button)({
   margin: '0 8px',
@@ -153,10 +155,11 @@ const PaymentsPage = () => {
 
   const handlePaymentStatusChange = async (paymentId: number, status: string) => {
     try {
+      console.log(`Updating payment status for payment ID: ${paymentId} to ${status}`);
       await updatePaymentStatus(token, paymentId, status);
       loadPayments();
     } catch (error) {
-      setError('Failed to update payment status.');
+      setError(`Failed to update payment status: ${error}`);
     }
   };
 
@@ -179,8 +182,8 @@ const PaymentsPage = () => {
   return (
     <Container>
       {error && <Typography color="error">{error}</Typography>}
-      <Grid container spacing={3} style={{ marginTop: '16px' }}>
-        <Grid item xs={12} sm={6}>
+      <Grid container spacing={3} style={{ marginTop: '16px', marginBottom: '16px' }}>
+        <Grid item xs={12} sm={4}>
           <TextField
             label="Buscar"
             fullWidth
@@ -191,10 +194,10 @@ const PaymentsPage = () => {
             placeholder="Pesquisar por qualquer campo"
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid item xs={6} sm={3}>
           <TextField
             label="Data Início"
-            type="date"
+            type="datetime-local"
             fullWidth
             value={startDate}
             onChange={handleDateChange}
@@ -203,9 +206,11 @@ const PaymentsPage = () => {
             size="small"
             variant="outlined"
           />
+        </Grid>
+        <Grid item xs={6} sm={3}>
           <TextField
             label="Data Fim"
-            type="date"
+            type="datetime-local"
             fullWidth
             value={endDate}
             onChange={handleDateChange}
@@ -213,10 +218,21 @@ const PaymentsPage = () => {
             InputLabelProps={{ shrink: true }}
             size="small"
             variant="outlined"
-            style={{ marginTop: '16px' }}
           />
         </Grid>
-        <Grid item xs={12}>
+      </Grid>
+
+      <Grid item xs={12} sm={2}>
+      <StyledButton
+        variant="contained"
+        color="primary"
+        onClick={handleGroupPayments}
+        style={{ marginBottom: '16px' }}
+        disabled={selectedPayments.length === 0 || selectedPayments.some(id => payments.find(payment => payment.id === id)?.groupedPaymentId)}
+      >
+        Agrupar Selecionados
+      </StyledButton>
+
           <FormControlLabel
             control={<Checkbox checked={grouped} onChange={handleStatusFilterChange} name="grouped" />}
             label="Agrupados"
@@ -229,21 +245,9 @@ const PaymentsPage = () => {
             control={<Checkbox checked={pending} onChange={handleStatusFilterChange} name="pending" />}
             label="Pendentes"
           />
-          <StyledButton onClick={loadPayments} style={{ marginLeft: '8px' }}>
-            Aplicar
-          </StyledButton>
+          
         </Grid>
-      </Grid>
-      <StyledButton
-        variant="contained"
-        color="primary"
-        onClick={handleGroupPayments}
-        style={{ marginTop: '16px' }}
-        disabled={selectedPayments.length === 0 || selectedPayments.some(id => payments.find(payment => payment.id === id)?.groupedPaymentId)}
-      >
-        Agrupar Selecionados
-      </StyledButton>
-      <Paper elevation={3} style={{ marginTop: '16px' }}>
+      <Paper elevation={3}>
         <Table>
           <TableHead>
             <TableRow>
@@ -271,8 +275,8 @@ const PaymentsPage = () => {
                 <TableCell>{payment.id}</TableCell>
                 <TableCell>{payment.paymentDeliveries.map(pd => pd.delivery.id).join(', ')}</TableCell>
                 <TableCell>{payment.amount}</TableCell>
-                <TableCell>{new Date(payment.createdAt).toLocaleDateString()}</TableCell>
-                <TableCell>{payment.status === 'Baixado' ? new Date(payment.updatedAt).toLocaleDateString() : 'N/A'}</TableCell>
+                <TableCell>{new Date(payment.createdAt).toLocaleString()}</TableCell>
+                <TableCell>{payment.status === 'Baixado' ? new Date(payment.updatedAt).toLocaleString() : 'N/A'}</TableCell>
                 <TableCell>{payment.Driver?.name || 'N/A'}</TableCell>
                 <TableCell>{payment.isGroup ? 'Sim' : 'Não'}</TableCell>
                 <TableCell>
@@ -280,7 +284,7 @@ const PaymentsPage = () => {
                     <InfoIcon />
                   </IconButton>
                   <IconButton onClick={() => handlePaymentStatusChange(payment.id, payment.status === 'Baixado' ? 'Pendente' : 'Baixado')}>
-                    {payment.status === 'Baixado' ? <CancelIcon /> : <GetAppIcon />}
+                    {payment.status === 'Baixado' ? <GetAppIcon style={{ color: 'red' }} /> : <GetAppIcon />}
                   </IconButton>
                   {payment.isGroup && (
                     <StyledButton onClick={() => handleUngroupPayments(payment.id)}>Desagrupar</StyledButton>
@@ -296,36 +300,78 @@ const PaymentsPage = () => {
         <DialogTitle>Detalhes do Roteiro</DialogTitle>
         <DialogContent>
           {selectedDeliveries.length > 0 ? (
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>ID da Rota</TableCell>
-                  <TableCell>Motorista</TableCell>
-                  <TableCell>Veículo</TableCell>
-                  <TableCell>Valor do Frete</TableCell>
-                  <TableCell>Total Peso</TableCell>
-                  <TableCell>Total Valor</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Data Início</TableCell>
-                  <TableCell>Data Fim</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {selectedDeliveries.map(delivery => (
-                  <TableRow key={delivery.id}>
-                    <TableCell>{delivery.id}</TableCell>
-                    <TableCell>{delivery.Driver?.name || 'N/A'}</TableCell>
-                    <TableCell>{delivery.Vehicle?.model || 'N/A'}</TableCell>
-                    <TableCell>R$ {delivery.valorFrete.toFixed(2)}</TableCell>
-                    <TableCell>{delivery.totalPeso.toFixed(2)} kg</TableCell>
-                    <TableCell>R$ {delivery.totalValor.toFixed(2)}</TableCell>
-                    <TableCell>{delivery.status}</TableCell>
-                    <TableCell>{new Date(delivery.dataInicio).toLocaleDateString()}</TableCell>
-                    <TableCell>{delivery.dataFim ? new Date(delivery.dataFim).toLocaleDateString() : 'N/A'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            selectedDeliveries.map(delivery => (
+              <div key={delivery.id}>
+                <Typography variant="h6">Informações da Rota</Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Typography>ID da Rota: {delivery.id}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography>Motorista: {delivery.Driver?.name || 'N/A'}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography>Veículo: {delivery.Vehicle?.model || 'N/A'}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography>Valor do Frete: R$ {delivery.valorFrete.toFixed(2)}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography>Total Peso: {delivery.totalPeso.toFixed(2)} kg</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography>Total Valor: R$ {delivery.totalValor.toFixed(2)}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography>Status: {delivery.status}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography>Data Início: {new Date(delivery.dataInicio).toLocaleString()}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography>Data Fim: {delivery.dataFim ? new Date(delivery.dataFim).toLocaleString() : 'N/A'}</Typography>
+                  </Grid>
+                </Grid>
+
+                <Typography variant="h6" style={{ marginTop: '16px' }}>Pedidos</Typography>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>ID Pedido</TableCell>
+                      <TableCell>Cliente</TableCell>
+                      <TableCell>Endereço</TableCell>
+                      <TableCell>Cidade</TableCell>
+                      <TableCell>UF</TableCell>
+                      <TableCell>CEP</TableCell>
+                      <TableCell>Valor</TableCell>
+                      <TableCell>Peso</TableCell>
+                      <TableCell>Volume</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Data de Criação</TableCell>
+                      <TableCell>Data de Atualização</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {delivery.orders.map(order => (
+                      <TableRow key={order.id}>
+                        <TableCell>{order.id}</TableCell>
+                        <TableCell>{order.cliente}</TableCell>
+                        <TableCell>{order.endereco}</TableCell>
+                        <TableCell>{order.cidade}</TableCell>
+                        <TableCell>{order.uf}</TableCell>
+                        <TableCell>{order.cep}</TableCell>
+                        <TableCell>{order.valor.toFixed(2)}</TableCell>
+                        <TableCell>{order.peso.toFixed(2)}</TableCell>
+                        <TableCell>{order.volume}</TableCell>
+                        <TableCell>{order.status}</TableCell>
+                        <TableCell>{new Date(order.createdAt).toLocaleString()}</TableCell>
+                        <TableCell>{new Date(order.updatedAt).toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ))
           ) : (
             <Typography>Carregando...</Typography>
           )}

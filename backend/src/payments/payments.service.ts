@@ -89,8 +89,18 @@ export class PaymentsService {
       where: { id },
     });
 
-    if (!payment || payment.status === 'Baixado' || payment.isGroup || payment.groupedPaymentId) {
-      throw new BadRequestException('Não é possível atualizar um pagamento baixado, agrupado ou parte de um agrupamento.');
+    if (!payment) {
+      throw new NotFoundException('Pagamento não encontrado');
+    }
+
+    // Regra 1: Não permitir cancelar baixas de lançamentos que tenham groupedPaymentId preenchido
+    if (payment.groupedPaymentId) {
+      throw new BadRequestException('Não é possível cancelar a baixa de um pagamento parte de um agrupamento.');
+    }
+
+    // Regra 2: Permitir atualizar status para 'Pendente' se o pagamento estiver baixado
+    if (payment.status === 'Baixado' && updatePaymentDto.status !== 'Pendente') {
+      throw new BadRequestException('Não é possível atualizar um pagamento baixado para outro status além de "Pendente".');
     }
 
     return this.prisma.accountsPayable.update({
@@ -169,8 +179,13 @@ export class PaymentsService {
         throw new Error('Todos os pagamentos devem ser do mesmo motorista para serem agrupados.');
       }
 
+      // Regra 3: Não permitir agrupar lançamentos que já foram baixados
+      if (payments.some(payment => payment.status === 'Baixado')) {
+        throw new Error('Não é possível agrupar pagamentos que já foram baixados.');
+      }
+
       const totalAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
-      const deliveryIds = payments.flatMap(payment => payment.paymentDeliveries.map(pd => pd.deliveryId));
+      const deliveryIds = payments.flatMap(payment => payment.paymentDeliveries.map(pd => pd.delivery.id));
 
       const groupedPayment = await this.prisma.accountsPayable.create({
         data: {
@@ -234,6 +249,11 @@ export class PaymentsService {
 
       if (!payment || !payment.isGroup) {
         throw new BadRequestException('Pagamento não encontrado ou não é um pagamento agrupado.');
+      }
+
+      // Regra: Não permitir desagrupar se o pagamento estiver baixado
+      if (payment.status === 'Baixado') {
+        throw new BadRequestException('Não é possível desagrupar um pagamento baixado. Cancele a baixa primeiro.');
       }
 
       await this.prisma.accountsPayable.updateMany({
