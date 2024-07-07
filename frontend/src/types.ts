@@ -47,6 +47,8 @@ export interface Driver {
 }
 
 export interface Order {
+  motorista: ReactNode;
+  dataFinalizacao: string | number | Date;
   id: number;
   numero: string;
   data: string;

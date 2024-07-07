@@ -2,14 +2,20 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Typography, Container, Paper, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  IconButton, Checkbox, FormControlLabel, FormGroup, Dialog, DialogActions, DialogContent, DialogTitle, Button
+  Typography, Container, TextField, Button, Dialog,
+  DialogActions, DialogContent, DialogTitle, FormGroup, FormControlLabel, Checkbox,
 } from '@mui/material';
-import { Add, ViewList } from '@mui/icons-material';
+import { Add } from '@mui/icons-material';
 import { parse } from 'papaparse';
 import withAuth from '../components/withAuth';
 import { fetchOrders, uploadOrders, fetchUserSettings, updateUserSettings } from '../../services/orderService';
 import { Order } from '../../types';
+import { AgGridReact } from 'ag-grid-react';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-balham.css'; // Importar o tema claro
+import 'ag-grid-enterprise';
+
+import './custom-dark-theme.css'; // Customização do tema escuro
 
 enum Field {
   Id = 'id',
@@ -85,10 +91,10 @@ const OrdersPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (token) {
+    if (token && showFields) {
       updateUserSettings(token, showFields);
     }
-  }, [showFields]);
+  }, [showFields, token]);
 
   const loadOrders = async () => {
     try {
@@ -176,6 +182,37 @@ const OrdersPage: React.FC = () => {
     setOpen(false);
   };
 
+  const columns = Object.keys(Field).map(key => ({
+    headerName: Field[key as keyof typeof Field],
+    field: Field[key as keyof typeof Field],
+    hide: !showFields[Field[key as keyof typeof Field]],
+    valueGetter: (params: any) => {
+      if (key === 'DataFinalizacao') {
+        return params.data.Delivery?.dataFim ? new Date(params.data.Delivery.dataFim).toLocaleDateString() : '';
+      }
+      if (key === 'Motorista') {
+        return params.data.Delivery?.Driver?.name || '';
+      }
+      return params.data[Field[key as keyof typeof Field]];
+    },
+  }));
+
+  let gridApi: any;
+  let gridColumnApi: any;
+
+  const onGridReady = (params: any) => {
+    gridApi = params.api;
+    gridColumnApi = params.columnApi;
+  };
+
+  const exportToCsv = () => {
+    gridApi.exportDataAsCsv();
+  };
+
+  const exportToExcel = () => {
+    gridApi.exportDataAsExcel();
+  };
+
   return (
     <Container>
       {error && <Typography color="error">{error}</Typography>}
@@ -187,9 +224,6 @@ const OrdersPage: React.FC = () => {
         fullWidth
         margin="normal"
       />
-      <IconButton onClick={handleDialogOpen} style={{ marginBottom: '16px' }}>
-        <ViewList />
-      </IconButton>
       <Button
         variant="contained"
         component="label"
@@ -212,71 +246,38 @@ const OrdersPage: React.FC = () => {
       >
         Submit
       </Button>
-      <TableContainer component={Paper} style={{ marginTop: '16px', fontSize: '0.875rem' }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              {showFields[Field.Id] && <TableCell>ID</TableCell>}
-              {showFields[Field.Numero] && <TableCell>Numero</TableCell>}
-              {showFields[Field.Data] && <TableCell>Data</TableCell>}
-              {showFields[Field.IdCliente] && <TableCell>ID Cliente</TableCell>}
-              {showFields[Field.Cliente] && <TableCell>Cliente</TableCell>}
-              {showFields[Field.Endereco] && <TableCell>Endereço</TableCell>}
-              {showFields[Field.Bairro] && <TableCell>Bairro</TableCell>}
-              {showFields[Field.Cidade] && <TableCell>Cidade</TableCell>}
-              {showFields[Field.Uf] && <TableCell>UF</TableCell>}
-              {showFields[Field.Cep] && <TableCell>CEP</TableCell>}
-              {showFields[Field.Peso] && <TableCell>Peso</TableCell>}
-              {showFields[Field.Volume] && <TableCell>Volume</TableCell>}
-              {showFields[Field.Prazo] && <TableCell>Prazo</TableCell>}
-              {showFields[Field.Prioridade] && <TableCell>Prioridade</TableCell>}
-              {showFields[Field.Telefone] && <TableCell>Telefone</TableCell>}
-              {showFields[Field.Email] && <TableCell>Email</TableCell>}
-              {showFields[Field.Valor] && <TableCell>Valor</TableCell>}
-              {showFields[Field.InstrucoesEntrega] && <TableCell>Instruções de Entrega</TableCell>}
-              {showFields[Field.NomeContato] && <TableCell>Nome Contato</TableCell>}
-              {showFields[Field.CpfCnpj] && <TableCell>CPF/CNPJ</TableCell>}
-              {showFields[Field.Status] && <TableCell>Status</TableCell>}
-              {showFields[Field.DeliveryId] && <TableCell>Delivery ID</TableCell>}
-              {showFields[Field.TenantId] && <TableCell>Tenant ID</TableCell>}
-              {showFields[Field.DataFinalizacao] && <TableCell>Data Finalização</TableCell>}
-              {showFields[Field.Motorista] && <TableCell>Motorista</TableCell>}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredOrders.map((order) => (
-              <TableRow key={order.id}>
-                {showFields[Field.Id] && <TableCell>{order.id}</TableCell>}
-                {showFields[Field.Numero] && <TableCell>{order.numero}</TableCell>}
-                {showFields[Field.Data] && <TableCell>{new Date(order.data).toLocaleDateString()}</TableCell>}
-                {showFields[Field.IdCliente] && <TableCell>{order.idCliente}</TableCell>}
-                {showFields[Field.Cliente] && <TableCell>{order.cliente}</TableCell>}
-                {showFields[Field.Endereco] && <TableCell>{order.endereco}</TableCell>}
-                {showFields[Field.Bairro] && <TableCell>{order.bairro}</TableCell>}
-                {showFields[Field.Cidade] && <TableCell>{order.cidade}</TableCell>}
-                {showFields[Field.Uf] && <TableCell>{order.uf}</TableCell>}
-                {showFields[Field.Cep] && <TableCell>{order.cep}</TableCell>}
-                {showFields[Field.Peso] && <TableCell>{order.peso}</TableCell>}
-                {showFields[Field.Volume] && <TableCell>{order.volume}</TableCell>}
-                {showFields[Field.Prazo] && <TableCell>{order.prazo}</TableCell>}
-                {showFields[Field.Prioridade] && <TableCell>{order.prioridade}</TableCell>}
-                {showFields[Field.Telefone] && <TableCell>{order.telefone}</TableCell>}
-                {showFields[Field.Email] && <TableCell>{order.email}</TableCell>}
-                {showFields[Field.Valor] && <TableCell>{order.valor}</TableCell>}
-                {showFields[Field.InstrucoesEntrega] && <TableCell>{order.instrucoesEntrega}</TableCell>}
-                {showFields[Field.NomeContato] && <TableCell>{order.nomeContato}</TableCell>}
-                {showFields[Field.CpfCnpj] && <TableCell>{order.cpfCnpj}</TableCell>}
-                {showFields[Field.Status] && <TableCell>{order.status}</TableCell>}
-                {showFields[Field.DeliveryId] && <TableCell>{order.deliveryId}</TableCell>}
-                {showFields[Field.TenantId] && <TableCell>{order.tenantId}</TableCell>}
-                {showFields[Field.DataFinalizacao] && <TableCell>{order.Delivery?.dataFim ? new Date(order.Delivery.dataFim).toLocaleDateString() : ''}</TableCell>}
-                {showFields[Field.Motorista] && <TableCell>{order.Delivery?.Driver?.name || ''}</TableCell>}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
+      <Button
+        variant="contained"
+        onClick={exportToCsv}
+        style={{ marginRight: '8px' }}
+      >
+        Export to CSV
+      </Button>
+      <Button
+        variant="contained"
+        onClick={exportToExcel}
+      >
+        Export to Excel
+      </Button>
+      <div className="ag-theme-balham-dark" style={{ height: 600, width: '100%', marginTop: '16px' }}>
+        <AgGridReact
+          rowData={filteredOrders}
+          columnDefs={columns}
+          pagination={true}
+          paginationPageSize={10}
+          domLayout="autoHeight"
+          defaultColDef={{
+            sortable: true,
+            filter: true,
+            resizable: true,
+          }}
+          enableRangeSelection={true}
+          rowSelection="multiple"
+          animateRows={true}
+          enableCharts={true}
+          onGridReady={onGridReady}
+        />
+      </div>
       <Dialog open={open} onClose={handleDialogClose}>
         <DialogTitle>Choose Columns to Display</DialogTitle>
         <DialogContent>
