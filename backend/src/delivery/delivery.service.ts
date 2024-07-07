@@ -10,10 +10,8 @@ export class DeliveryService {
   async create(createDeliveryDto: CreateDeliveryDto, tenantId: number) {
     const { motoristaId, orders, veiculoId, ...rest } = createDeliveryDto;
 
-    console.log('Received CreateDeliveryDto:', createDeliveryDto);
-
     const existingDelivery = await this.prisma.delivery.findFirst({
-      where: { motoristaId, status: 'Em rota' },
+      where: { motoristaId, status: 'Em Rota' },
     });
 
     if (existingDelivery) {
@@ -67,7 +65,7 @@ export class DeliveryService {
         valorFrete,
         totalPeso,
         totalValor,
-        status: 'Em rota',
+        status: 'Em Rota',
         ...rest,
         orders: {
           connect: orders.map(order => ({ id: order.id })),
@@ -89,56 +87,125 @@ export class DeliveryService {
   }
 
   async update(id: number, updateDeliveryDto: UpdateDeliveryDto, tenantId: number) {
-    const { motoristaId, veiculoId, orders, ...rest } = updateDeliveryDto;
+    const { motoristaId, veiculoId, orders, status, ...rest } = updateDeliveryDto;
 
-    const delivery = await this.prisma.delivery.update({
-      where: { id },
-      data: {
-        ...rest,
-        tenantId,
-        motoristaId,
-        veiculoId,
-        orders: {
-          connect: orders?.map(order => ({ id: order.id })) ?? [],
-        },
-      },
-      include: {
-        orders: true,
-        Driver: true,
-        Vehicle: true,
+    // Verificar se há pagamentos baixados antes de qualquer alteração
+    const hasBaixadoPayments = await this.prisma.accountsPayable.findFirst({
+      where: {
+        paymentDeliveries: { some: { deliveryId: id } },
+        status: 'Baixado',
       },
     });
 
-    if (updateDeliveryDto.status === 'Finalizado') {
+    if (hasBaixadoPayments) {
+      throw new BadRequestException('Não é possível alterar uma entrega com pagamentos baixados.');
+    }
+
+    let updatedDelivery;
+
+    if (status === 'Em Rota') {
+      // Excluir pagamentos pendentes
+      await this.prisma.accountsPayable.deleteMany({
+        where: {
+          paymentDeliveries: { some: { deliveryId: id } },
+          status: 'Pendente',
+        },
+      });
+
+      // Atualizar data de finalização para null
+      updatedDelivery = await this.prisma.delivery.update({
+        where: { id },
+        data: {
+          ...rest,
+          tenantId,
+          motoristaId,
+          veiculoId,
+          status,
+          dataFim: null,
+          orders: {
+            connect: orders?.map(order => ({ id: order.id })) ?? [],
+          },
+        },
+        include: {
+          orders: true,
+          Driver: true,
+          Vehicle: true,
+        },
+      });
+
+      await this.prisma.order.updateMany({
+        where: { deliveryId: id },
+        data: { status: 'Em Rota' },
+      });
+    } else if (status === 'Finalizado') {
+      updatedDelivery = await this.prisma.delivery.update({
+        where: { id },
+        data: {
+          ...rest,
+          tenantId,
+          motoristaId,
+          veiculoId,
+          status,
+          dataFim: new Date(),
+          orders: {
+            connect: orders?.map(order => ({ id: order.id })) ?? [],
+          },
+        },
+        include: {
+          orders: true,
+          Driver: true,
+          Vehicle: true,
+        },
+      });
+
       await this.prisma.order.updateMany({
         where: { deliveryId: id },
         data: { status: 'Finalizado' },
       });
 
       const existingPayment = await this.prisma.paymentDelivery.findFirst({
-        where: { deliveryId: delivery.id },
+        where: { deliveryId: updatedDelivery.id },
       });
 
       if (!existingPayment) {
         await this.prisma.accountsPayable.create({
           data: {
-            amount: delivery.valorFrete,
+            amount: updatedDelivery.valorFrete,
             status: 'Pendente',
             tenantId,
-            motoristaId: delivery.motoristaId,
+            motoristaId: updatedDelivery.motoristaId,
             isGroup: false,
             paymentDeliveries: {
               create: {
-                deliveryId: delivery.id,
+                deliveryId: updatedDelivery.id,
                 tenantId,
               },
             },
           },
         });
       }
+    } else {
+      updatedDelivery = await this.prisma.delivery.update({
+        where: { id },
+        data: {
+          ...rest,
+          tenantId,
+          motoristaId,
+          veiculoId,
+          status,
+          orders: {
+            connect: orders?.map(order => ({ id: order.id })) ?? [],
+          },
+        },
+        include: {
+          orders: true,
+          Driver: true,
+          Vehicle: true,
+        },
+      });
     }
 
-    return delivery;
+    return updatedDelivery;
   }
 
   async findAll(tenantId: number) {
@@ -168,9 +235,31 @@ export class DeliveryService {
       throw new NotFoundException('Delivery not found');
     }
 
+    if (delivery.status === 'Finalizado') {
+      throw new BadRequestException('Não é possível excluir uma entrega finalizada.');
+    }
+
+    const hasPayments = await this.prisma.accountsPayable.findFirst({
+      where: {
+        paymentDeliveries: { some: { deliveryId: id } },
+        status: 'Baixado',
+      },
+    });
+
+    if (hasPayments) {
+      throw new BadRequestException('Não é possível excluir uma entrega com pagamentos baixados.');
+    }
+
     await this.prisma.order.updateMany({
       where: { deliveryId: id },
       data: { status: 'Reentrega', deliveryId: null },
+    });
+
+    // Excluir pagamentos associados
+    await this.prisma.accountsPayable.deleteMany({
+      where: {
+        paymentDeliveries: { some: { deliveryId: id } },
+      },
     });
 
     return this.prisma.delivery.delete({ where: { id } });
@@ -184,6 +273,21 @@ export class DeliveryService {
 
     if (!delivery) {
       throw new NotFoundException('Delivery not found');
+    }
+
+    const hasBaixadoPayments = await this.prisma.accountsPayable.findFirst({
+      where: {
+        paymentDeliveries: { some: { deliveryId } },
+        status: 'Baixado',
+      },
+    });
+
+    if (hasBaixadoPayments) {
+      throw new BadRequestException('Não é possível remover pedidos de uma entrega com pagamentos baixados.');
+    }
+
+    if (delivery.status === 'Finalizado') {
+      throw new BadRequestException('Não é possível remover pedidos de uma entrega finalizada.');
     }
 
     const updatedDelivery = await this.prisma.delivery.update({

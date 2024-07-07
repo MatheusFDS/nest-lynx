@@ -28,6 +28,8 @@ import {
   List,
   ListItem,
   ListItemText,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import { Delete, Info, Map, Edit } from '@mui/icons-material';
 import { fetchDeliveries, updateDelivery, removeOrderFromDelivery, deleteDelivery } from '../../services/deliveryService';
@@ -53,6 +55,10 @@ const DeliveriesPage: React.FC = () => {
   const [tollValue, setTollValue] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [dateRange, setDateRange] = useState<{ startDate: string; endDate: string }>({ startDate: '', endDate: '' });
+  const [showFinalized, setShowFinalized] = useState<boolean>(false);
+  const [showPending, setShowPending] = useState<boolean>(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState<boolean>(false);
+  const [confirmDialogAction, setConfirmDialogAction] = useState<() => void>(() => {});
 
   const token = localStorage.getItem('token') || '';
 
@@ -83,7 +89,7 @@ const DeliveriesPage: React.FC = () => {
   const handleEditDelivery = (delivery: Delivery) => {
     setCurrentDelivery({
       ...delivery,
-      status: delivery.status || 'Em Rota',  // Define 'Em Rota' como valor padrão se o status for indefinido
+      status: delivery.status || 'Em Rota', // Define 'Em Rota' como valor padrão se o status for indefinido
     });
     setSelectedDriver(delivery.motoristaId);
     setSelectedVehicle(delivery.veiculoId);
@@ -193,24 +199,65 @@ const DeliveriesPage: React.FC = () => {
   };
 
   const handleDeleteDelivery = async (deliveryId: number) => {
-    try {
-      await deleteDelivery(token, deliveryId);
-      loadInitialData();
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error('Failed to delete delivery:', error.message);
-        setError(error.message);
-      } else {
-        console.error('Failed to delete delivery:', error);
-        setError('Failed to delete delivery.');
+    setConfirmDialogAction(() => async () => {
+      try {
+        await deleteDelivery(token, deliveryId);
+        loadInitialData();
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          console.error('Failed to delete delivery:', error.message);
+          setError(error.message);
+        } else {
+          console.error('Failed to delete delivery:', error);
+          setError('Failed to delete delivery.');
+        }
       }
+      setConfirmDialogOpen(false);
+    });
+    setConfirmDialogOpen(true);
+  };
+
+  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    if (name === 'showFinalized') {
+      setShowFinalized(checked);
+    } else if (name === 'showPending') {
+      setShowPending(checked);
     }
+  };
+
+  const handleRemoveOrderFromDelivery = async (deliveryId: number, orderId: number) => {
+    setConfirmDialogAction(() => async () => {
+      try {
+        await removeOrderFromDelivery(token, deliveryId, orderId);
+        loadInitialData();
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          console.error('Failed to remove order from delivery:', error.message);
+          setError(error.message);
+        } else {
+          console.error('Failed to remove order from delivery:', error);
+          setError('Failed to remove order from delivery.');
+        }
+      }
+      setConfirmDialogOpen(false);
+    });
+    setConfirmDialogOpen(true);
   };
 
   const filteredDeliveries = deliveries.filter((delivery) => {
     const { startDate, endDate } = dateRange;
     if (searchTerm) {
-      return delivery.orders.some(order => order.cliente.toLowerCase().includes(searchTerm.toLowerCase()));
+      return (
+        Object.values(delivery).some(value =>
+          value ? value.toString().toLowerCase().includes(searchTerm.toLowerCase()) : false
+        ) ||
+        delivery.orders.some(order =>
+          Object.values(order).some(value =>
+            value ? value.toString().toLowerCase().includes(searchTerm.toLowerCase()) : false
+          )
+        )
+      );
     }
     if (startDate && endDate) {
       const start = new Date(startDate);
@@ -219,6 +266,14 @@ const DeliveriesPage: React.FC = () => {
       return dataInicio >= start && dataInicio <= end;
     }
     return true;
+  }).filter(delivery => {
+    if (showFinalized && delivery.status === 'Finalizado') {
+      return true;
+    }
+    if (showPending && delivery.status === 'Em Rota') {
+      return true;
+    }
+    return !showFinalized && !showPending;
   });
 
   const getRegionName = (delivery: Delivery) => {
@@ -231,7 +286,7 @@ const DeliveriesPage: React.FC = () => {
     <Container>
       {error && <Typography color="error">{error}</Typography>}
       <Grid container spacing={2} alignItems="center" style={{ marginBottom: '16px' }}>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={3}>
           <TextField
             label="Buscar"
             value={searchTerm}
@@ -243,7 +298,7 @@ const DeliveriesPage: React.FC = () => {
         <Grid item xs={6} md={3}>
           <TextField
             label="Data Início"
-            type="date"
+            type="datetime-local"
             InputLabelProps={{ shrink: true }}
             value={dateRange.startDate}
             onChange={handleDateFilter}
@@ -255,13 +310,25 @@ const DeliveriesPage: React.FC = () => {
         <Grid item xs={6} md={3}>
           <TextField
             label="Data Fim"
-            type="date"
+            type="datetime-local"
             InputLabelProps={{ shrink: true }}
             value={dateRange.endDate}
             onChange={handleDateFilter}
             name="endDate"
             fullWidth
             margin="normal"
+          />
+        </Grid>
+        <Grid item xs={6} md={1}>
+          <FormControlLabel
+            control={<Checkbox checked={showFinalized} onChange={handleStatusFilterChange} name="showFinalized" />}
+            label="Finalizados"
+          />
+        </Grid>
+        <Grid item xs={6} md={1}>
+          <FormControlLabel
+            control={<Checkbox checked={showPending} onChange={handleStatusFilterChange} name="showPending" />}
+            label="Pendentes"
           />
         </Grid>
       </Grid>
@@ -297,8 +364,8 @@ const DeliveriesPage: React.FC = () => {
                     <TableCell>{vehicle?.model}</TableCell>
                     <TableCell>R$ {totalValue.toFixed(2)}</TableCell>
                     <TableCell>{totalWeight.toFixed(2)} kg</TableCell>
-                    <TableCell>{delivery.dataInicio ? new Date(delivery.dataInicio).toLocaleDateString() : 'N/A'}</TableCell>
-                    <TableCell>{delivery.dataFim ? new Date(delivery.dataFim).toLocaleDateString() : 'N/A'}</TableCell>
+                    <TableCell>{delivery.dataInicio ? new Date(delivery.dataInicio).toLocaleString() : 'N/A'}</TableCell>
+                    <TableCell>{delivery.dataFim ? new Date(delivery.dataFim).toLocaleString() : 'N/A'}</TableCell>
                     <TableCell>{delivery.status}</TableCell>
                     <TableCell>
                       <IconButton onClick={() => handleEditDelivery(delivery)}>
@@ -374,20 +441,20 @@ const DeliveriesPage: React.FC = () => {
               </FormControl>
               <TextField
                 label="Data Início"
-                type="date"
+                type="datetime-local"
                 fullWidth
                 margin="normal"
                 InputLabelProps={{ shrink: true }}
-                value={currentDelivery.dataInicio ? new Date(currentDelivery.dataInicio).toISOString().split('T')[0] : ''}
+                value={currentDelivery.dataInicio ? new Date(currentDelivery.dataInicio).toISOString().slice(0, 16) : ''}
                 onChange={(e) => setCurrentDelivery({ ...currentDelivery, dataInicio: new Date(e.target.value) })}
               />
               <TextField
                 label="Data Finalização"
-                type="date"
+                type="datetime-local"
                 fullWidth
                 margin="normal"
                 InputLabelProps={{ shrink: true }}
-                value={currentDelivery.dataFim ? new Date(currentDelivery.dataFim).toISOString().split('T')[0] : ''}
+                value={currentDelivery.dataFim ? new Date(currentDelivery.dataFim).toISOString().slice(0, 16) : ''}
                 onChange={(e) => setCurrentDelivery({ ...currentDelivery, dataFim: new Date(e.target.value) })}
               />
             </div>
@@ -403,18 +470,7 @@ const DeliveriesPage: React.FC = () => {
                     />
                     <IconButton
                       edge="end"
-                      onClick={async () => {
-                        await removeOrderFromDelivery(token, currentDelivery.id, order.id);
-                        setCurrentDelivery(prevState => {
-                          if (prevState) {
-                            return {
-                              ...prevState,
-                              orders: prevState.orders.filter(o => o.id !== order.id),
-                            };
-                          }
-                          return null;
-                        });
-                      }}
+                      onClick={() => handleRemoveOrderFromDelivery(currentDelivery.id, order.id)}
                     >
                       <Delete />
                     </IconButton>
@@ -480,6 +536,31 @@ const DeliveriesPage: React.FC = () => {
           </DialogActions>
         </Dialog>
       )}
+
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={() => setConfirmDialogOpen(false)}
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-description"
+      >
+        <DialogTitle id="confirm-dialog-title">Confirmar Ação</DialogTitle>
+        <DialogContent>
+          <Typography>Você tem certeza que deseja continuar com esta ação?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialogOpen(false)} color="secondary">
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => {
+              confirmDialogAction();
+            }}
+            color="primary"
+          >
+            Confirmar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
