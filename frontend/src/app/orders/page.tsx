@@ -9,8 +9,8 @@ import {
   Add,
   CloudUpload,
   SaveAlt,
-  GetApp,
-  FileDownload
+  ContentCopy,
+  ContentPaste,
 } from '@mui/icons-material';
 import { parse } from 'papaparse';
 import withAuth from '../components/withAuth';
@@ -19,7 +19,6 @@ import { Order } from '../../types';
 import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-balham.css'; // Importar o tema claro
-import 'ag-grid-enterprise';
 
 enum Field {
   Id = 'id',
@@ -206,10 +205,43 @@ const OrdersPage: React.FC = () => {
     setGridApi(params.api);
   };
 
+  const copySelectedRowsToClipboard = () => {
+    if (!gridApi) return;
+    const selectedRows = gridApi.getSelectedRows();
+    const selectedDataString = selectedRows.map((row: any) => JSON.stringify(row)).join('\n');
+    navigator.clipboard.writeText(selectedDataString).then(() => {
+      console.log('Rows copied to clipboard');
+    });
+  };
+
+  const pasteFromClipboard = async () => {
+    if (!gridApi) return;
+    const clipboardText = await navigator.clipboard.readText();
+    const newRows = clipboardText.split('\n').map(row => JSON.parse(row));
+    const updatedOrders = [...orders, ...newRows];
+    setOrders(updatedOrders);
+    setFilteredOrders(updatedOrders);
+    gridApi.setRowData(updatedOrders);
+  };
+
   const exportToCsv = () => {
-    if (gridApi) {
-      gridApi.exportDataAsCsv();
-    }
+    if (!gridApi) return;
+    const rowData: any[] = [];
+    gridApi.forEachNode((node: any) => rowData.push(node.data));
+    const csvContent = [
+      Object.keys(Field).join(','),
+      ...rowData.map((row: any) => Object.values(row).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'orders.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -251,6 +283,20 @@ const OrdersPage: React.FC = () => {
       >
         <SaveAlt />
       </IconButton>
+      <IconButton
+        color="primary"
+        onClick={copySelectedRowsToClipboard}
+        style={{ marginRight: '8px' }}
+      >
+        <ContentCopy />
+      </IconButton>
+      <IconButton
+        color="primary"
+        onClick={pasteFromClipboard}
+        style={{ marginRight: '8px' }}
+      >
+        <ContentPaste />
+      </IconButton>
       <div className="ag-theme-balham-dark" style={{ height: 600, width: '100%', marginTop: '16px' }}>
         <AgGridReact
           rowData={filteredOrders}
@@ -263,10 +309,7 @@ const OrdersPage: React.FC = () => {
             filter: true,
             resizable: true,
           }}
-          enableRangeSelection={true}
           rowSelection="multiple"
-          animateRows={true}
-          enableCharts={true}
           onGridReady={onGridReady}
         />
       </div>
@@ -290,7 +333,7 @@ const OrdersPage: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <IconButton onClick={handleDialogClose}>
-            <FileDownload />
+            <SaveAlt />
           </IconButton>
         </DialogActions>
       </Dialog>
