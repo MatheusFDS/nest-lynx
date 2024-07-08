@@ -82,6 +82,11 @@ const defaultFields: Record<Field, boolean> = {
   [Field.Motorista]: true,
 };
 
+const formatDateBR = (date: string) => {
+  const [year, month, day] = date.split('-');
+  return `${day}/${month}/${year}`;
+};
+
 const OrdersPage: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -206,13 +211,14 @@ const OrdersPage: React.FC = () => {
     field: Field[key as keyof typeof Field],
     hide: !showFields[Field[key as keyof typeof Field]],
     valueGetter: (params: any) => {
-      if (key === 'DataFinalizacao') {
-        return params.data.Delivery?.dataFim ? new Date(params.data.Delivery.dataFim).toLocaleDateString() : '';
+      const value = params.data[Field[key as keyof typeof Field]];
+      if (key === 'Data' || key === 'DataFinalizacao') {
+        return value ? formatDateBR(value) : '';
       }
       if (key === 'Motorista') {
         return params.data.Delivery?.Driver?.name || '';
       }
-      return params.data[Field[key as keyof typeof Field]];
+      return value;
     },
   }));
 
@@ -223,7 +229,10 @@ const OrdersPage: React.FC = () => {
   const copySelectedRowsToClipboard = () => {
     if (!gridApi) return;
     const selectedRows = gridApi.getSelectedRows();
-    const selectedDataString = selectedRows.map((row: any) => JSON.stringify(row)).join('\n');
+    const selectedDataString = selectedRows.map((row: any) => {
+      const rowData = Object.values(row).join('\t');
+      return rowData;
+    }).join('\n');
     navigator.clipboard.writeText(selectedDataString).then(() => {
       console.log('Rows copied to clipboard');
     });
@@ -234,8 +243,8 @@ const OrdersPage: React.FC = () => {
     const rowData: any[] = [];
     gridApi.forEachNode((node: any) => rowData.push(node.data));
     const csvContent = [
-      Object.keys(Field).join(','),
-      ...rowData.map((row: any) => Object.values(row).join(','))
+      Object.keys(Field).join(';'),
+      ...rowData.map((row: any) => Object.values(row).join(';'))
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -261,15 +270,35 @@ const OrdersPage: React.FC = () => {
     writeFile(workbook, 'orders.xlsx');
   };
 
-  const exportToPdf = () => {
+  const exportToPdf = (selectedOnly: boolean) => {
     if (!gridApi) return;
     const rowData: any[] = [];
-    gridApi.forEachNode((node: any) => rowData.push(node.data));
+    if (selectedOnly) {
+      gridApi.getSelectedRows().forEach((row: any) => rowData.push(row));
+    } else {
+      gridApi.forEachNodeAfterFilterAndSort((node: any) => rowData.push(node.data));
+    }
 
     const doc = new jsPDF();
-    (doc as any).autoTable({
-      head: [Object.keys(Field)],
-      body: rowData.map(row => Object.values(row)),
+    rowData.forEach((row, index) => {
+      const margin = 10;
+      const lineSpacing = 10;
+      let yPosition = margin;
+
+      doc.text(`Order ${index + 1}`, margin, yPosition);
+      yPosition += lineSpacing;
+      
+      Object.entries(row).forEach(([key, value]) => {
+        if (key in Field) {
+          const displayValue = (key === 'Data' || key === 'DataFinalizacao') ? formatDateBR(value as string) : value;
+          doc.text(`${key}: ${displayValue}`, margin, yPosition);
+          yPosition += lineSpacing;
+        }
+      });
+
+      if (index < rowData.length - 1) {
+        doc.addPage();
+      }
     });
 
     doc.save('orders.pdf');
@@ -291,7 +320,6 @@ const OrdersPage: React.FC = () => {
         component="label"
         style={{ marginRight: '8px' }}
       >
-        
         <input
           type="file"
           hidden
@@ -335,9 +363,13 @@ const OrdersPage: React.FC = () => {
           <FileDownload style={{ marginRight: '8px' }} />
           Export to Excel
         </MenuItem>
-        <MenuItem onClick={exportToPdf}>
+        <MenuItem onClick={() => exportToPdf(false)}>
           <FileDownload style={{ marginRight: '8px' }} />
-          Export to PDF
+          Export All to PDF
+        </MenuItem>
+        <MenuItem onClick={() => exportToPdf(true)}>
+          <FileDownload style={{ marginRight: '8px' }} />
+          Export Selected to PDF
         </MenuItem>
       </Menu>
       <div className="ag-theme-balham-dark" style={{ height: 600, width: '100%', marginTop: '16px' }}>
