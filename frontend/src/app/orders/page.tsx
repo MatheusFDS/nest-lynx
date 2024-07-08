@@ -4,13 +4,15 @@ import React, { useEffect, useState } from 'react';
 import {
   Typography, Container, TextField, IconButton, Dialog,
   DialogActions, DialogContent, DialogTitle, FormGroup, FormControlLabel, Checkbox,
+  Menu, MenuItem,
 } from '@mui/material';
 import {
   Add,
   CloudUpload,
   SaveAlt,
   ContentCopy,
-  ContentPaste,
+  FileDownload,
+  MoreVert,
 } from '@mui/icons-material';
 import { parse } from 'papaparse';
 import withAuth from '../components/withAuth';
@@ -19,6 +21,10 @@ import { Order } from '../../types';
 import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-balham.css'; // Importar o tema claro
+
+import { utils, writeFile } from 'xlsx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 enum Field {
   Id = 'id',
@@ -85,6 +91,7 @@ const OrdersPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showFields, setShowFields] = useState<Record<Field, boolean>>(defaultFields);
   const [open, setOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [gridApi, setGridApi] = useState<any>(null);
 
   const token = localStorage.getItem('token') || '';
@@ -186,6 +193,14 @@ const OrdersPage: React.FC = () => {
     setOpen(false);
   };
 
+  const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
   const columns = Object.keys(Field).map(key => ({
     headerName: Field[key as keyof typeof Field],
     field: Field[key as keyof typeof Field],
@@ -214,16 +229,6 @@ const OrdersPage: React.FC = () => {
     });
   };
 
-  const pasteFromClipboard = async () => {
-    if (!gridApi) return;
-    const clipboardText = await navigator.clipboard.readText();
-    const newRows = clipboardText.split('\n').map(row => JSON.parse(row));
-    const updatedOrders = [...orders, ...newRows];
-    setOrders(updatedOrders);
-    setFilteredOrders(updatedOrders);
-    gridApi.setRowData(updatedOrders);
-  };
-
   const exportToCsv = () => {
     if (!gridApi) return;
     const rowData: any[] = [];
@@ -244,6 +249,32 @@ const OrdersPage: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  const exportToExcel = () => {
+    if (!gridApi) return;
+    const rowData: any[] = [];
+    gridApi.forEachNode((node: any) => rowData.push(node.data));
+    
+    const worksheet = utils.json_to_sheet(rowData);
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, 'Orders');
+    
+    writeFile(workbook, 'orders.xlsx');
+  };
+
+  const exportToPdf = () => {
+    if (!gridApi) return;
+    const rowData: any[] = [];
+    gridApi.forEachNode((node: any) => rowData.push(node.data));
+
+    const doc = new jsPDF();
+    (doc as any).autoTable({
+      head: [Object.keys(Field)],
+      body: rowData.map(row => Object.values(row)),
+    });
+
+    doc.save('orders.pdf');
+  };
+
   return (
     <Container>
       {error && <Typography color="error">{error}</Typography>}
@@ -260,13 +291,14 @@ const OrdersPage: React.FC = () => {
         component="label"
         style={{ marginRight: '8px' }}
       >
-        <CloudUpload />
+        
         <input
           type="file"
           hidden
           accept=".csv"
           onChange={handleFileChange}
         />
+        <Add />
       </IconButton>
       <IconButton
         color="primary"
@@ -274,14 +306,7 @@ const OrdersPage: React.FC = () => {
         disabled={!file}
         style={{ marginRight: '8px' }}
       >
-        <Add />
-      </IconButton>
-      <IconButton
-        color="primary"
-        onClick={exportToCsv}
-        style={{ marginRight: '8px' }}
-      >
-        <SaveAlt />
+        <CloudUpload />
       </IconButton>
       <IconButton
         color="primary"
@@ -292,11 +317,29 @@ const OrdersPage: React.FC = () => {
       </IconButton>
       <IconButton
         color="primary"
-        onClick={pasteFromClipboard}
+        onClick={handleMenuClick}
         style={{ marginRight: '8px' }}
       >
-        <ContentPaste />
+        <MoreVert />
       </IconButton>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={exportToCsv}>
+          <FileDownload style={{ marginRight: '8px' }} />
+          Export to CSV
+        </MenuItem>
+        <MenuItem onClick={exportToExcel}>
+          <FileDownload style={{ marginRight: '8px' }} />
+          Export to Excel
+        </MenuItem>
+        <MenuItem onClick={exportToPdf}>
+          <FileDownload style={{ marginRight: '8px' }} />
+          Export to PDF
+        </MenuItem>
+      </Menu>
       <div className="ag-theme-balham-dark" style={{ height: 600, width: '100%', marginTop: '16px' }}>
         <AgGridReact
           rowData={filteredOrders}
