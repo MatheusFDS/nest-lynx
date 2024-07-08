@@ -2,10 +2,16 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Typography, Container, TextField, Button, Dialog,
+  Typography, Container, TextField, IconButton, Dialog,
   DialogActions, DialogContent, DialogTitle, FormGroup, FormControlLabel, Checkbox,
 } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import {
+  Add,
+  CloudUpload,
+  SaveAlt,
+  GetApp,
+  FileDownload
+} from '@mui/icons-material';
 import { parse } from 'papaparse';
 import withAuth from '../components/withAuth';
 import { fetchOrders, uploadOrders, fetchUserSettings, updateUserSettings } from '../../services/orderService';
@@ -14,8 +20,6 @@ import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-balham.css'; // Importar o tema claro
 import 'ag-grid-enterprise';
-
-import './custom-dark-theme.css'; // Customização do tema escuro
 
 enum Field {
   Id = 'id',
@@ -82,6 +86,7 @@ const OrdersPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showFields, setShowFields] = useState<Record<Field, boolean>>(defaultFields);
   const [open, setOpen] = useState(false);
+  const [gridApi, setGridApi] = useState<any>(null);
 
   const token = localStorage.getItem('token') || '';
 
@@ -197,20 +202,14 @@ const OrdersPage: React.FC = () => {
     },
   }));
 
-  let gridApi: any;
-  let gridColumnApi: any;
-
   const onGridReady = (params: any) => {
-    gridApi = params.api;
-    gridColumnApi = params.columnApi;
+    setGridApi(params.api);
   };
 
   const exportToCsv = () => {
-    gridApi.exportDataAsCsv();
-  };
-
-  const exportToExcel = () => {
-    gridApi.exportDataAsExcel();
+    if (gridApi) {
+      gridApi.exportDataAsCsv();
+    }
   };
 
   return (
@@ -224,41 +223,34 @@ const OrdersPage: React.FC = () => {
         fullWidth
         margin="normal"
       />
-      <Button
-        variant="contained"
+      <IconButton
+        color="primary"
         component="label"
-        startIcon={<Add />}
         style={{ marginRight: '8px' }}
       >
-        Upload Orders
+        <CloudUpload />
         <input
           type="file"
           hidden
           accept=".csv"
           onChange={handleFileChange}
         />
-      </Button>
-      <Button
-        variant="contained"
+      </IconButton>
+      <IconButton
         color="primary"
         onClick={handleUpload}
         disabled={!file}
+        style={{ marginRight: '8px' }}
       >
-        Submit
-      </Button>
-      <Button
-        variant="contained"
+        <Add />
+      </IconButton>
+      <IconButton
+        color="primary"
         onClick={exportToCsv}
         style={{ marginRight: '8px' }}
       >
-        Export to CSV
-      </Button>
-      <Button
-        variant="contained"
-        onClick={exportToExcel}
-      >
-        Export to Excel
-      </Button>
+        <SaveAlt />
+      </IconButton>
       <div className="ag-theme-balham-dark" style={{ height: 600, width: '100%', marginTop: '16px' }}>
         <AgGridReact
           rowData={filteredOrders}
@@ -297,7 +289,9 @@ const OrdersPage: React.FC = () => {
           </FormGroup>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDialogClose}>Close</Button>
+          <IconButton onClick={handleDialogClose}>
+            <FileDownload />
+          </IconButton>
         </DialogActions>
       </Dialog>
     </Container>
