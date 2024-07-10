@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { GoogleMap, LoadScript, Marker, DirectionsService, DirectionsRenderer } from '@react-google-maps/api';
+import { GoogleMap, Marker, DirectionsService, DirectionsRenderer } from '@react-google-maps/api';
 
 interface GoogleMapsComponentProps {
   orders: { cep: string, lat: number, lng: number }[];
+  onClose: () => void;
 }
 
 const containerStyle = {
@@ -15,7 +16,7 @@ const center = {
   lng: -47.8822,
 };
 
-const GoogleMapsComponent: React.FC<GoogleMapsComponentProps> = ({ orders }) => {
+const GoogleMapsComponent: React.FC<GoogleMapsComponentProps> = ({ orders, onClose }) => {
   const [directionsResponse, setDirectionsResponse] = useState<any>(null);
 
   const calculateRoute = useCallback(() => {
@@ -48,7 +49,7 @@ const GoogleMapsComponent: React.FC<GoogleMapsComponentProps> = ({ orders }) => 
   }, [orders]);
 
   return (
-    <LoadScript googleMapsApiKey="AIzaSyCI6j3093lkPtwImKxNXLT101hp96uTbn0">
+    <>
       <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={12}>
         {orders.map((order, index) => (
           <Marker key={index} position={{ lat: order.lat, lng: order.lng }} />
@@ -58,7 +59,8 @@ const GoogleMapsComponent: React.FC<GoogleMapsComponentProps> = ({ orders }) => 
         )}
       </GoogleMap>
       <button onClick={calculateRoute}>Calcular Rota</button>
-    </LoadScript>
+      <button onClick={onClose}>Fechar</button>
+    </>
   );
 };
 

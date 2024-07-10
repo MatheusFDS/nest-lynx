@@ -3,10 +3,11 @@
 import React, { ReactNode } from 'react';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { ThemeProvider } from './context/ThemeContext'; // Importar o novo ThemeProvider
+import { ThemeProvider } from './context/ThemeContext';
 import Toolbar from './components/Toolbar';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import './globals.css'; // Certifique-se de que o caminho está correto
+import './globals.css';
+import { GoogleMapsProvider } from './context/googleMapsContext';
 
 interface LayoutProps {
   children: ReactNode;
@@ -18,7 +19,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
   return (
     <>
       {isLoggedIn && <Toolbar title="My App" />}
-      <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+      <div id="__next" style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
         {children}
       </div>
     </>
@@ -37,7 +38,9 @@ const Layout = ({ children }: LayoutProps) => {
         <ThemeProvider>
           <CssBaseline />
           <AuthProvider>
-            <LayoutContent>{children}</LayoutContent>
+            <GoogleMapsProvider>
+              <LayoutContent>{children}</LayoutContent>
+            </GoogleMapsProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

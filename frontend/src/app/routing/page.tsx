@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Container, Grid, Typography, Button } from '@mui/material';
+import Modal from 'react-modal';
 import { DragDropContext, DropResult } from 'react-beautiful-dnd';
 import { fetchOrders, fetchDirections, fetchDrivers, fetchVehicles, fetchCategories, fetchTenantData } from '../../services/auxiliaryService';
 import { Order, Driver, Vehicle, Direction, Category } from '../../types';
@@ -12,7 +13,8 @@ import DirectionCard from '../components/routing/DirectionCard';
 import OrderDetailsDialog from '../components/routing/OrderDetailsDialog';
 import GenerateRouteDialog from '../components/routing/GenerateRouteDialog';
 import ExpandedOrdersDialog from '../components/routing/ExpandedOrdersDialog';
-import LeafletMapComponent from '../components/routing/LeafletMapComponent';
+import GoogleMapsComponent from '../components/routing/GoogleMapsComponent';
+import { geocodeAddress } from '../../services/geocodeService';
 
 const RoutingPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -39,6 +41,11 @@ const RoutingPage: React.FC = () => {
 
   const token = localStorage.getItem('token') || '';
 
+  useEffect(() => {
+    Modal.setAppElement('#__next'); // Garantir que o contêiner principal é acessível
+    loadInitialData();
+  }, []);
+
   const loadInitialData = async () => {
     try {
       const [ordersData, directionsData, driversData, vehiclesData, categoriesData, tenantData] = await Promise.all([
@@ -52,7 +59,21 @@ const RoutingPage: React.FC = () => {
 
       const filteredOrders = ordersData.filter((order: { status: string }) => ['Pendente', 'Reentrega'].includes(order.status));
 
-      setOrders(filteredOrders);
+      // Geocodificar os endereços dos pedidos
+      const geocodedOrders = await Promise.all(
+        filteredOrders.map(async (order: Order) => {
+          const address = `${order.endereco}, ${order.cidade}, ${order.uf}, ${order.cep}`;
+          const location = await geocodeAddress(address);
+          if (location) {
+            return { ...order, lat: location.lat, lng: location.lng };
+          } else {
+            console.error(`Failed to geocode address: ${address}`);
+            return order;
+          }
+        })
+      );
+
+      setOrders(geocodedOrders);
       setDirections(directionsData);
       setDrivers(driversData);
       setVehicles(vehiclesData);
@@ -61,7 +82,7 @@ const RoutingPage: React.FC = () => {
 
       const initialOrders: { [key: number]: Order[] } = {};
       directionsData.forEach((direction: Direction) => {
-        initialOrders[direction.id] = filteredOrders.filter((order: Order) => {
+        initialOrders[direction.id] = geocodedOrders.filter((order: Order) => {
           return (
             parseInt(order.cep) >= parseInt(direction.rangeInicio) &&
             parseInt(order.cep) <= parseInt(direction.rangeFim)
@@ -70,13 +91,10 @@ const RoutingPage: React.FC = () => {
       });
       setSelectedOrders(initialOrders);
     } catch (error: unknown) {
+      console.error('Failed to load initial data:', error);
       setError('Failed to load initial data.');
     }
   };
-
-  useEffect(() => {
-    loadInitialData();
-  }, []);
 
   const handleOrderTransfer = (orderId: number, fromDirectionId: number, toDirectionId: number) => {
     setSelectedOrders(prevState => {
@@ -287,21 +305,18 @@ const RoutingPage: React.FC = () => {
     setShowMap(true);
   };
 
+  const handleCloseMap = () => {
+    setShowMap(false);
+  };
+
   return (
     <Container style={{ marginTop: '24px' }}>
       <Button variant="contained" color="secondary" onClick={handleShowGeneralMap} style={{ marginTop: '10px', marginBottom: '10px' }}>
         Mapa Geral
       </Button>
       <Typography style={{ marginTop: '10px', marginBottom: '10px' }}>
-      {showMap && (
-        <LeafletMapComponent orders={ordersForMap.map(order => ({
-          cep: order.cep,
-          lat: order.lat!,
-          lng: order.lng!
-        }))} />
-      )}
-</Typography>
-      {error && <Typography color="error">{error}</Typography>}
+        {error && <Typography color="error">{error}</Typography>}
+      </Typography>
       <DragDropContext onDragEnd={onDragEnd}>
         <Grid container spacing={3}>
           {directions.map(direction => {
@@ -356,8 +371,25 @@ const RoutingPage: React.FC = () => {
         order={selectedOrder}
       />
 
-
-
+      <Modal
+        isOpen={showMap}
+        onRequestClose={handleCloseMap}
+        contentLabel="Mapa"
+        style={{
+          content: {
+            top: '50%',
+            left: '50%',
+            right: 'auto',
+            bottom: 'auto',
+            marginRight: '-50%',
+            transform: 'translate(-50%, -50%)',
+            width: '80%',
+            height: '80%'
+          },
+        }}
+      >
+        <GoogleMapsComponent orders={ordersForMap} onClose={handleCloseMap} />
+      </Modal>
     </Container>
   );
 };
