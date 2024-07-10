@@ -11,6 +11,7 @@ import { CategoryModule } from './category/category.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StatisticsModule } from './statistics/statistics.module';
 import { UserSettingsModule } from './user-settings/user-settings.module';
+import { TenantModule } from './tenant/tenant.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
     CategoryModule,
     DirectionsModule,
     PrismaModule,
+    TenantModule,
     UsersModule,
     AuthModule,
     DriversModule,

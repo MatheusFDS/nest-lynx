@@ -1,24 +1,19 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Order } from '@prisma/client';
-import { parseISO, isValid } from 'date-fns';
+import { parse, isValid } from 'date-fns';
 
 @Injectable()
 export class OrdersService {
   constructor(private prisma: PrismaService) {}
 
-  // Função para converter o formato de data numérico para ISO-8601
-  convertToISODate(numericDate: string): string {
-    const year = parseInt(numericDate.substring(0, 4));
-    const month = parseInt(numericDate.substring(4, 6)) - 1; // Meses em JavaScript são baseados em zero
-    const day = parseInt(numericDate.substring(6, 8));
-    const date = new Date(year, month, day);
-
-    if (!isValid(date)) {
-      throw new BadRequestException(`Invalid date format: ${numericDate}`);
+  // Função para converter o formato de data "dd/MM/yyyy" para ISO-8601
+  convertToISODate(dateString: string): string {
+    const parsedDate = parse(dateString, 'dd/MM/yyyy', new Date());
+    if (!isValid(parsedDate)) {
+      throw new BadRequestException(`Invalid date format: ${dateString}`);
     }
-
-    return date.toISOString();
+    return parsedDate.toISOString();
   }
 
   async upload(orders: any[], tenantId: number) {
@@ -34,7 +29,7 @@ export class OrdersService {
 
       const existingOrder = await this.prisma.order.findFirst({
         where: {
-          numero: order.numero,
+          numero: order.numero.toString(), // Certifique-se de que é string
           tenantId: tenantId,
         },
       });
@@ -46,27 +41,27 @@ export class OrdersService {
 
       const createdOrder = await this.prisma.order.create({
         data: {
-          numero: order.numero,
+          numero: order.numero.toString(),
           data: parsedDate,
-          idCliente: order.idCliente,
+          idCliente: order.idCliente.toString(),
           cliente: order.cliente,
           endereco: order.endereco,
           cidade: order.cidade,
           uf: order.uf,
-          peso: parseFloat(order.peso.replace(',', '.')),
-          volume: parseInt(order.volume),
-          prazo: order.prazo,
-          prioridade: order.prioridade,
-          telefone: order.telefone,
-          email: order.email,
+          peso: typeof order.peso === 'string' ? parseFloat(order.peso.replace(',', '.')) : order.peso,
+          volume: typeof order.volume === 'string' ? parseInt(order.volume) : order.volume || 0,
+          prazo: order.prazo?.toString() || '',
+          prioridade: order.prioridade?.toString() || '',
+          telefone: order.telefone?.toString() || '',
+          email: order.email?.toString() || '',
           bairro: order.bairro,
-          valor: parseFloat(order.valor.replace(',', '.')),
-          instrucoesEntrega: order.instrucoesEntrega,
-          nomeContato: order.nomeContato,
-          cpfCnpj: order.cpfCnpj,
-          cep: order.cep,
-          status: order.status,
-          deliveryId: order.deliveryId,
+          valor: typeof order.valor === 'string' ? parseFloat(order.valor.replace(',', '.')) : order.valor,
+          instrucoesEntrega: order.instrucoesEntrega || '',
+          nomeContato: order.nomeContato?.toString() || '',
+          cpfCnpj: order.cpfCnpj.toString(),
+          cep: order.cep.toString(),
+          status: 'Pendente', // Define todos os pedidos como "Pendente"
+          deliveryId: order.deliveryId ? parseInt(order.deliveryId) : null,
           tenantId: tenantId,
         },
       });

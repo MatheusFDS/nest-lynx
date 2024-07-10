@@ -107,6 +107,18 @@ export interface User {
   updatedAt: string;
 }
 
+export interface Tenant {
+  minDeliveryPercentage: number;
+  id: number;
+  name: string;
+  minDeliveryValue: number;
+  address?: string;
+  domain?: string;
+  databaseSchema?: string;
+  port?: number;
+  databaseUrl?: string;
+}
+
 export interface Vehicle {
   id: number;
   model: string;

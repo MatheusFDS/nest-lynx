@@ -22,7 +22,7 @@ import {
   Tabs,
   Tab,
 } from '@mui/material';
-import { Delete, Info, Map } from '@mui/icons-material';
+import { Delete, Info, ExpandMore } from '@mui/icons-material';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { fetchOrders, fetchDirections, fetchDrivers, fetchVehicles, fetchCategories } from '../../services/auxiliaryService';
 import { Order, Driver, Vehicle, Direction, Category } from '../../types';
@@ -41,6 +41,7 @@ const RoutingPage: React.FC = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<number | string>('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [expandedOrdersDialogOpen, setExpandedOrdersDialogOpen] = useState(false);
   const [error, setError] = useState<string>('');
   const [currentDirectionId, setCurrentDirectionId] = useState<number | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -134,6 +135,16 @@ const RoutingPage: React.FC = () => {
     setSelectedOrder(null);
   };
 
+  const handleExpandedOrdersDialogOpen = (directionId: number) => {
+    setCurrentDirectionId(directionId);
+    setExpandedOrdersDialogOpen(true);
+  };
+
+  const handleExpandedOrdersDialogClose = () => {
+    setExpandedOrdersDialogOpen(false);
+    setCurrentDirectionId(null);
+  };
+
   const openGoogleMaps = (cep: string) => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${cep}`;
     window.open(url, '_blank');
@@ -215,13 +226,13 @@ const RoutingPage: React.FC = () => {
 
   const handleConfirmDelivery = async () => {
     if (!currentDirectionId) return;
-  
+
     const ordersInDirection = selectedOrders[currentDirectionId];
     if (!ordersInDirection || ordersInDirection.length === 0) return;
-  
+
     const { totalWeight, totalValue } = calculateTotalWeightAndValue(ordersInDirection);
     const freightValue = calculateFreightValue();
-  
+
     const deliveryData = {
       motoristaId: selectedDriver as number,
       veiculoId: Number(selectedVehicle), // Garantir que veiculoId é um número
@@ -236,24 +247,24 @@ const RoutingPage: React.FC = () => {
         // Adicione outros campos necessários
       })), // Incluindo os campos necessários
     };
-  
+
     console.log('Delivery data being sent:', JSON.stringify(deliveryData, null, 2));
-  
+
     try {
       await addDelivery(token, deliveryData);
       setDialogOpen(false);
       setCurrentDirectionId(null);
-  
+
       // Atualize os pedidos para remover os confirmados
       setSelectedOrders(prevState => {
         const updatedOrders = { ...prevState };
         updatedOrders[currentDirectionId!] = updatedOrders[currentDirectionId!].filter(order => !deliveryData.orders.map(o => o.id).includes(order.id));
         return updatedOrders;
       });
-  
+
       // Atualize a lista principal de pedidos
       setOrders(prevOrders => prevOrders.filter(order => !deliveryData.orders.map(o => o.id).includes(order.id)));
-  
+
       // Recarregar dados iniciais
       loadInitialData();
     } catch (error: unknown) {
@@ -266,9 +277,9 @@ const RoutingPage: React.FC = () => {
       }
     }
   };
-    
+
   return (
-    <Container>
+    <Container style={{ marginTop: '24px' }}>
       {error && <Typography color="error">{error}</Typography>}
       <DragDropContext onDragEnd={onDragEnd}>
         <Grid container spacing={3}>
@@ -281,36 +292,47 @@ const RoutingPage: React.FC = () => {
 
             return (
               <Grid item xs={12} sm={6} md={4} key={direction.id}>
-                <Paper elevation={3} style={{ padding: '16px' }}>
-                  <Typography variant="h6">{direction.regiao}</Typography>
-                  <Typography variant="body1">CEP: {direction.rangeInicio} - {direction.rangeFim}</Typography>
-                  <Typography variant="body1">Total Valor: R$ {totalValue.toFixed(2)}</Typography>
-                  <Typography variant="body1">Total Peso: {totalWeight.toFixed(2)} kg</Typography>
+                <Paper elevation={3} style={{ padding: '8px', height: '550px', overflow: 'hidden' }}>
+                  <Typography variant="subtitle1">{direction.regiao}</Typography>
+                  <Typography variant="body2">CEP: {direction.rangeInicio} - {direction.rangeFim}</Typography>
+                  <Typography variant="body2">Total Valor: R$ {totalValue.toFixed(2)}</Typography>
+                  <Typography variant="body2">Total Peso: {totalWeight.toFixed(2)} kg</Typography>
+                  <Typography variant="body2">Total de Pedidos: {ordersInDirection.length}</Typography>
                   <Button
                     variant="contained"
                     color="primary"
-                    style={{ marginTop: '16px' }}
+                    size="small"
+                    style={{ marginTop: '8px' }}
                     onClick={() => handleGenerateDelivery(direction.id)}
                   >
                     Gerar Rota
                   </Button>
+                  <IconButton
+                    edge="end"
+                    size="small"
+                    onClick={() => handleExpandedOrdersDialogOpen(direction.id)}
+                    style={{ marginLeft: '8px' }}
+                  >
+                    <ExpandMore fontSize="small" />
+                  </IconButton>
                   <Droppable droppableId={directionId}>
                     {(provided) => (
-                      <div ref={provided.innerRef} {...provided.droppableProps} style={{ marginTop: '16px' }}>
+                      <div ref={provided.innerRef} {...provided.droppableProps} style={{ marginTop: '8px', overflowY: 'auto', maxHeight: '100%' }}>
                         {ordersInDirection.map((order, index) => (
                           <Draggable key={order.id.toString()} draggableId={order.id.toString()} index={index}>
                             {(provided) => (
                               <ListItem ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                                <Paper style={{ padding: '8px', marginBottom: '8px', width: '100%' }}>
+                                <Paper style={{ padding: '4px', marginBottom: '4px', width: '100%' }}>
                                   <ListItemText
-                                    primary={`Pedido ${order.numero} - Cliente: ${order.cliente}`}
-                                    secondary={`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}
+                                    primary={<Typography variant="body2">{`Pedido ${order.numero} - Cliente: ${order.cliente}`}</Typography>}
+                                    secondary={<Typography variant="caption">{`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}</Typography>}
                                   />
                                   <IconButton
                                     edge="end"
+                                    size="small"
                                     onClick={() => handleDetailsDialogOpen(order)} // Exibir detalhes do pedido
                                   >
-                                    <Info />
+                                    <Info fontSize="small" />
                                   </IconButton>
                                 </Paper>
                               </ListItem>
@@ -357,11 +379,11 @@ const RoutingPage: React.FC = () => {
                   ))}
                 </Select>
               </FormControl>
-              <Typography variant="body1" style={{ marginTop: '16px' }}>
+              <Typography variant="body2" style={{ marginTop: '16px' }}>
                 Total Peso: {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalWeight.toFixed(2)} kg
               </Typography>
-              <Typography variant="body1">Total Valor: R$ {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalValue.toFixed(2)}</Typography>
-              <Typography variant="body1">Valor do Frete: R$ {calculateFreightValue().toFixed(2)}</Typography>
+              <Typography variant="body2">Total Valor: R$ {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalValue.toFixed(2)}</Typography>
+              <Typography variant="body2">Valor do Frete: R$ {calculateFreightValue().toFixed(2)}</Typography>
             </div>
           )}
           {tabIndex === 1 && (
@@ -370,29 +392,31 @@ const RoutingPage: React.FC = () => {
                 {selectedOrders[currentDirectionId!]?.map(order => (
                   <ListItem key={order.id}>
                     <ListItemText
-                      primary={`Pedido ${order.numero} - Cliente: ${order.cliente}`}
-                      secondary={`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}
+                      primary={<Typography variant="body2">{`Pedido ${order.numero} - Cliente: ${order.cliente}`}</Typography>}
+                      secondary={<Typography variant="caption">{`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}</Typography>}
                     />
                     <IconButton
                       edge="end"
+                      size="small"
                       onClick={() => setSelectedOrders(prevState => {
                         const updatedOrders = { ...prevState };
                         updatedOrders[currentDirectionId!] = updatedOrders[currentDirectionId!].filter(o => o.id !== order.id);
                         return updatedOrders;
                       })}
                     >
-                      <Delete />
+                      <Delete fontSize="small" />
                     </IconButton>
                   </ListItem>
                 ))}
-                <Typography variant="body1" style={{ marginTop: '16px' }}>
+                <Typography variant="body2" style={{ marginTop: '16px' }}>
                   Total Peso: {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalWeight.toFixed(2)} kg
                 </Typography>
-                <Typography variant="body1">Total Valor: R$ {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalValue.toFixed(2)}</Typography>
+                <Typography variant="body2">Total Valor: R$ {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalValue.toFixed(2)}</Typography>
               </List>
               <Button
                 variant="contained"
                 color="secondary"
+                size="small"
                 style={{ marginTop: '16px' }}
                 onClick={() => openGoogleMaps(selectedOrders[currentDirectionId!]?.[0]?.cep || '')}
               >
@@ -411,37 +435,66 @@ const RoutingPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
+      <Dialog open={expandedOrdersDialogOpen} onClose={handleExpandedOrdersDialogClose} fullWidth maxWidth="md">
+        <DialogTitle>Todos os Pedidos</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={3}>
+            {selectedOrders[currentDirectionId!]?.map(order => (
+              <Grid item xs={12} key={order.id}>
+                <Paper style={{ padding: '8px', marginBottom: '8px' }}>
+                  <Typography variant="body2">{`Pedido ${order.numero} - Cliente: ${order.cliente}`}</Typography>
+                  <Typography variant="caption">{`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}</Typography>
+                  <IconButton
+                    edge="end"
+                    size="small"
+                    onClick={() => handleDetailsDialogOpen(order)}
+                    style={{ float: 'right' }}
+                  >
+                    <Info fontSize="small" />
+                  </IconButton>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleExpandedOrdersDialogClose} color="primary">
+            Fechar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {selectedOrder && (
         <Dialog open={detailsDialogOpen} onClose={handleDetailsDialogClose} fullWidth maxWidth="sm">
           <DialogTitle>Detalhes do Pedido</DialogTitle>
           <DialogContent>
-            <Typography variant="body1"><strong>Pedido Número:</strong> {selectedOrder.numero}</Typography>
-            <Typography variant="body1"><strong>Data:</strong> {selectedOrder.data}</Typography>
-            <Typography variant="body1"><strong>ID Cliente:</strong> {selectedOrder.idCliente}</Typography>
-            <Typography variant="body1"><strong>Cliente:</strong> {selectedOrder.cliente}</Typography>
-            <Typography variant="body1"><strong>Endereço:</strong> {selectedOrder.endereco}</Typography>
-            <Typography variant="body1"><strong>Cidade:</strong> {selectedOrder.cidade}</Typography>
-            <Typography variant="body1"><strong>UF:</strong> {selectedOrder.uf}</Typography>
-            <Typography variant="body1"><strong>Peso:</strong> {selectedOrder.peso} kg</Typography>
-            <Typography variant="body1"><strong>Volume:</strong> {selectedOrder.volume} m³</Typography>
-            <Typography variant="body1"><strong>Prazo:</strong> {selectedOrder.prazo}</Typography>
-            <Typography variant="body1"><strong>Prioridade:</strong> {selectedOrder.prioridade}</Typography>
-            <Typography variant="body1"><strong>Telefone:</strong> {selectedOrder.telefone}</Typography>
-            <Typography variant="body1"><strong>Email:</strong> {selectedOrder.email}</Typography>
-            <Typography variant="body1"><strong>Bairro:</strong> {selectedOrder.bairro}</Typography>
-            <Typography variant="body1"><strong>Valor:</strong> R$ {selectedOrder.valor}</Typography>
-            <Typography variant="body1"><strong>Instruções de Entrega:</strong> {selectedOrder.instrucoesEntrega}</Typography>
-            <Typography variant="body1"><strong>Nome do Contato:</strong> {selectedOrder.nomeContato}</Typography>
-            <Typography variant="body1"><strong>CPF/CNPJ:</strong> {selectedOrder.cpfCnpj}</Typography>
-            <Typography variant="body1"><strong>CEP:</strong> {selectedOrder.cep}</Typography>
-            <Typography variant="body1"><strong>Status:</strong> {selectedOrder.status}</Typography>
-            <Typography variant="body1"><strong>Data de Criação:</strong> {selectedOrder.createdAt}</Typography>
-            <Typography variant="body1"><strong>Data de Atualização:</strong> {selectedOrder.updatedAt}</Typography>
+            <Typography variant="body2"><strong>Pedido Número:</strong> {selectedOrder.numero}</Typography>
+            <Typography variant="body2"><strong>Data:</strong> {selectedOrder.data}</Typography>
+            <Typography variant="body2"><strong>ID Cliente:</strong> {selectedOrder.idCliente}</Typography>
+            <Typography variant="body2"><strong>Cliente:</strong> {selectedOrder.cliente}</Typography>
+            <Typography variant="body2"><strong>Endereço:</strong> {selectedOrder.endereco}</Typography>
+            <Typography variant="body2"><strong>Cidade:</strong> {selectedOrder.cidade}</Typography>
+            <Typography variant="body2"><strong>UF:</strong> {selectedOrder.uf}</Typography>
+            <Typography variant="body2"><strong>Peso:</strong> {selectedOrder.peso} kg</Typography>
+            <Typography variant="body2"><strong>Volume:</strong> {selectedOrder.volume} m³</Typography>
+            <Typography variant="body2"><strong>Prazo:</strong> {selectedOrder.prazo}</Typography>
+            <Typography variant="body2"><strong>Prioridade:</strong> {selectedOrder.prioridade}</Typography>
+            <Typography variant="body2"><strong>Telefone:</strong> {selectedOrder.telefone}</Typography>
+            <Typography variant="body2"><strong>Email:</strong> {selectedOrder.email}</Typography>
+            <Typography variant="body2"><strong>Bairro:</strong> {selectedOrder.bairro}</Typography>
+            <Typography variant="body2"><strong>Valor:</strong> R$ {selectedOrder.valor}</Typography>
+            <Typography variant="body2"><strong>Instruções de Entrega:</strong> {selectedOrder.instrucoesEntrega}</Typography>
+            <Typography variant="body2"><strong>Nome do Contato:</strong> {selectedOrder.nomeContato}</Typography>
+            <Typography variant="body2"><strong>CPF/CNPJ:</strong> {selectedOrder.cpfCnpj}</Typography>
+            <Typography variant="body2"><strong>CEP:</strong> {selectedOrder.cep}</Typography>
+            <Typography variant="body2"><strong>Status:</strong> {selectedOrder.status}</Typography>
+            <Typography variant="body2"><strong>Data de Criação:</strong> {selectedOrder.createdAt}</Typography>
+            <Typography variant="body2"><strong>Data de Atualização:</strong> {selectedOrder.updatedAt}</Typography>
             {selectedOrder.Delivery && (
               <>
-                <Typography variant="body1"><strong>Data de Entrega:</strong> {selectedOrder.Delivery.dataFim}</Typography>
+                <Typography variant="body2"><strong>Data de Entrega:</strong> {selectedOrder.Delivery.dataFim}</Typography>
                 {selectedOrder.Delivery.Driver && (
-                  <Typography variant="body1"><strong>Motorista:</strong> {selectedOrder.Delivery.Driver.name}</Typography>
+                  <Typography variant="body2"><strong>Motorista:</strong> {selectedOrder.Delivery.Driver.name}</Typography>
                 )}
               </>
             )}

@@ -36,21 +36,25 @@ export class UsersService {
       data.password = await bcrypt.hash(data.password, 10);
     }
 
+    const user = await this.prisma.user.findFirst({ where: { id, tenantId } });
+    if (!user) {
+      throw new BadRequestException('User not found or does not belong to this tenant');
+    }
+
     return this.prisma.user.update({
-      where: { 
-        id, 
-        tenantId 
-      },
+      where: { id },
       data,
     });
   }
 
   async remove(id: number, tenantId: number) {
+    const user = await this.prisma.user.findFirst({ where: { id, tenantId } });
+    if (!user) {
+      throw new BadRequestException('User not found or does not belong to this tenant');
+    }
+
     return this.prisma.user.delete({
-      where: { 
-        id, 
-        tenantId 
-      },
+      where: { id },
     });
   }
 }

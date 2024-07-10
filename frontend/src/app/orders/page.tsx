@@ -22,9 +22,10 @@ import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-balham.css'; // Importar o tema claro
 
-import { utils, writeFile } from 'xlsx';
+import { utils, read, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { useTheme } from '../context/ThemeContext'; // Importar o contexto de tema
 
 enum Field {
   Id = 'id',
@@ -99,6 +100,7 @@ const OrdersPage: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [gridApi, setGridApi] = useState<any>(null);
 
+  const { isDarkMode } = useTheme(); // Obter o tema atual do contexto
   const token = localStorage.getItem('token') || '';
 
   useEffect(() => {
@@ -144,9 +146,11 @@ const OrdersPage: React.FC = () => {
 
     const reader = new FileReader();
     reader.onload = async () => {
-      const text = reader.result as string;
-      const result = parse(text, { header: true });
-      const ordersData = result.data as Order[];
+      const binaryStr = reader.result;
+      const workbook = read(binaryStr, { type: 'binary' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const ordersData = utils.sheet_to_json<Order>(worksheet);
 
       try {
         await uploadOrders(token, ordersData);
@@ -163,7 +167,7 @@ const OrdersPage: React.FC = () => {
         setSuccess('');
       }
     };
-    reader.readAsText(file);
+    reader.readAsBinaryString(file);
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -323,7 +327,7 @@ const OrdersPage: React.FC = () => {
         <input
           type="file"
           hidden
-          accept=".csv"
+          accept=".csv, .xls, .xlsx"
           onChange={handleFileChange}
         />
         <Add />
@@ -372,7 +376,7 @@ const OrdersPage: React.FC = () => {
           Export Selected to PDF
         </MenuItem>
       </Menu>
-      <div className="ag-theme-balham-dark" style={{ height: 600, width: '100%', marginTop: '16px' }}>
+      <div className={isDarkMode ? "ag-theme-balham-dark" : "ag-theme-balham"} style={{ height: 600, width: '100%', marginTop: '16px' }}>
         <AgGridReact
           rowData={filteredOrders}
           columnDefs={columns}

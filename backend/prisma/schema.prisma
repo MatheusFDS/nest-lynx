@@ -36,20 +36,28 @@ model Role {
 }
 
 model Tenant {
-  id             Int             @id @default(autoincrement())
-  name           String          @unique
-  users          User[]
-  drivers        Driver[]
-  vehicles       Vehicle[]
-  orders         Order[]
-  directions     Directions[]
-  deliveries     Delivery[]
-  categories     Category[]
-  accountsPayable AccountsPayable[]
-  paymentDeliveries PaymentDelivery[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @default(now())
+  id                 Int              @id @default(autoincrement())
+  name               String           @unique
+  minDeliveryPercentage Float?   // Alterado para porcentagem
+  address            String?          // Endereço do tenant
+  domain             String?          // Campo restrito ao desenvolvedor
+  databaseSchema     String?          // Campo restrito ao desenvolvedor
+  port               Int?             // Campo restrito ao desenvolvedor
+  databaseUrl        String?          // Campo restrito ao desenvolvedor
+  users              User[]
+  drivers            Driver[]
+  vehicles           Vehicle[]
+  orders             Order[]
+  directions         Directions[]
+  deliveries         Delivery[]
+  categories         Category[]
+  accountsPayable    AccountsPayable[]
+  paymentDeliveries  PaymentDelivery[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @default(now())
 }
+
+
 
 model Driver {
   id            Int       @id @default(autoincrement())
@@ -145,6 +153,8 @@ model Delivery {
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @default(now())
 }
+
+
 
 model Category {
   id        Int      @id @default(autoincrement())
