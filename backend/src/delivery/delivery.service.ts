@@ -11,7 +11,9 @@ export class DeliveryService {
     const { motoristaId, orders, veiculoId, ...rest } = createDeliveryDto;
 
     const existingDelivery = await this.prisma.delivery.findFirst({
-      where: { motoristaId, status: 'Em Rota' },
+      where: { motoristaId, 
+        status: { in: ['Em Rota', 'A liberar'] },
+      },
     });
 
     if (existingDelivery) {
@@ -57,6 +59,13 @@ export class DeliveryService {
 
     const valorFrete = maxDirectionValue + (vehicle?.Category?.valor ?? 0);
 
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
+
+    const percentualFrete = (valorFrete / totalValor) * 100;
+    const status = percentualFrete > (tenant?.minDeliveryPercentage || 100) ? 'A liberar' : 'Em Rota';
+
     const delivery = await this.prisma.delivery.create({
       data: {
         motoristaId,
@@ -65,7 +74,7 @@ export class DeliveryService {
         valorFrete,
         totalPeso,
         totalValor,
-        status: 'Em Rota',
+        status,
         ...rest,
         orders: {
           connect: orders.map(order => ({ id: order.id })),
@@ -80,16 +89,43 @@ export class DeliveryService {
 
     await this.prisma.order.updateMany({
       where: { id: { in: orders.map(order => order.id) } },
-      data: { status: 'Em Rota', deliveryId: delivery.id },
+      data: { status: status, deliveryId: delivery.id },
     });
 
     return delivery;
   }
 
+  async release(id: number, tenantId: number) {
+    const delivery = await this.prisma.delivery.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!delivery) {
+      throw new NotFoundException('Delivery not found');
+    }
+
+    if (delivery.status !== 'A liberar') {
+      throw new BadRequestException('A entrega não está no status "A liberar".');
+    }
+
+    const updatedDelivery = await this.prisma.delivery.update({
+      where: { id },
+      data: {
+        status: 'Em Rota',
+      },
+    });
+
+    await this.prisma.order.updateMany({
+      where: { deliveryId: id },
+      data: { status: 'Em Rota' },
+    });
+
+    return updatedDelivery;
+  }
+
   async update(id: number, updateDeliveryDto: UpdateDeliveryDto, tenantId: number) {
     const { motoristaId, veiculoId, orders, status, ...rest } = updateDeliveryDto;
 
-    // Verificar se há pagamentos baixados antes de qualquer alteração
     const hasBaixadoPayments = await this.prisma.accountsPayable.findFirst({
       where: {
         paymentDeliveries: { some: { deliveryId: id } },
@@ -104,7 +140,6 @@ export class DeliveryService {
     let updatedDelivery;
 
     if (status === 'Em Rota') {
-      // Excluir pagamentos pendentes
       await this.prisma.accountsPayable.deleteMany({
         where: {
           paymentDeliveries: { some: { deliveryId: id } },
@@ -112,7 +147,6 @@ export class DeliveryService {
         },
       });
 
-      // Atualizar data de finalização para null
       updatedDelivery = await this.prisma.delivery.update({
         where: { id },
         data: {
@@ -255,7 +289,6 @@ export class DeliveryService {
       data: { status: 'Reentrega', deliveryId: null },
     });
 
-    // Excluir pagamentos associados
     await this.prisma.accountsPayable.deleteMany({
       where: {
         paymentDeliveries: { some: { deliveryId: id } },

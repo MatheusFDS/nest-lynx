@@ -1,34 +1,18 @@
-'use client';
+'use client'
 
 import React, { useEffect, useState } from 'react';
-import {
-  Container,
-  Typography,
-  Grid,
-  Paper,
-  Button,
-  List,
-  ListItem,
-  ListItemText,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Tabs,
-  Tab,
-} from '@mui/material';
-import { Delete, Info, ExpandMore } from '@mui/icons-material';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { fetchOrders, fetchDirections, fetchDrivers, fetchVehicles, fetchCategories } from '../../services/auxiliaryService';
+import { Container, Grid, Typography, Button } from '@mui/material';
+import { DragDropContext, DropResult } from 'react-beautiful-dnd';
+import { fetchOrders, fetchDirections, fetchDrivers, fetchVehicles, fetchCategories, fetchTenantData } from '../../services/auxiliaryService';
 import { Order, Driver, Vehicle, Direction, Category } from '../../types';
 import withAuth from '../components/withAuth';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { addDelivery } from '../../services/deliveryService';
+import DirectionCard from '../components/routing/DirectionCard';
+import OrderDetailsDialog from '../components/routing/OrderDetailsDialog';
+import GenerateRouteDialog from '../components/routing/GenerateRouteDialog';
+import ExpandedOrdersDialog from '../components/routing/ExpandedOrdersDialog';
+import LeafletMapComponent from '../components/routing/LeafletMapComponent';
 
 const RoutingPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -36,6 +20,7 @@ const RoutingPage: React.FC = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [tenantData, setTenantData] = useState<any>(null);
   const [selectedOrders, setSelectedOrders] = useState<{ [key: number]: Order[] }>({});
   const [selectedDriver, setSelectedDriver] = useState<number | string>('');
   const [selectedVehicle, setSelectedVehicle] = useState<number | string>('');
@@ -45,7 +30,8 @@ const RoutingPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [currentDirectionId, setCurrentDirectionId] = useState<number | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [tabIndex, setTabIndex] = useState(0);
+  const [showMap, setShowMap] = useState(false);
+  const [ordersForMap, setOrdersForMap] = useState<Order[]>([]);
   const [additionalValue, setAdditionalValue] = useState<number>(0);
   const [tollValue, setTollValue] = useState<number>(0);
   const [vehicleValue, setVehicleValue] = useState<number>(0);
@@ -55,21 +41,23 @@ const RoutingPage: React.FC = () => {
 
   const loadInitialData = async () => {
     try {
-      const [ordersData, directionsData, driversData, vehiclesData, categoriesData] = await Promise.all([
+      const [ordersData, directionsData, driversData, vehiclesData, categoriesData, tenantData] = await Promise.all([
         fetchOrders(token),
         fetchDirections(token),
         fetchDrivers(token),
         fetchVehicles(token),
         fetchCategories(token),
+        fetchTenantData(token),
       ]);
 
-      const filteredOrders = ordersData.filter((order: { status: string; }) => ['Pendente', 'Reentrega'].includes(order.status));
+      const filteredOrders = ordersData.filter((order: { status: string }) => ['Pendente', 'Reentrega'].includes(order.status));
 
       setOrders(filteredOrders);
       setDirections(directionsData);
       setDrivers(driversData);
       setVehicles(vehiclesData);
       setCategories(categoriesData);
+      setTenantData(tenantData);
 
       const initialOrders: { [key: number]: Order[] } = {};
       directionsData.forEach((direction: Direction) => {
@@ -225,7 +213,7 @@ const RoutingPage: React.FC = () => {
   };
 
   const handleConfirmDelivery = async () => {
-    if (!currentDirectionId) return;
+    if (!currentDirectionId || !tenantData) return;
 
     const ordersInDirection = selectedOrders[currentDirectionId];
     if (!ordersInDirection || ordersInDirection.length === 0) return;
@@ -251,9 +239,15 @@ const RoutingPage: React.FC = () => {
     console.log('Delivery data being sent:', JSON.stringify(deliveryData, null, 2));
 
     try {
-      await addDelivery(token, deliveryData);
+      const createdDelivery = await addDelivery(token, deliveryData);
       setDialogOpen(false);
       setCurrentDirectionId(null);
+
+      if (createdDelivery.status === 'A liberar') {
+        alert('O roteiro foi enviado para liberação do gestor. Caso deseje adicionar mais pedidos posteriormente, exclua o roteiro.');
+      } else {
+        alert('Roteiro gerado com sucesso!');
+      }
 
       // Atualize os pedidos para remover os confirmados
       setSelectedOrders(prevState => {
@@ -271,15 +265,42 @@ const RoutingPage: React.FC = () => {
       if (error instanceof Error) {
         console.error('Failed to create delivery:', error.message);
         setError(error.message);
+        alert(`Erro: ${error.message}`);
       } else {
         console.error('Failed to create delivery:', error);
         setError('Failed to create delivery.');
+        alert('Erro: Falha ao criar roteiro.');
       }
     }
   };
 
+  const handleShowMap = (directionId: number) => {
+    setCurrentDirectionId(directionId);
+    const validOrders = selectedOrders[directionId].filter(order => order.lat !== undefined && order.lng !== undefined);
+    setOrdersForMap(validOrders);
+    setShowMap(true);
+  };
+
+  const handleShowGeneralMap = () => {
+    const validOrders = orders.filter(order => order.lat !== undefined && order.lng !== undefined);
+    setOrdersForMap(validOrders);
+    setShowMap(true);
+  };
+
   return (
     <Container style={{ marginTop: '24px' }}>
+      <Button variant="contained" color="secondary" onClick={handleShowGeneralMap} style={{ marginTop: '10px', marginBottom: '10px' }}>
+        Mapa Geral
+      </Button>
+      <Typography style={{ marginTop: '10px', marginBottom: '10px' }}>
+      {showMap && (
+        <LeafletMapComponent orders={ordersForMap.map(order => ({
+          cep: order.cep,
+          lat: order.lat!,
+          lng: order.lng!
+        }))} />
+      )}
+</Typography>
       {error && <Typography color="error">{error}</Typography>}
       <DragDropContext onDragEnd={onDragEnd}>
         <Grid container spacing={3}>
@@ -288,224 +309,55 @@ const RoutingPage: React.FC = () => {
             const ordersInDirection = selectedOrders[direction.id] || [];
             if (ordersInDirection.length === 0) return null;
 
-            const { totalWeight, totalValue } = calculateTotalWeightAndValue(ordersInDirection);
-
             return (
-              <Grid item xs={12} sm={6} md={4} key={direction.id}>
-                <Paper elevation={3} style={{ padding: '8px', height: '550px', overflow: 'hidden' }}>
-                  <Typography variant="subtitle1">{direction.regiao}</Typography>
-                  <Typography variant="body2">CEP: {direction.rangeInicio} - {direction.rangeFim}</Typography>
-                  <Typography variant="body2">Total Valor: R$ {totalValue.toFixed(2)}</Typography>
-                  <Typography variant="body2">Total Peso: {totalWeight.toFixed(2)} kg</Typography>
-                  <Typography variant="body2">Total de Pedidos: {ordersInDirection.length}</Typography>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="small"
-                    style={{ marginTop: '8px' }}
-                    onClick={() => handleGenerateDelivery(direction.id)}
-                  >
-                    Gerar Rota
-                  </Button>
-                  <IconButton
-                    edge="end"
-                    size="small"
-                    onClick={() => handleExpandedOrdersDialogOpen(direction.id)}
-                    style={{ marginLeft: '8px' }}
-                  >
-                    <ExpandMore fontSize="small" />
-                  </IconButton>
-                  <Droppable droppableId={directionId}>
-                    {(provided) => (
-                      <div ref={provided.innerRef} {...provided.droppableProps} style={{ marginTop: '8px', overflowY: 'auto', maxHeight: '100%' }}>
-                        {ordersInDirection.map((order, index) => (
-                          <Draggable key={order.id.toString()} draggableId={order.id.toString()} index={index}>
-                            {(provided) => (
-                              <ListItem ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                                <Paper style={{ padding: '4px', marginBottom: '4px', width: '100%' }}>
-                                  <ListItemText
-                                    primary={<Typography variant="body2">{`Pedido ${order.numero} - Cliente: ${order.cliente}`}</Typography>}
-                                    secondary={<Typography variant="caption">{`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}</Typography>}
-                                  />
-                                  <IconButton
-                                    edge="end"
-                                    size="small"
-                                    onClick={() => handleDetailsDialogOpen(order)} // Exibir detalhes do pedido
-                                  >
-                                    <Info fontSize="small" />
-                                  </IconButton>
-                                </Paper>
-                              </ListItem>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </Paper>
-              </Grid>
+              <DirectionCard
+                key={direction.id}
+                direction={direction}
+                orders={ordersInDirection}
+                handleGenerateDelivery={handleGenerateDelivery}
+                handleExpandedOrdersDialogOpen={handleExpandedOrdersDialogOpen}
+                handleDetailsDialogOpen={handleDetailsDialogOpen}
+                calculateTotalWeightAndValue={calculateTotalWeightAndValue}
+                handleShowMap={handleShowMap}
+              />
             );
           })}
         </Grid>
       </DragDropContext>
 
-      <Dialog open={dialogOpen} onClose={handleDialogClose} fullWidth maxWidth="md">
-        <DialogTitle>Gerar Roteiro</DialogTitle>
-        <DialogContent>
-          <Tabs value={tabIndex} onChange={(e, newValue) => setTabIndex(newValue)}>
-            <Tab label="DADOS" />
-            <Tab label="NOTAS" />
-          </Tabs>
-          {tabIndex === 0 && (
-            <div>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Motorista</InputLabel>
-                <Select value={selectedDriver} onChange={handleDriverChange}>
-                  {drivers.map(driver => (
-                    <MenuItem key={driver.id} value={driver.id}>
-                      {driver.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Veículo</InputLabel>
-                <Select value={selectedVehicle} onChange={handleVehicleChange}>
-                  {vehicles.map(vehicle => (
-                    <MenuItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.model}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Typography variant="body2" style={{ marginTop: '16px' }}>
-                Total Peso: {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalWeight.toFixed(2)} kg
-              </Typography>
-              <Typography variant="body2">Total Valor: R$ {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalValue.toFixed(2)}</Typography>
-              <Typography variant="body2">Valor do Frete: R$ {calculateFreightValue().toFixed(2)}</Typography>
-            </div>
-          )}
-          {tabIndex === 1 && (
-            <div>
-              <List>
-                {selectedOrders[currentDirectionId!]?.map(order => (
-                  <ListItem key={order.id}>
-                    <ListItemText
-                      primary={<Typography variant="body2">{`Pedido ${order.numero} - Cliente: ${order.cliente}`}</Typography>}
-                      secondary={<Typography variant="caption">{`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}</Typography>}
-                    />
-                    <IconButton
-                      edge="end"
-                      size="small"
-                      onClick={() => setSelectedOrders(prevState => {
-                        const updatedOrders = { ...prevState };
-                        updatedOrders[currentDirectionId!] = updatedOrders[currentDirectionId!].filter(o => o.id !== order.id);
-                        return updatedOrders;
-                      })}
-                    >
-                      <Delete fontSize="small" />
-                    </IconButton>
-                  </ListItem>
-                ))}
-                <Typography variant="body2" style={{ marginTop: '16px' }}>
-                  Total Peso: {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalWeight.toFixed(2)} kg
-                </Typography>
-                <Typography variant="body2">Total Valor: R$ {calculateTotalWeightAndValue(selectedOrders[currentDirectionId!] || []).totalValue.toFixed(2)}</Typography>
-              </List>
-              <Button
-                variant="contained"
-                color="secondary"
-                size="small"
-                style={{ marginTop: '16px' }}
-                onClick={() => openGoogleMaps(selectedOrders[currentDirectionId!]?.[0]?.cep || '')}
-              >
-                Mapa
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDialogClose} color="secondary">
-            Cancelar
-          </Button>
-          <Button onClick={handleConfirmDelivery} color="primary">
-            Confirmar
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <GenerateRouteDialog
+        open={dialogOpen}
+        onClose={handleDialogClose}
+        onConfirm={handleConfirmDelivery}
+        selectedDriver={selectedDriver}
+        selectedVehicle={selectedVehicle}
+        handleDriverChange={handleDriverChange}
+        handleVehicleChange={handleVehicleChange}
+        drivers={drivers}
+        vehicles={vehicles}
+        orders={selectedOrders[currentDirectionId!] || []}
+        calculateFreightValue={calculateFreightValue}
+        calculateTotalWeightAndValue={calculateTotalWeightAndValue}
+        openGoogleMaps={openGoogleMaps}
+        setSelectedOrders={setSelectedOrders}
+        currentDirectionId={currentDirectionId}
+      />
 
-      <Dialog open={expandedOrdersDialogOpen} onClose={handleExpandedOrdersDialogClose} fullWidth maxWidth="md">
-        <DialogTitle>Todos os Pedidos</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={3}>
-            {selectedOrders[currentDirectionId!]?.map(order => (
-              <Grid item xs={12} key={order.id}>
-                <Paper style={{ padding: '8px', marginBottom: '8px' }}>
-                  <Typography variant="body2">{`Pedido ${order.numero} - Cliente: ${order.cliente}`}</Typography>
-                  <Typography variant="caption">{`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}</Typography>
-                  <IconButton
-                    edge="end"
-                    size="small"
-                    onClick={() => handleDetailsDialogOpen(order)}
-                    style={{ float: 'right' }}
-                  >
-                    <Info fontSize="small" />
-                  </IconButton>
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleExpandedOrdersDialogClose} color="primary">
-            Fechar
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ExpandedOrdersDialog
+        open={expandedOrdersDialogOpen}
+        onClose={handleExpandedOrdersDialogClose}
+        orders={selectedOrders[currentDirectionId!] || []}
+        handleDetailsDialogOpen={handleDetailsDialogOpen}
+      />
 
-      {selectedOrder && (
-        <Dialog open={detailsDialogOpen} onClose={handleDetailsDialogClose} fullWidth maxWidth="sm">
-          <DialogTitle>Detalhes do Pedido</DialogTitle>
-          <DialogContent>
-            <Typography variant="body2"><strong>Pedido Número:</strong> {selectedOrder.numero}</Typography>
-            <Typography variant="body2"><strong>Data:</strong> {selectedOrder.data}</Typography>
-            <Typography variant="body2"><strong>ID Cliente:</strong> {selectedOrder.idCliente}</Typography>
-            <Typography variant="body2"><strong>Cliente:</strong> {selectedOrder.cliente}</Typography>
-            <Typography variant="body2"><strong>Endereço:</strong> {selectedOrder.endereco}</Typography>
-            <Typography variant="body2"><strong>Cidade:</strong> {selectedOrder.cidade}</Typography>
-            <Typography variant="body2"><strong>UF:</strong> {selectedOrder.uf}</Typography>
-            <Typography variant="body2"><strong>Peso:</strong> {selectedOrder.peso} kg</Typography>
-            <Typography variant="body2"><strong>Volume:</strong> {selectedOrder.volume} m³</Typography>
-            <Typography variant="body2"><strong>Prazo:</strong> {selectedOrder.prazo}</Typography>
-            <Typography variant="body2"><strong>Prioridade:</strong> {selectedOrder.prioridade}</Typography>
-            <Typography variant="body2"><strong>Telefone:</strong> {selectedOrder.telefone}</Typography>
-            <Typography variant="body2"><strong>Email:</strong> {selectedOrder.email}</Typography>
-            <Typography variant="body2"><strong>Bairro:</strong> {selectedOrder.bairro}</Typography>
-            <Typography variant="body2"><strong>Valor:</strong> R$ {selectedOrder.valor}</Typography>
-            <Typography variant="body2"><strong>Instruções de Entrega:</strong> {selectedOrder.instrucoesEntrega}</Typography>
-            <Typography variant="body2"><strong>Nome do Contato:</strong> {selectedOrder.nomeContato}</Typography>
-            <Typography variant="body2"><strong>CPF/CNPJ:</strong> {selectedOrder.cpfCnpj}</Typography>
-            <Typography variant="body2"><strong>CEP:</strong> {selectedOrder.cep}</Typography>
-            <Typography variant="body2"><strong>Status:</strong> {selectedOrder.status}</Typography>
-            <Typography variant="body2"><strong>Data de Criação:</strong> {selectedOrder.createdAt}</Typography>
-            <Typography variant="body2"><strong>Data de Atualização:</strong> {selectedOrder.updatedAt}</Typography>
-            {selectedOrder.Delivery && (
-              <>
-                <Typography variant="body2"><strong>Data de Entrega:</strong> {selectedOrder.Delivery.dataFim}</Typography>
-                {selectedOrder.Delivery.Driver && (
-                  <Typography variant="body2"><strong>Motorista:</strong> {selectedOrder.Delivery.Driver.name}</Typography>
-                )}
-              </>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleDetailsDialogClose} color="primary">
-              Fechar
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
+      <OrderDetailsDialog
+        open={detailsDialogOpen}
+        onClose={handleDetailsDialogClose}
+        order={selectedOrder}
+      />
+
+
+
     </Container>
   );
 };

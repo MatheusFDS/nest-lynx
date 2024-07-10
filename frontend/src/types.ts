@@ -47,6 +47,10 @@ export interface Driver {
 }
 
 export interface Order {
+  lat: number;
+  lng: number;
+  estado: any;
+  logradouro: any;
   motorista: ReactNode;
   dataFinalizacao: string | number | Date;
   id: number;

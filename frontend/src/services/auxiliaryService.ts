@@ -1,5 +1,9 @@
+import { Tenant } from '../types';
+
+const API_URL = 'http://localhost:4000';
+
 export const fetchOrders = async (token: string) => {
-  const response = await fetch('http://localhost:4000/orders', {
+  const response = await fetch(`${API_URL}/orders`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -14,7 +18,7 @@ export const fetchOrders = async (token: string) => {
 };
 
 export const fetchDirections = async (token: string) => {
-  const response = await fetch('http://localhost:4000/directions', {
+  const response = await fetch(`${API_URL}/directions`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -29,7 +33,7 @@ export const fetchDirections = async (token: string) => {
 };
 
 export const fetchDrivers = async (token: string) => {
-  const response = await fetch('http://localhost:4000/drivers', {
+  const response = await fetch(`${API_URL}/drivers`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -44,7 +48,7 @@ export const fetchDrivers = async (token: string) => {
 };
 
 export const fetchVehicles = async (token: string) => {
-  const response = await fetch('http://localhost:4000/vehicles', {
+  const response = await fetch(`${API_URL}/vehicles`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -59,7 +63,7 @@ export const fetchVehicles = async (token: string) => {
 };
 
 export const fetchCategories = async (token: string) => {
-  const response = await fetch('http://localhost:4000/category', {
+  const response = await fetch(`${API_URL}/category`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -68,6 +72,21 @@ export const fetchCategories = async (token: string) => {
 
   if (!response.ok) {
     throw new Error('Failed to fetch categories');
+  }
+
+  return await response.json();
+};
+
+export const fetchTenantData = async (token: string): Promise<Tenant> => {
+  const response = await fetch(`${API_URL}/tenant`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch tenant data');
   }
 
   return await response.json();

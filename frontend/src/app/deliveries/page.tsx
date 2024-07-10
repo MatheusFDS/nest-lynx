@@ -57,6 +57,7 @@ const DeliveriesPage: React.FC = () => {
   const [dateRange, setDateRange] = useState<{ startDate: string; endDate: string }>({ startDate: '', endDate: '' });
   const [showFinalized, setShowFinalized] = useState<boolean>(false);
   const [showPending, setShowPending] = useState<boolean>(false);
+  const [showToRelease, setShowToRelease] = useState<boolean>(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState<boolean>(false);
   const [confirmDialogAction, setConfirmDialogAction] = useState<() => void>(() => {});
 
@@ -87,6 +88,10 @@ const DeliveriesPage: React.FC = () => {
   }, []);
 
   const handleEditDelivery = (delivery: Delivery) => {
+    if (delivery.status === 'A liberar') {
+      return; // Não permite editar entregas "A liberar"
+    }
+
     setCurrentDelivery({
       ...delivery,
       status: delivery.status || 'Em Rota', // Define 'Em Rota' como valor padrão se o status for indefinido
@@ -223,6 +228,8 @@ const DeliveriesPage: React.FC = () => {
       setShowFinalized(checked);
     } else if (name === 'showPending') {
       setShowPending(checked);
+    } else if (name === 'showToRelease') {
+      setShowToRelease(checked);
     }
   };
 
@@ -273,7 +280,10 @@ const DeliveriesPage: React.FC = () => {
     if (showPending && delivery.status === 'Em Rota') {
       return true;
     }
-    return !showFinalized && !showPending;
+    if (showToRelease && delivery.status === 'A liberar') {
+      return true;
+    }
+    return !showFinalized && !showPending && !showToRelease;
   });
 
   const getRegionName = (delivery: Delivery) => {
@@ -295,7 +305,7 @@ const DeliveriesPage: React.FC = () => {
             margin="normal"
           />
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid item xs={5} md={2}>
           <TextField
             label="Data Início"
             type="datetime-local"
@@ -307,7 +317,7 @@ const DeliveriesPage: React.FC = () => {
             margin="normal"
           />
         </Grid>
-        <Grid item xs={6} md={3}>
+        <Grid item xs={5} md={2}>
           <TextField
             label="Data Fim"
             type="datetime-local"
@@ -319,16 +329,22 @@ const DeliveriesPage: React.FC = () => {
             margin="normal"
           />
         </Grid>
-        <Grid item xs={6} md={1}>
+        <Grid item xs={4} md={1.2}>
           <FormControlLabel
             control={<Checkbox checked={showFinalized} onChange={handleStatusFilterChange} name="showFinalized" />}
             label="Finalizados"
           />
         </Grid>
-        <Grid item xs={6} md={1}>
+        <Grid item xs={4} md={1.2}>
           <FormControlLabel
             control={<Checkbox checked={showPending} onChange={handleStatusFilterChange} name="showPending" />}
             label="Pendentes"
+          />
+        </Grid>
+        <Grid item xs={4} md={1.4}>
+          <FormControlLabel
+            control={<Checkbox checked={showToRelease} onChange={handleStatusFilterChange} name="showToRelease" />}
+            label="A Liberar"
           />
         </Grid>
       </Grid>
@@ -368,9 +384,11 @@ const DeliveriesPage: React.FC = () => {
                     <TableCell>{delivery.dataFim ? new Date(delivery.dataFim).toLocaleString() : 'N/A'}</TableCell>
                     <TableCell>{delivery.status}</TableCell>
                     <TableCell>
-                      <IconButton onClick={() => handleEditDelivery(delivery)}>
-                        <Edit />
-                      </IconButton>
+                      {delivery.status !== 'A liberar' && (
+                        <IconButton onClick={() => handleEditDelivery(delivery)}>
+                          <Edit />
+                        </IconButton>
+                      )}
                       <IconButton onClick={() => openGoogleMaps(delivery.orders[0]?.cep || '')}>
                         <Map />
                       </IconButton>

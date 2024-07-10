@@ -27,6 +27,7 @@ import { useTheme as useCustomTheme } from '../context/ThemeContext';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
+
 interface ToolbarProps {
   title: string;
 }
@@ -40,7 +41,6 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
   const [openConfig, setOpenConfig] = useState(false);
   const [openCadastros, setOpenCadastros] = useState(false);
   const [openRotinas, setOpenRotinas] = useState(false);
-
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -174,6 +174,11 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
                       <Button color="inherit" onClick={() => handleNavigation('/payments')}>
                         Pagamentos
                       </Button>
+                     {userRole === 'admin' && (
+                      <Button color="inherit" onClick={() => handleNavigation('/releases')}>
+                        Liberação
+                      </Button>
+                        )}
                     </Box>
                   </Box>
                 </Grid>
@@ -213,6 +218,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
                     </Box>
                   </Box>
                 </Grid>
+                {userRole === 'admin' && (
                 <Grid item>
                   <Box
                     onMouseEnter={toggleConfig}
@@ -243,6 +249,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
                     </Box>
                   </Box>
                 </Grid>
+                                 )}
                 <Grid item>
                   <Button color="inherit" onClick={handleLogout}>
                     Logout
