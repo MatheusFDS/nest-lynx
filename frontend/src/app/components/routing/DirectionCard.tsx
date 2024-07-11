@@ -50,15 +50,6 @@ const DirectionCard: React.FC<DirectionCardProps> = ({
         >
           <ExpandMore fontSize="small" />
         </IconButton>
-        <Button
-          variant="contained"
-          color="secondary"
-          size="small"
-          style={{ marginTop: '8px' }}
-          onClick={() => handleShowMap(direction.id)}
-        >
-          Mapa do Bloco
-        </Button>
         <Droppable droppableId={direction.id.toString()}>
           {(provided) => (
             <div ref={provided.innerRef} {...provided.droppableProps} style={{ marginTop: '8px', overflowY: 'auto', maxHeight: '100%' }}>

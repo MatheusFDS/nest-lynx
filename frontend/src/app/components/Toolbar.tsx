@@ -162,6 +162,9 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
                       p={1}
                       borderRadius={1}
                     >
+                    <Button color="inherit" onClick={() => handleNavigation('/statistics')}>
+                        Análise
+                      </Button>
                       <Button color="inherit" onClick={() => handleNavigation('/deliveries')}>
                         Entregas
                       </Button>
