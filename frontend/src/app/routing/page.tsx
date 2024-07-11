@@ -299,10 +299,9 @@ const RoutingPage: React.FC = () => {
     setShowMap(true);
   };
 
-  const handleShowGeneralMap = () => {
-    const validOrders = orders.filter(order => order.lat !== undefined && order.lng !== undefined);
-    setOrdersForMap(validOrders);
-    setShowMap(true);
+  const handleGenerateRouteFromMap = (orderedOrders: Order[]) => {
+    setSelectedOrders({ ...selectedOrders, [currentDirectionId!]: orderedOrders });
+    setDialogOpen(true);
   };
 
   const handleCloseMap = () => {
@@ -311,9 +310,6 @@ const RoutingPage: React.FC = () => {
 
   return (
     <Container style={{ marginTop: '24px' }}>
-      <Button variant="contained" color="secondary" onClick={handleShowGeneralMap} style={{ marginTop: '10px', marginBottom: '10px' }}>
-        Mapa Geral
-      </Button>
       <Typography style={{ marginTop: '10px', marginBottom: '10px' }}>
         {error && <Typography color="error">{error}</Typography>}
       </Typography>
@@ -388,7 +384,7 @@ const RoutingPage: React.FC = () => {
           },
         }}
       >
-        <GoogleMapsComponent orders={ordersForMap} onClose={handleCloseMap} />
+        <GoogleMapsComponent orders={ordersForMap} onClose={handleCloseMap} tenantId={tenantId} onGenerateRoute={handleGenerateRouteFromMap} />
       </Modal>
     </Container>
   );

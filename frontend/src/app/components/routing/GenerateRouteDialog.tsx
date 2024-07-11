@@ -46,7 +46,7 @@ const GenerateRouteDialog: React.FC<GenerateRouteDialogProps> = ({
       <DialogContent>
         <Tabs value={tabIndex} onChange={(e, newValue) => setTabIndex(newValue)}>
           <Tab label="DADOS" />
-          <Tab label="NOTAS" />
+          <Tab label="PEDIDOS" />
         </Tabs>
         {tabIndex === 0 && (
           <div>
@@ -104,15 +104,6 @@ const GenerateRouteDialog: React.FC<GenerateRouteDialogProps> = ({
               </Typography>
               <Typography variant="body2">Total Valor: R$ {calculateTotalWeightAndValue(orders).totalValue.toFixed(2)}</Typography>
             </List>
-            <Button
-              variant="contained"
-              color="secondary"
-              size="small"
-              style={{ marginTop: '16px' }}
-              onClick={() => openGoogleMaps(orders[0]?.cep || '')}
-            >
-              Mapa
-            </Button>
           </div>
         )}
       </DialogContent>

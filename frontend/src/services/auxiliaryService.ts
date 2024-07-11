@@ -77,7 +77,7 @@ export const fetchCategories = async (token: string) => {
   return await response.json();
 };
 
-export const fetchTenantData = async (token: string): Promise<Tenant> => {
+export const fetchTenantData = async (token: string): Promise<Tenant[]> => {
   const response = await fetch(`${API_URL}/tenant`, {
     method: 'GET',
     headers: {
@@ -89,5 +89,7 @@ export const fetchTenantData = async (token: string): Promise<Tenant> => {
     throw new Error('Failed to fetch tenant data');
   }
 
-  return await response.json();
+  const data: Tenant[] = await response.json();
+  console.log('Tenant data:', data); // Log para verificar os dados retornados
+  return data;
 };
