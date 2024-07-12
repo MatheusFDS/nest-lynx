@@ -1,21 +1,20 @@
 import axios from 'axios';
 
-const API_KEY = 'AIzaSyCI6j3093lkPtwImKxNXLT101hp96uTbn0';
+const accessToken = 'pk.eyJ1IjoibWF0aGV1c2ZkcyIsImEiOiJjbHlpdHB3dDYwamZuMmtvZnVjdTNzbjI3In0.hVf9wJoZ_7mRM_iy09cdWg';
 
 export const geocodeAddress = async (address: string) => {
   try {
-    const response = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json`, {
+    const response = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json`, {
       params: {
-        address,
-        key: API_KEY,
+        access_token: accessToken,
       },
     });
     const { data } = response;
-    if (data.status === 'OK' && data.results.length > 0) {
-      const { lat, lng } = data.results[0].geometry.location;
-      return { lat, lng };
+    if (data.features && data.features.length > 0) {
+      const { center } = data.features[0];
+      return { lat: center[1], lng: center[0] };
     } else {
-      console.error('Geocoding error:', data.status);
+      console.error('Geocoding error:', data.message);
       return null;
     }
   } catch (error) {

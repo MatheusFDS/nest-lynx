@@ -1,5 +1,6 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { GoogleMap, DirectionsRenderer } from '@react-google-maps/api';
+import mapboxgl, { LngLatLike, GeoJSONSource, LngLatBoundsLike } from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css'; // Importando o CSS do Mapbox GL
 import axios from 'axios';
 import { Paper, Button, Typography, Box, ListItemText, IconButton, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent } from '@mui/material';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
@@ -8,11 +9,10 @@ import OrderDetailsDialog from './OrderDetailsDialog';
 import { fetchTenantData, fetchDrivers, fetchVehicles, fetchCategories, fetchDirections } from '../../../services/auxiliaryService';
 import { addDelivery } from '../../../services/deliveryService';
 import { Tenant, Order, Driver, Vehicle, Category, Direction } from '../../../types';
-import { useGoogleMaps } from '../../context/googleMapsContext';
 
-const API_KEY = 'AIzaSyCI6j3093lkPtwImKxNXLT101hp96uTbn0';
+mapboxgl.accessToken = 'pk.eyJ1IjoibWF0aGV1c2ZkcyIsImEiOiJjbHlpdHB3dDYwamZuMmtvZnVjdTNzbjI3In0.hVf9wJoZ_7mRM_iy09cdWg';
 
-interface GoogleMapsComponentProps {
+interface MapboxComponentProps {
   tenantId: number;
   orders: Order[];
   onClose: () => void;
@@ -42,25 +42,19 @@ const listContainerStyle = {
   overflowY: 'auto' as 'auto',
 };
 
-const center = {
-  lat: -15.7942,
-  lng: -47.8822,
-};
-
 const geocodeAddress = async (address: string) => {
   try {
-    const response = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json`, {
+    const response = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json`, {
       params: {
-        address,
-        key: API_KEY,
+        access_token: mapboxgl.accessToken,
       },
     });
     const { data } = response;
-    if (data.status === 'OK' && data.results.length > 0) {
-      const { lat, lng } = data.results[0].geometry.location;
-      return { lat, lng };
+    if (data.features && data.features.length > 0) {
+      const { center } = data.features[0];
+      return { lat: center[1], lng: center[0] };
     } else {
-      console.error('Geocoding error:', data.status);
+      console.error('Geocoding error:', data.message);
       return null;
     }
   } catch (error) {
@@ -69,8 +63,8 @@ const geocodeAddress = async (address: string) => {
   }
 };
 
-const GoogleMapsComponent: React.FC<GoogleMapsComponentProps> = ({ tenantId, orders, onClose, onGenerateRoute }) => {
-  const [directionsResponse, setDirectionsResponse] = useState<google.maps.DirectionsResult | null>(null);
+const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onClose, onGenerateRoute }) => {
+  const [map, setMap] = useState<mapboxgl.Map | null>(null);
   const [distance, setDistance] = useState<string | null>(null);
   const [duration, setDuration] = useState<string | null>(null);
   const [tenantAddress, setTenantAddress] = useState<string | null>(null);
@@ -85,9 +79,7 @@ const GoogleMapsComponent: React.FC<GoogleMapsComponentProps> = ({ tenantId, ord
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderDetailsOpen, setOrderDetailsOpen] = useState<boolean>(false);
 
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
-  const googleMapsContext = useGoogleMaps();
+  const mapContainer = useRef<HTMLDivElement>(null);
 
   const fetchTenantAddress = async (token: string) => {
     try {
@@ -129,65 +121,100 @@ const GoogleMapsComponent: React.FC<GoogleMapsComponentProps> = ({ tenantId, ord
     const tenantLocation = await geocodeAddress(tenantAddress);
     if (!tenantLocation) return;
 
-    const waypoints = orderedOrders.map(order => ({
-      location: { lat: order.lat, lng: order.lng },
-      stopover: true,
-    }));
+    const waypoints = orderedOrders.map(order => `${order.lng},${order.lat}`).join(';');
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${tenantLocation.lng},${tenantLocation.lat};${waypoints};${tenantLocation.lng},${tenantLocation.lat}`;
 
-    const directionsService = new window.google.maps.DirectionsService();
-    directionsService.route(
-      {
-        origin: tenantLocation,
-        destination: tenantLocation,
-        waypoints,
-        optimizeWaypoints: false,
-        travelMode: window.google.maps.TravelMode.DRIVING,
-      },
-      (result, status) => {
-        if (status === window.google.maps.DirectionsStatus.OK && result) {
-          setDirectionsResponse(result);
+    try {
+      const response = await axios.get(url, {
+        params: {
+          access_token: mapboxgl.accessToken,
+          geometries: 'geojson',
+        },
+      });
 
-          const route = result.routes[0];
-          let totalDistance = 0;
-          let totalDuration = 0;
+      const { routes } = response.data;
+      if (routes && routes.length > 0) {
+        const route = routes[0];
+        setDistance((route.distance / 1000).toFixed(2) + ' km');
+        setDuration((route.duration / 60).toFixed(2) + ' mins');
 
-          route.legs.forEach((leg: any) => {
-            totalDistance += leg.distance.value;
-            totalDuration += leg.duration.value;
+        if (map) {
+          const source = map.getSource('route') as GeoJSONSource;
+          source.setData(route.geometry);
+
+          const coordinates = route.geometry.coordinates;
+          const bounds = coordinates.reduce((bounds: mapboxgl.LngLatBounds, coord: [number, number]) => {
+            return bounds.extend(coord);
+          }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+
+          map.fitBounds(bounds, {
+            padding: { top: 50, bottom: 50, left: 50, right: 50 },
           });
-
-          setDistance((totalDistance / 1000).toFixed(2) + ' km');
-          setDuration((totalDuration / 60).toFixed(2) + ' mins');
-        } else {
-          console.error(`Error fetching directions ${result}`);
         }
       }
-    );
-  }, [orderedOrders, tenantAddress]);
+    } catch (error) {
+      console.error('Error fetching directions:', error);
+    }
+  }, [orderedOrders, tenantAddress, map]);
 
   useEffect(() => {
     fetchInitialData();
   }, []);
 
   useEffect(() => {
-    if (mapRef.current) {
-      markersRef.current.forEach(marker => marker.setMap(null));
-      markersRef.current = [];
+    if (mapContainer.current && !map) {
+      // Limpar o contêiner do mapa antes de inicializá-lo
+      while (mapContainer.current.firstChild) {
+        mapContainer.current.removeChild(mapContainer.current.firstChild);
+      }
 
-      const addMarker = (position: google.maps.LatLngLiteral) => {
-        const marker = new google.maps.Marker({
-          position,
-          map: mapRef.current!,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            fillColor: 'red',
-            fillOpacity: 1,
-            strokeWeight: 0,
-            scale: 6,
+      const initializedMap = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v11',
+        center: [0, 0], // Centro inicial para evitar a centralização em Brasília
+        zoom: 12,
+      });
+
+      initializedMap.on('load', () => {
+        initializedMap.addSource('route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: [],
+            },
           },
         });
 
-        markersRef.current.push(marker);
+        initializedMap.addLayer({
+          id: 'route',
+          type: 'line',
+          source: 'route',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            'line-color': '#888',
+            'line-width': 6,
+          },
+        });
+
+        setMap(initializedMap);
+      });
+    }
+
+    if (tenantAddress) {
+      calculateRoute();
+    }
+  }, [orderedOrders, tenantAddress, calculateRoute]);
+
+  useEffect(() => {
+    if (map) {
+      const addMarker = (position: { lat: number; lng: number }) => {
+        new mapboxgl.Marker().setLngLat([position.lng, position.lat]).addTo(map);
       };
 
       geocodeAddress(tenantAddress!).then((tenantLocation) => {
@@ -200,10 +227,7 @@ const GoogleMapsComponent: React.FC<GoogleMapsComponentProps> = ({ tenantId, ord
         });
       });
     }
-    if (tenantAddress) {
-      calculateRoute();
-    }
-  }, [orderedOrders, tenantAddress, calculateRoute]);
+  }, [map, orderedOrders, tenantAddress]);
 
   const onDragEnd = (result: any) => {
     if (!result.destination) return;
@@ -307,18 +331,7 @@ const GoogleMapsComponent: React.FC<GoogleMapsComponentProps> = ({ tenantId, ord
   return (
     <Box display="flex">
       <Box flex="2">
-        <GoogleMap
-          mapContainerStyle={containerStyle}
-          center={center}
-          zoom={12}
-          onLoad={(map) => {
-            mapRef.current = map;
-          }}
-        >
-          {directionsResponse && (
-            <DirectionsRenderer directions={directionsResponse} />
-          )}
-        </GoogleMap>
+        <div ref={mapContainer} style={containerStyle}></div>
         <Box style={actions}>
           <Typography variant="h6">Seleção de Motorista</Typography>
           <Box display="flex" flexDirection="column" flex="2">
@@ -426,4 +439,4 @@ const GoogleMapsComponent: React.FC<GoogleMapsComponentProps> = ({ tenantId, ord
   );
 };
 
-export default GoogleMapsComponent;
+export default MapboxComponent;

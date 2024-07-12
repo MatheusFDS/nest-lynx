@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 
 export interface Category {
+  precoPorKM: any;
   id: number;
   name: string;
   valor: number;
@@ -47,6 +48,7 @@ export interface Driver {
 }
 
 export interface Order {
+  address: any;
   lat: number;
   lng: number;
   estado: any;

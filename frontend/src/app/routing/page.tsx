@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import { Container, Grid, Typography } from '@mui/material';
@@ -10,7 +10,7 @@ import withAuth from '../components/withAuth';
 import DirectionCard from '../components/routing/DirectionCard';
 import OrderDetailsDialog from '../components/routing/OrderDetailsDialog';
 import ExpandedOrdersDialog from '../components/routing/ExpandedOrdersDialog';
-import GoogleMapsComponent from '../components/routing/GoogleMapsComponent';
+import MapboxComponent from '../components/routing/MapboxComponent';
 import { geocodeAddress } from '../../services/geocodeService';
 
 const RoutingPage: React.FC = () => {
@@ -116,7 +116,6 @@ const RoutingPage: React.FC = () => {
     setCurrentDirectionId(null);
   };
 
-
   const calculateTotalWeightAndValue = (orders: Order[]) => {
     let totalWeight = 0;
     let totalValue = 0;
@@ -209,7 +208,7 @@ const RoutingPage: React.FC = () => {
           },
         }}
       >
-        <GoogleMapsComponent
+        <MapboxComponent
           orders={ordersForMap}
           onClose={handleCloseMap}
           tenantId={tenantId}

@@ -32,6 +32,7 @@
     "jspdf-autotable": "^3.8.2",
     "leaflet": "^1.9.4",
     "leaflet-routing-machine": "^3.2.12",
+    "mapbox-gl": "^3.5.1",
     "next": "14.2.4",
     "papaparse": "^5.4.1",
     "react": "^18",

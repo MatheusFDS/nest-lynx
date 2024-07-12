@@ -7,7 +7,6 @@ import { ThemeProvider } from './context/ThemeContext';
 import Toolbar from './components/Toolbar';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './globals.css';
-import { GoogleMapsProvider } from './context/googleMapsContext';
 
 interface LayoutProps {
   children: ReactNode;
@@ -38,9 +37,7 @@ const Layout = ({ children }: LayoutProps) => {
         <ThemeProvider>
           <CssBaseline />
           <AuthProvider>
-            <GoogleMapsProvider>
               <LayoutContent>{children}</LayoutContent>
-            </GoogleMapsProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
