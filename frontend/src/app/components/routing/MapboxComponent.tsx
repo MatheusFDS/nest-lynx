@@ -1,14 +1,17 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import mapboxgl, { LngLatLike, GeoJSONSource, LngLatBoundsLike } from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css'; // Importando o CSS do Mapbox GL
+import mapboxgl, { LngLatBounds, GeoJSONSource } from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import axios from 'axios';
 import { Paper, Button, Typography, Box, ListItemText, IconButton, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent } from '@mui/material';
-import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
+import { useDrag, useDrop, DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Delete as DeleteIcon, Info as InfoIcon } from '@mui/icons-material';
 import OrderDetailsDialog from './OrderDetailsDialog';
 import { fetchTenantData, fetchDrivers, fetchVehicles, fetchCategories, fetchDirections } from '../../../services/auxiliaryService';
 import { addDelivery } from '../../../services/deliveryService';
 import { Tenant, Order, Driver, Vehicle, Category, Direction } from '../../../types';
+import update from 'immutability-helper';
+import { useTheme } from '../../context/ThemeContext';  // Importando o contexto de tema
 
 mapboxgl.accessToken = 'pk.eyJ1IjoibWF0aGV1c2ZkcyIsImEiOiJjbHlpdHB3dDYwamZuMmtvZnVjdTNzbjI3In0.hVf9wJoZ_7mRM_iy09cdWg';
 
@@ -21,25 +24,18 @@ interface MapboxComponentProps {
 
 const containerStyle = {
   width: '100%',
-  height: '60%',
+  height: '100%',
 };
 
 const panelStyle = {
   width: '100%',
-  height: '100%',
   padding: '5px',
-  fontSize: '0.55em',
-};
-
-const actions = {
-  width: '100%',
-  height: '40%',
   fontSize: '0.55em',
 };
 
 const listContainerStyle = {
   maxHeight: '400px',
-  overflowY: 'auto' as 'auto',
+  overflowY: 'auto' as 'auto'
 };
 
 const geocodeAddress = async (address: string) => {
@@ -63,6 +59,75 @@ const geocodeAddress = async (address: string) => {
   }
 };
 
+const ItemTypes = {
+  ORDER: 'order',
+};
+
+const OrderItem: React.FC<{ order: Order; index: number; moveOrder: (dragIndex: number, hoverIndex: number) => void; removeOrder: (index: number) => void; openOrderDetails: (order: Order) => void; }> = ({ order, index, moveOrder, removeOrder, openOrderDetails }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [, drop] = useDrop({
+    accept: ItemTypes.ORDER,
+    hover(item: { index: number }, monitor) {
+      if (!ref.current) {
+        return;
+      }
+      const dragIndex = item.index;
+      const hoverIndex = index;
+
+      if (dragIndex === hoverIndex) {
+        return;
+      }
+
+      const hoverBoundingRect = ref.current?.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      const hoverClientY = clientOffset!.y - hoverBoundingRect.top;
+
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
+        return;
+      }
+
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
+        return;
+      }
+
+      moveOrder(dragIndex, hoverIndex);
+      item.index = hoverIndex;
+    },
+  });
+
+  const [{ isDragging }, drag] = useDrag({
+    type: ItemTypes.ORDER,
+    item: { type: ItemTypes.ORDER, index },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
+  drag(drop(ref));
+
+  return (
+    <div ref={ref} style={{ opacity: isDragging ? 0 : 1 }}>
+      <Paper style={{ padding: '4px', marginBottom: '4px', width: '100%' }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <ListItemText
+            primary={`Pedido ${index + 1} - Nº ${order.numero} - ${order.cliente}`}
+            secondary={`CEP: ${order.cep}`}
+          />
+          <Box display="flex" alignItems="center">
+            <IconButton edge="end" aria-label="details" onClick={() => openOrderDetails(order)}>
+              <InfoIcon />
+            </IconButton>
+            <IconButton edge="end" aria-label="delete" onClick={() => removeOrder(index)}>
+              <DeleteIcon />
+            </IconButton>
+          </Box>
+        </Box>
+      </Paper>
+    </div>
+  );
+};
+
 const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onClose, onGenerateRoute }) => {
   const [map, setMap] = useState<mapboxgl.Map | null>(null);
   const [distance, setDistance] = useState<string | null>(null);
@@ -79,6 +144,7 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderDetailsOpen, setOrderDetailsOpen] = useState<boolean>(false);
 
+  const { isDarkMode } = useTheme();  // Usando o contexto de tema
   const mapContainer = useRef<HTMLDivElement>(null);
 
   const fetchTenantAddress = async (token: string) => {
@@ -150,6 +216,30 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
           map.fitBounds(bounds, {
             padding: { top: 50, bottom: 50, left: 50, right: 50 },
           });
+
+          // Remover camadas existentes se houver
+          if (map.getLayer('route-forward')) {
+            map.removeLayer('route-forward');
+          }
+          if (map.getLayer('route-backward')) {
+            map.removeLayer('route-backward');
+          }
+
+          // Adicionar as camadas de rota de ida e volta
+          map.addLayer({
+            id: 'route-forward',
+            type: 'line',
+            source: 'route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round',
+            },
+            paint: {
+              'line-color': '#0000ff', // Azul para ida
+              'line-width': 6,
+            },
+            filter: ['==', '$type', 'LineString'],
+          });
         }
       }
     } catch (error) {
@@ -163,80 +253,99 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
 
   useEffect(() => {
     if (mapContainer.current && !map) {
-      // Limpar o contêiner do mapa antes de inicializá-lo
-      while (mapContainer.current.firstChild) {
-        mapContainer.current.removeChild(mapContainer.current.firstChild);
-      }
+      const initializeMap = async () => {
+        const tenantLocation = await geocodeAddress(tenantAddress!);
+        if (!tenantLocation) return;
 
-      const initializedMap = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v11',
-        center: [0, 0], // Centro inicial para evitar a centralização em Brasília
-        zoom: 12,
-      });
+        const initializedMap = new mapboxgl.Map({
+          container: mapContainer.current!,
+          style: isDarkMode ? 'mapbox://styles/mapbox/navigation-night-v1' : 'mapbox://styles/mapbox/streets-v11', // Estilo dinâmico
+          center: [tenantLocation.lng, tenantLocation.lat], // Centro inicial no endereço da tenant
+          zoom: 12,
+        });
 
-      initializedMap.on('load', () => {
-        initializedMap.addSource('route', {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'LineString',
-              coordinates: [],
+        initializedMap.on('load', () => {
+          initializedMap.addSource('route', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: [],
+              },
             },
-          },
-        });
+          });
 
-        initializedMap.addLayer({
-          id: 'route',
-          type: 'line',
-          source: 'route',
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round',
-          },
-          paint: {
-            'line-color': '#888',
-            'line-width': 6,
-          },
+          setMap(initializedMap);
         });
+      };
 
-        setMap(initializedMap);
-      });
+      initializeMap();
     }
 
     if (tenantAddress) {
       calculateRoute();
     }
-  }, [orderedOrders, tenantAddress, calculateRoute]);
+  }, [orderedOrders, tenantAddress, calculateRoute, isDarkMode]); // Dependendo do modo do tema
 
   useEffect(() => {
     if (map) {
-      const addMarker = (position: { lat: number; lng: number }) => {
-        new mapboxgl.Marker().setLngLat([position.lng, position.lat]).addTo(map);
+      const markers: mapboxgl.Marker[] = [];
+
+      const addMarker = (position: { lat: number; lng: number }, index: number) => {
+        const el = document.createElement('div');
+        el.className = 'marker';
+        el.style.backgroundColor = '#ADD8E6'; // Azul claro
+        el.style.width = '24px';
+        el.style.height = '24px';
+        el.style.borderRadius = '50%';
+        el.style.display = 'flex';
+        el.style.justifyContent = 'center';
+        el.style.alignItems = 'center';
+        el.style.color = 'black';
+        el.style.fontSize = '12px';
+        el.innerText = String(index);
+
+        new mapboxgl.Marker(el)
+          .setLngLat([position.lng, position.lat])
+          .addTo(map);
+
+        markers.push(new mapboxgl.Marker(el).setLngLat([position.lng, position.lat]).addTo(map));
       };
 
       geocodeAddress(tenantAddress!).then((tenantLocation) => {
         if (tenantLocation) {
-          addMarker(tenantLocation);
+          addMarker(tenantLocation, 0);
         }
 
-        orderedOrders.forEach((order) => {
-          addMarker({ lat: order.lat, lng: order.lng });
+        orderedOrders.forEach((order, index) => {
+          addMarker({ lat: order.lat, lng: order.lng }, index + 1);
         });
       });
+
+      // Remove previous markers
+      return () => {
+        markers.forEach(marker => marker.remove());
+      };
     }
   }, [map, orderedOrders, tenantAddress]);
 
-  const onDragEnd = (result: any) => {
-    if (!result.destination) return;
+  const moveOrder = (dragIndex: number, hoverIndex: number) => {
+    const draggedOrder = orderedOrders[dragIndex];
+    setOrderedOrders(
+      update(orderedOrders, {
+        $splice: [
+          [dragIndex, 1],
+          [hoverIndex, 0, draggedOrder],
+        ],
+      })
+    );
+    calculateRoute();
+  };
 
-    const items = Array.from(orderedOrders);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-
-    setOrderedOrders(items);
+  const removeOrder = (index: number) => {
+    setOrderedOrders(orderedOrders.filter((_, i) => i !== index));
     calculateRoute();
   };
 
@@ -329,106 +438,75 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
   };
 
   return (
-    <Box display="flex">
-      <Box flex="2">
+    <Box display="flex" height="100%">
+      <Box flex="3">
         <div ref={mapContainer} style={containerStyle}></div>
-        <Box style={actions}>
-          <Typography variant="h6">Seleção de Motorista</Typography>
-          <Box display="flex" flexDirection="column" flex="2">
-            <Box display="flex" justifyContent="space-between" alignItems="center">
-              <FormControl fullWidth margin="normal" style={{ marginRight: '16px' }}>
-                <InputLabel>Motorista</InputLabel>
-                <Select value={selectedDriver} onChange={handleDriverChange}>
-                  {drivers.map(driver => (
-                    <MenuItem key={driver.id} value={driver.id}>
-                      {driver.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Veículo</InputLabel>
-                <Select value={selectedVehicle} onChange={handleVehicleChange}>
-                  {vehicles.map(vehicle => (
-                    <MenuItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.model}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-            <Box display="flex" justifyContent="space-between" alignItems="center" marginTop="16px">
-              <Typography variant="body2">Total Peso: {calculateTotalWeightAndValue(orderedOrders).totalWeight.toFixed(2)} kg</Typography>
-              <Typography variant="body2">Total Valor: R$ {calculateTotalWeightAndValue(orderedOrders).totalValue.toFixed(2)}</Typography>
-              <Typography variant="body2">Valor do Frete: R$ {freightValue.toFixed(2)}</Typography>
-              {distance && <Typography>Distância Total: {distance}</Typography>}
-            </Box>
-            <Box display="flex" justifyContent="space-between" alignItems="center" marginTop="16px">
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleGenerateRoute}
-                style={{ marginRight: '8px' }}
-              >
-                Gerar Rota
-              </Button>
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={onClose}
-              >
-                Fechar
-              </Button>
-            </Box>
-          </Box>
-        </Box>
       </Box>
-      <Box flex="1.5" style={panelStyle}>
-        <Paper elevation={3} style={{ padding: '10px' }}>
+      <Box flex="1" display="flex" flexDirection="column" style={panelStyle}>
+        <Paper elevation={3} style={{ padding: '5px', marginBottom: '5px' }}>
           <Typography variant="h6">Pedidos</Typography>
           <Box style={listContainerStyle}>
-            <DragDropContext onDragEnd={onDragEnd}>
-              <Droppable droppableId="orders">
-                {(provided) => (
-                  <div {...provided.droppableProps} ref={provided.innerRef} style={{ marginTop: '8px', overflowY: 'auto', maxHeight: '100%' }}>
-                    {orderedOrders.map((order, index) => (
-                      <Draggable key={order.id.toString()} draggableId={order.id.toString()} index={index}>
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            style={{
-                              ...provided.draggableProps.style,
-                              margin: '8px 0',
-                              backgroundColor: snapshot.isDragging ? '#e0e0e0' : 'white',
-                              padding: '4px',
-                            }}
-                          >
-                            <Paper style={{ padding: '4px', marginBottom: '4px', width: '100%' }}>
-                              <ListItemText
-                                primary={`Pedido ${index + 1} - Nº ${order.numero} - ${order.cliente}`}
-                                secondary={`CEP: ${order.cep}`}
-                              />
-                              <IconButton edge="end" aria-label="details" onClick={() => handleOpenOrderDetails(order)}>
-                                <InfoIcon />
-                              </IconButton>
-                              <IconButton edge="end" aria-label="delete" onClick={() => setOrderedOrders(orderedOrders.filter(o => o.id !== order.id))}>
-                                <DeleteIcon />
-                              </IconButton>
-                            </Paper>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </DragDropContext>
+            <DndProvider backend={HTML5Backend}>
+              {orderedOrders.map((order, index) => (
+                <OrderItem
+                  key={order.id}
+                  index={index}
+                  order={order}
+                  moveOrder={moveOrder}
+                  removeOrder={removeOrder}
+                  openOrderDetails={handleOpenOrderDetails}
+                />
+              ))}
+            </DndProvider>
           </Box>
         </Paper>
+        <Box mt="auto">
+          <Box display="flex" flexDirection="column" gap={2} mb={2}>
+            <Typography variant="h6" gutterBottom>Seleção de Motorista</Typography>
+            <FormControl fullWidth>
+              <InputLabel>Motorista</InputLabel>
+              <Select value={selectedDriver} onChange={handleDriverChange}>
+                {drivers.map(driver => (
+                  <MenuItem key={driver.id} value={driver.id}>
+                    {driver.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel>Veículo</InputLabel>
+              <Select value={selectedVehicle} onChange={handleVehicleChange}>
+                {vehicles.map(vehicle => (
+                  <MenuItem key={vehicle.id} value={vehicle.id}>
+                    {vehicle.model}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+          <Box display="flex" flexDirection="row" gap={1} mb={2}>
+            <Typography variant="body2">Total Peso: {calculateTotalWeightAndValue(orderedOrders).totalWeight.toFixed(2)} kg</Typography>
+            <Typography variant="body2">Total Valor: R$ {calculateTotalWeightAndValue(orderedOrders).totalValue.toFixed(2)}</Typography>
+            <Typography variant="body2">Valor do Frete: R$ {freightValue.toFixed(2)}</Typography>
+            {distance && <Typography variant="body2">Distância Total: {distance}</Typography>}
+          </Box>
+          <Box display="flex" justifyContent="flex-end" alignItems="center" gap={2}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleGenerateRoute}
+            >
+              Gerar Rota
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={onClose}
+            >
+              Fechar
+            </Button>
+          </Box>
+        </Box>
       </Box>
       <OrderDetailsDialog
         open={orderDetailsOpen}

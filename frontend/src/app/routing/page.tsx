@@ -1,4 +1,4 @@
-'use client';
+'use client'
 
 import React, { useEffect, useState } from 'react';
 import { Container, Grid, Typography } from '@mui/material';
@@ -12,6 +12,7 @@ import OrderDetailsDialog from '../components/routing/OrderDetailsDialog';
 import ExpandedOrdersDialog from '../components/routing/ExpandedOrdersDialog';
 import MapboxComponent from '../components/routing/MapboxComponent';
 import { geocodeAddress } from '../../services/geocodeService';
+import { useTheme } from '../context/ThemeContext';
 
 const RoutingPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -31,6 +32,8 @@ const RoutingPage: React.FC = () => {
   const [showMap, setShowMap] = useState(false);
   const [ordersForMap, setOrdersForMap] = useState<Order[]>([]);
   const [tenantId, setTenantId] = useState<number>(1);
+
+  const { isDarkMode } = useTheme();
 
   const token = localStorage.getItem('token') || '';
 
@@ -204,7 +207,9 @@ const RoutingPage: React.FC = () => {
             marginRight: '-50%',
             transform: 'translate(-50%, -50%)',
             width: '90%',
-            height: '90%'
+            height: '90%',
+            backgroundColor: isDarkMode ? '#121212' : '#fff', // Usando o contexto de tema
+            color: isDarkMode ? '#fff' : '#000', // Usando o contexto de tema
           },
         }}
       >

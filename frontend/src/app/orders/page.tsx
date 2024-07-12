@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Typography, Container, TextField, IconButton, Dialog,
   DialogActions, DialogContent, DialogTitle, FormGroup, FormControlLabel, Checkbox,
-  Menu, MenuItem,
+  Menu, MenuItem, Box, Badge
 } from '@mui/material';
 import {
   Add,
@@ -13,8 +13,8 @@ import {
   ContentCopy,
   FileDownload,
   MoreVert,
+  Refresh,
 } from '@mui/icons-material';
-import { parse } from 'papaparse';
 import withAuth from '../components/withAuth';
 import { fetchOrders, uploadOrders, fetchUserSettings, updateUserSettings } from '../../services/orderService';
 import { Order } from '../../types';
@@ -83,9 +83,10 @@ const defaultFields: Record<Field, boolean> = {
   [Field.Motorista]: true,
 };
 
-const formatDateBR = (date: string) => {
-  const [year, month, day] = date.split('-');
-  return `${day}/${month}/${year}`;
+const formatDateTimeBR = (date: string) => {
+  const [datePart, timePart] = date.split('T');
+  const [year, month, day] = datePart.split('-');
+  return `${day}/${month}/${year} ${timePart.split('.')[0]}`;
 };
 
 const OrdersPage: React.FC = () => {
@@ -99,6 +100,15 @@ const OrdersPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [gridApi, setGridApi] = useState<any>(null);
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [statusFilters, setStatusFilters] = useState<Record<string, boolean>>({
+    EmRota: false,
+    ALiberar: false,
+    Pendente: false,
+    Reentrega: false,
+    Finalizado: false,
+  });
 
   const { isDarkMode } = useTheme(); // Obter o tema atual do contexto
   const token = localStorage.getItem('token') || '';
@@ -118,7 +128,6 @@ const OrdersPage: React.FC = () => {
     try {
       const data = await fetchOrders(token);
       setOrders(data);
-      setFilteredOrders(data);
     } catch (error) {
       setError('Failed to fetch orders.');
     }
@@ -155,7 +164,6 @@ const OrdersPage: React.FC = () => {
       try {
         await uploadOrders(token, ordersData);
         setOrders([...orders, ...ordersData]);
-        setFilteredOrders([...orders, ...ordersData]);
         setSuccess('Orders uploaded successfully');
         setError('');
       } catch (err: any) {
@@ -171,19 +179,36 @@ const OrdersPage: React.FC = () => {
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toLowerCase();
-    setSearchTerm(value);
+    setSearchTerm(e.target.value.toLowerCase());
+  };
 
-    if (value) {
-      const filtered = orders.filter(order =>
+  const applyFilters = () => {
+    let filtered = orders;
+
+    if (searchTerm) {
+      filtered = filtered.filter(order =>
         Object.values(order).some(val =>
-          String(val).toLowerCase().includes(value)
+          String(val).toLowerCase().includes(searchTerm)
         )
       );
-      setFilteredOrders(filtered);
-    } else {
-      setFilteredOrders(orders);
     }
+
+    if (startDate) {
+      filtered = filtered.filter(order => new Date(order.data) >= new Date(startDate));
+    }
+
+    if (endDate) {
+      filtered = filtered.filter(order => new Date(order.data) <= new Date(endDate));
+    }
+
+    const activeStatusFilters = Object.keys(statusFilters).filter(key => statusFilters[key]);
+
+    if (activeStatusFilters.length > 0) {
+      filtered = filtered.filter(order => activeStatusFilters.includes(order.status.replace(/\s+/g, '')));
+    }
+
+    setFilteredOrders(filtered);
+    setError('');
   };
 
   const handleFieldToggle = (field: Field) => {
@@ -210,22 +235,29 @@ const OrdersPage: React.FC = () => {
     setAnchorEl(null);
   };
 
+  const handleStatusFilterChange = (status: string) => {
+    setStatusFilters(prev => ({ ...prev, [status.replace(' ', '')]: !prev[status.replace(' ', '')] }));
+  };
+
   const columns = Object.keys(Field).map(key => ({
     headerName: Field[key as keyof typeof Field],
     field: Field[key as keyof typeof Field],
     hide: !showFields[Field[key as keyof typeof Field]],
     valueGetter: (params: any) => {
       const value = params.data[Field[key as keyof typeof Field]];
-      if (key === 'Data' || key === 'DataFinalizacao') {
-        return value ? formatDateBR(value) : '';
+      if (key === 'Data') {
+        return value ? formatDateTimeBR(value) : '';
       }
       if (key === 'Motorista') {
         return params.data.Delivery?.Driver?.name || '';
       }
+      if (key === 'DataFinalizacao') {
+        return params.data.Delivery?.dataFim ? formatDateTimeBR(params.data.Delivery.dataFim) : '';
+      }
       return value;
     },
   }));
-
+  
   const onGridReady = (params: any) => {
     setGridApi(params.api);
   };
@@ -245,7 +277,7 @@ const OrdersPage: React.FC = () => {
   const exportToCsv = () => {
     if (!gridApi) return;
     const rowData: any[] = [];
-    gridApi.forEachNode((node: any) => rowData.push(node.data));
+    gridApi.forEachNodeAfterFilterAndSort((node: any) => rowData.push(node.data));
     const csvContent = [
       Object.keys(Field).join(';'),
       ...rowData.map((row: any) => Object.values(row).join(';'))
@@ -265,7 +297,7 @@ const OrdersPage: React.FC = () => {
   const exportToExcel = () => {
     if (!gridApi) return;
     const rowData: any[] = [];
-    gridApi.forEachNode((node: any) => rowData.push(node.data));
+    gridApi.forEachNodeAfterFilterAndSort((node: any) => rowData.push(node.data));
     
     const worksheet = utils.json_to_sheet(rowData);
     const workbook = utils.book_new();
@@ -294,7 +326,7 @@ const OrdersPage: React.FC = () => {
       
       Object.entries(row).forEach(([key, value]) => {
         if (key in Field) {
-          const displayValue = (key === 'Data' || key === 'DataFinalizacao') ? formatDateBR(value as string) : value;
+          const displayValue = (key === 'Data' || key === 'DataFinalizacao') ? formatDateTimeBR(value as string) : value;
           doc.text(`${key}: ${displayValue}`, margin, yPosition);
           yPosition += lineSpacing;
         }
@@ -319,81 +351,120 @@ const OrdersPage: React.FC = () => {
         fullWidth
         margin="normal"
       />
-      <IconButton
-        color="primary"
-        component="label"
-        style={{ marginRight: '8px' }}
-      >
-        <input
-          type="file"
-          hidden
-          accept=".csv, .xls, .xlsx"
-          onChange={handleFileChange}
-        />
-        <Add />
-      </IconButton>
-      <IconButton
-        color="primary"
-        onClick={handleUpload}
-        disabled={!file}
-        style={{ marginRight: '8px' }}
-      >
-        <CloudUpload />
-      </IconButton>
-      <IconButton
-        color="primary"
-        onClick={copySelectedRowsToClipboard}
-        style={{ marginRight: '8px' }}
-      >
-        <ContentCopy />
-      </IconButton>
-      <IconButton
-        color="primary"
-        onClick={handleMenuClick}
-        style={{ marginRight: '8px' }}
-      >
-        <MoreVert />
-      </IconButton>
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
-        <MenuItem onClick={exportToCsv}>
-          <FileDownload style={{ marginRight: '8px' }} />
-          Export to CSV
-        </MenuItem>
-        <MenuItem onClick={exportToExcel}>
-          <FileDownload style={{ marginRight: '8px' }} />
-          Export to Excel
-        </MenuItem>
-        <MenuItem onClick={() => exportToPdf(false)}>
-          <FileDownload style={{ marginRight: '8px' }} />
-          Export All to PDF
-        </MenuItem>
-        <MenuItem onClick={() => exportToPdf(true)}>
-          <FileDownload style={{ marginRight: '8px' }} />
-          Export Selected to PDF
-        </MenuItem>
-      </Menu>
-      <div className={isDarkMode ? "ag-theme-balham-dark" : "ag-theme-balham"} style={{ height: 600, width: '100%', marginTop: '16px' }}>
-        <AgGridReact
-          rowData={filteredOrders}
-          columnDefs={columns}
-          pagination={true}
-          paginationPageSize={10}
-          domLayout="autoHeight"
-          defaultColDef={{
-            sortable: true,
-            filter: true,
-            resizable: true,
-          }}
-          rowSelection="multiple"
-          onGridReady={onGridReady}
-        />
-      </div>
+      <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" mt={2} mb={2}>
+        <Box display="flex" gap={2} alignItems="center">
+          <TextField
+            label="Data Início"
+            type="datetime-local"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+          <TextField
+            label="Data Fim"
+            type="datetime-local"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+          {['Em Rota', 'A liberar', 'Pendente', 'Reentrega', 'Finalizado'].map((status) => (
+            <FormControlLabel
+              key={status}
+              control={
+                <Checkbox
+                  checked={statusFilters[status.replace(' ', '')]}
+                  onChange={() => handleStatusFilterChange(status.replace(' ', ''))}
+                />
+              }
+              label={status}
+            />
+          ))}
+          <Badge badgeContent={filteredOrders.length} color="primary" showZero>
+          </Badge>
+        </Box>
+        <Box display="flex" gap={2}>
+          <IconButton color="primary" onClick={applyFilters}>
+            <Refresh />
+          </IconButton>
+          <IconButton
+            color="primary"
+            component="label"
+          >
+            <input
+              type="file"
+              hidden
+              accept=".csv, .xls, .xlsx"
+              onChange={handleFileChange}
+            />
+            <Add />
+          </IconButton>
+          <IconButton
+            color="primary"
+            onClick={handleUpload}
+            disabled={!file}
+          >
+            <CloudUpload />
+          </IconButton>
+          <IconButton
+            color="primary"
+            onClick={copySelectedRowsToClipboard}
+          >
+            <ContentCopy />
+          </IconButton>
+          <IconButton
+            color="primary"
+            onClick={handleMenuClick}
+          >
+            <MoreVert />
+          </IconButton>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleMenuClose}
+          >
+            <MenuItem onClick={exportToCsv}>
+              <FileDownload style={{ marginRight: '8px' }} />
+              Exportar para CSV
+            </MenuItem>
+            <MenuItem onClick={exportToExcel}>
+              <FileDownload style={{ marginRight: '8px' }} />
+              Exportar para Excel
+            </MenuItem>
+            <MenuItem onClick={() => exportToPdf(false)}>
+              <FileDownload style={{ marginRight: '8px' }} />
+              Exportar todos para PDF
+            </MenuItem>
+            <MenuItem onClick={() => exportToPdf(true)}>
+              <FileDownload style={{ marginRight: '8px' }} />
+              Exportar selecionados para PDF
+            </MenuItem>
+          </Menu>
+        </Box>
+      </Box>
+      {filteredOrders.length > 0 && (
+        <div className={isDarkMode ? "ag-theme-balham-dark" : "ag-theme-balham"} style={{ height: 800, width: '100%', marginTop: '16px', overflowY: 'auto' }}>
+          <AgGridReact
+            rowData={filteredOrders}
+            columnDefs={columns}
+            pagination={true}
+            paginationPageSize={100}
+            domLayout="autoHeight"
+            defaultColDef={{
+              sortable: true,
+              filter: true,
+              resizable: true,
+            }}
+            rowSelection="multiple"
+            onGridReady={onGridReady}
+          />
+        </div>
+      )}
       <Dialog open={open} onClose={handleDialogClose}>
-        <DialogTitle>Choose Columns to Display</DialogTitle>
+        <DialogTitle>Escolher Colunas para Exibir</DialogTitle>
         <DialogContent>
           <FormGroup>
             {(Object.keys(Field) as Array<keyof typeof Field>).map((field) => (

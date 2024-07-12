@@ -55,8 +55,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQ
 
 ### Obter todas as categorias usando o token JWT
 GET http://localhost:4000/category
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODk4Mjc2LCJleHAiOjE3MTk5MDE4NzZ9.hrFdEPDULDrIU-NymNc7fxfAQSZp4UUZhnlvvIhvFH8
-
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzIwODIwNTMzLCJleHAiOjE3MjA4Mjc3MzN9.3Guu-OejKSv4xI9CzVgqlM1iJKQJXDmTwpnVmGScC7Z
 
 ### Obter todos os veículos usando o token JWT
 GET http://localhost:4000/vehicles
