@@ -2,16 +2,16 @@ import React, { useCallback, useState, useEffect, useRef } from 'react';
 import mapboxgl, { LngLatBounds, GeoJSONSource } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import axios from 'axios';
-import { Paper, Button, Typography, Box, ListItemText, IconButton, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent } from '@mui/material';
+import { Paper, IconButton, Typography, Box, ListItemText, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent } from '@mui/material';
 import { useDrag, useDrop, DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Delete as DeleteIcon, Info as InfoIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon, Info as InfoIcon, Check as CheckIcon, AutoFixHigh as AutoFixHighIcon, EditRoad as EditRoadIcon, Close as CloseIcon } from '@mui/icons-material';
 import OrderDetailsDialog from './OrderDetailsDialog';
 import { fetchTenantData, fetchDrivers, fetchVehicles, fetchCategories, fetchDirections } from '../../../services/auxiliaryService';
 import { addDelivery } from '../../../services/deliveryService';
 import { Tenant, Order, Driver, Vehicle, Category, Direction } from '../../../types';
 import update from 'immutability-helper';
-import { useTheme } from '../../context/ThemeContext';  // Importando o contexto de tema
+import { useTheme } from '../../context/ThemeContext';
 
 mapboxgl.accessToken = 'pk.eyJ1IjoibWF0aGV1c2ZkcyIsImEiOiJjbHlpdHB3dDYwamZuMmtvZnVjdTNzbjI3In0.hVf9wJoZ_7mRM_iy09cdWg';
 
@@ -30,13 +30,12 @@ const containerStyle = {
 const panelStyle = {
   width: '100%',
   padding: '5px',
-  fontSize: '0.55em',
+  fontSize: '0.95em',
 };
 
 const listContainerStyle = {
-  maxHeight: '200px',
+  maxHeight: '300px',
   overflowY: 'auto' as 'auto',
-  fontSize: '0.85em'
 };
 
 const geocodeAddress = async (address: string) => {
@@ -109,20 +108,20 @@ const OrderItem: React.FC<{ order: Order; index: number; moveOrder: (dragIndex: 
 
   return (
     <div ref={ref} style={{ opacity: isDragging ? 0 : 1 }}>
-      <Paper style={{ padding: '4px', marginBottom: '4px', width: '100%' }}>
+      <Paper style={{ padding: '2px', marginBottom: '2px', width: '100%' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <ListItemText
             primary={`Pedido ${index + 1} - Nº ${order.numero} - ${order.cliente}`}
             secondary={`CEP: ${order.cep}`}
-            primaryTypographyProps={{ variant: 'body2' }}
-            secondaryTypographyProps={{ variant: 'caption' }}
+            primaryTypographyProps={{ variant: 'body2', style: { fontSize: '0.7em' } }}
+            secondaryTypographyProps={{ variant: 'caption', style: { fontSize: '0.6em' } }}
           />
           <Box display="flex" alignItems="center">
             <IconButton edge="end" aria-label="details" onClick={() => openOrderDetails(order)} size="small">
-              <InfoIcon />
+              <InfoIcon fontSize="small" />
             </IconButton>
             <IconButton edge="end" aria-label="delete" onClick={() => removeOrder(index)} size="small">
-              <DeleteIcon />
+              <DeleteIcon fontSize="small" />
             </IconButton>
           </Box>
         </Box>
@@ -147,7 +146,7 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderDetailsOpen, setOrderDetailsOpen] = useState<boolean>(false);
 
-  const { isDarkMode } = useTheme();  // Usando o contexto de tema
+  const { isDarkMode } = useTheme();
   const mapContainer = useRef<HTMLDivElement>(null);
 
   const fetchTenantAddress = async (token: string) => {
@@ -184,28 +183,32 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
     }
   };
 
-  const calculateRoute = useCallback(async () => {
+  const calculateRoute = useCallback(async (useOptimizedRoute: boolean) => {
     if (orderedOrders.length < 1 || !tenantAddress) return;
 
     const tenantLocation = await geocodeAddress(tenantAddress);
     if (!tenantLocation) return;
 
     const waypoints = orderedOrders.map(order => `${order.lng},${order.lat}`).join(';');
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${tenantLocation.lng},${tenantLocation.lat};${waypoints};${tenantLocation.lng},${tenantLocation.lat}`;
+
+    const url = useOptimizedRoute
+      ? `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${tenantLocation.lng},${tenantLocation.lat};${waypoints};${tenantLocation.lng},${tenantLocation.lat}?access_token=${mapboxgl.accessToken}&geometries=geojson&roundtrip=true`
+      : `https://api.mapbox.com/directions/v5/mapbox/driving/${tenantLocation.lng},${tenantLocation.lat};${waypoints};${tenantLocation.lng},${tenantLocation.lat}?access_token=${mapboxgl.accessToken}&geometries=geojson`;
 
     try {
-      const response = await axios.get(url, {
-        params: {
-          access_token: mapboxgl.accessToken,
-          geometries: 'geojson',
-        },
-      });
+      const response = await axios.get(url);
 
-      const { routes } = response.data;
-      if (routes && routes.length > 0) {
-        const route = routes[0];
+      const data = response.data;
+      const route = useOptimizedRoute ? data.trips[0] : data.routes[0];
+      if (route) {
         setDistance((route.distance / 1000).toFixed(2) + ' km');
         setDuration((route.duration / 60).toFixed(2) + ' mins');
+
+        if (useOptimizedRoute && route.waypoints) {
+          const optimizedOrderIds = route.waypoints.slice(1, -1).map((wp: any) => wp.waypoint_index);
+          const newOrderedOrders = optimizedOrderIds.map((index: number) => orderedOrders[index]);
+          setOrderedOrders(newOrderedOrders);
+        }
 
         if (map) {
           const source = map.getSource('route') as GeoJSONSource;
@@ -220,7 +223,6 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
             padding: { top: 50, bottom: 50, left: 50, right: 50 },
           });
 
-          // Remover camadas existentes se houver
           if (map.getLayer('route-forward')) {
             map.removeLayer('route-forward');
           }
@@ -228,7 +230,6 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
             map.removeLayer('route-backward');
           }
 
-          // Adicionar as camadas de rota de ida e volta
           map.addLayer({
             id: 'route-forward',
             type: 'line',
@@ -262,8 +263,8 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
 
         const initializedMap = new mapboxgl.Map({
           container: mapContainer.current!,
-          style: isDarkMode ? 'mapbox://styles/mapbox/navigation-night-v1' : 'mapbox://styles/mapbox/streets-v11', // Estilo dinâmico
-          center: [tenantLocation.lng, tenantLocation.lat], // Centro inicial no endereço da tenant
+          style: isDarkMode ? 'mapbox://styles/mapbox/navigation-night-v1' : 'mapbox://styles/mapbox/streets-v11',
+          center: [tenantLocation.lng, tenantLocation.lat],
           zoom: 12,
         });
 
@@ -286,11 +287,7 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
 
       initializeMap();
     }
-
-    if (tenantAddress) {
-      calculateRoute();
-    }
-  }, [orderedOrders, tenantAddress, calculateRoute, isDarkMode]); // Dependendo do modo do tema
+  }, [tenantAddress, isDarkMode]);
 
   useEffect(() => {
     if (map) {
@@ -299,7 +296,7 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
       const addMarker = (position: { lat: number; lng: number }, index: number) => {
         const el = document.createElement('div');
         el.className = 'marker';
-        el.style.backgroundColor = '#ADD8E6'; // Azul claro
+        el.style.backgroundColor = '#ADD8E6';
         el.style.width = '20px';
         el.style.height = '20px';
         el.style.borderRadius = '50%';
@@ -327,7 +324,6 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
         });
       });
 
-      // Remove previous markers
       return () => {
         markers.forEach(marker => marker.remove());
       };
@@ -344,12 +340,12 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
         ],
       })
     );
-    calculateRoute();
+    calculateRoute(false);
   };
 
   const removeOrder = (index: number) => {
     setOrderedOrders(orderedOrders.filter((_, i) => i !== index));
-    calculateRoute();
+    calculateRoute(false);
   };
 
   const handleGenerateRoute = async () => {
@@ -447,7 +443,7 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
       </Box>
       <Box flex="1" display="flex" flexDirection="column" style={panelStyle} height="100%">
         <Paper elevation={3} style={{ padding: '5px', marginBottom: '5px', flexGrow: 1 }}>
-          <Typography variant="h6" style={{ fontSize: '1em' }}>Pedidos</Typography>
+          <Typography variant="h6" style={{ fontSize: '0.85em' }}>Pedidos</Typography>
           <Box style={listContainerStyle}>
             <DndProvider backend={HTML5Backend}>
               {orderedOrders.map((order, index) => (
@@ -465,7 +461,7 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
         </Paper>
         <Box mt="auto">
           <Box display="flex" flexDirection="column" gap={1} mb={1}>
-            <Typography variant="h6" gutterBottom style={{ fontSize: '1em' }}>Seleção de Motorista</Typography>
+            <Typography variant="h6" gutterBottom style={{ fontSize: '0.85em' }}>Seleção de Motorista</Typography>
             <FormControl fullWidth size="small">
               <InputLabel>Motorista</InputLabel>
               <Select value={selectedDriver} onChange={handleDriverChange}>
@@ -488,28 +484,44 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
             </FormControl>
           </Box>
           <Box display="flex" flexDirection="row" gap={1} mb={1}>
-            <Typography variant="body2">Total Peso: {calculateTotalWeightAndValue(orderedOrders).totalWeight.toFixed(2)} kg</Typography>
-            <Typography variant="body2">Total Valor: R$ {calculateTotalWeightAndValue(orderedOrders).totalValue.toFixed(2)}</Typography>
-            <Typography variant="body2">Valor do Frete: R$ {freightValue.toFixed(2)}</Typography>
-            {distance && <Typography variant="body2">Distância Total: {distance}</Typography>}
+            <Typography variant="body2" style={{ fontSize: '0.75em' }}>Total Peso: {calculateTotalWeightAndValue(orderedOrders).totalWeight.toFixed(2)} kg</Typography>
+            <Typography variant="body2" style={{ fontSize: '0.75em' }}>Total Valor: R$ {calculateTotalWeightAndValue(orderedOrders).totalValue.toFixed(2)}</Typography>
+            <Typography variant="body2" style={{ fontSize: '0.75em' }}>Valor do Frete: R$ {freightValue.toFixed(2)}</Typography>
+            {distance && <Typography variant="body2" style={{ fontSize: '0.75em' }}>Distância Total: {distance}</Typography>}
           </Box>
           <Box display="flex" justifyContent="flex-end" alignItems="center" gap={1}>
-            <Button
-              variant="contained"
+            <IconButton
+              aria-label="automatic"
+              color="primary"
+              onClick={() => calculateRoute(true)}
+              size="small"
+            >
+              <AutoFixHighIcon />
+            </IconButton>
+            <IconButton
+              aria-label="manual"
+              color="primary"
+              onClick={() => calculateRoute(false)}
+              size="small"
+            >
+              <EditRoadIcon />
+            </IconButton>
+            <IconButton
+              aria-label="confirm"
               color="primary"
               onClick={handleGenerateRoute}
               size="small"
             >
-              Gerar Rota
-            </Button>
-            <Button
-              variant="contained"
+              <CheckIcon />
+            </IconButton>
+            <IconButton
+              aria-label="close"
               color="secondary"
               onClick={onClose}
               size="small"
             >
-              Fechar
-            </Button>
+              <CloseIcon />
+            </IconButton>
           </Box>
         </Box>
       </Box>

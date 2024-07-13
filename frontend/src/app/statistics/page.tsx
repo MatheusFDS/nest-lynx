@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { Typography, Grid, Box, Paper } from '@mui/material';
-import DateFilter from '../components/DateFilter';
-import StatisticsChart from '../components/StatisticsChart';
+import DateFilter from '../components/statistics/DateFilter';
+import StatisticsChart from '../components/statistics/StatisticsChart';
 import withAuth from '../components/withAuth';
 
 const StatisticsPage = () => {

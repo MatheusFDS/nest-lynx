@@ -4,7 +4,7 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Container, Box, Paper, Typography } from '@mui/material';
-import LoginForm from '../components/LoginForm';
+import LoginForm from '../components/login/LoginForm';
 
 const LoginPage = () => {
   const router = useRouter();

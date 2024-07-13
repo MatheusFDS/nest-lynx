@@ -27,7 +27,7 @@ const commonComponents = {
   MuiButton: {
     styleOverrides: {
       root: {
-        borderRadius: 12,
+        borderRadius: 8, // Ajustando para ser menos arredondado
         boxShadow: 'none',
         padding: '8px 16px',
         '&:hover': {
@@ -39,7 +39,7 @@ const commonComponents = {
   MuiPaper: {
     styleOverrides: {
       root: {
-        borderRadius: 12,
+        borderRadius: 8, // Ajustando para ser menos arredondado
       },
     },
   },
@@ -49,23 +49,23 @@ const lightTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#54678F', // Azul intermediário
+      main: '#54678F', // Cor principal da paleta de cores
     },
     secondary: {
-      main: '#9199BE', // Azul claro
+      main: '#9199BE', // Cor secundária da paleta de cores
     },
     background: {
-      default: '#F5F5F5', // Fundo claro
-      paper: '#FFFFFF', // Papel branco
+      default: '#F0F0F0', // Branco fosco para fundo
+      paper: '#E0E0E0', // Branco fosco para papel
     },
     text: {
       primary: '#2E303E', // Texto escuro
-      secondary: '#6C6B74', // Texto secundário
+      secondary: '#54678F', // Texto secundário
     },
   },
   typography: commonTypography,
   shape: {
-    borderRadius: 12,
+    borderRadius: 8, // Ajustando para ser menos arredondado
   },
   components: commonComponents,
 });
@@ -74,23 +74,23 @@ const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#9199BE', // Azul claro
+      main: '#9199BE', // Cor principal da paleta de cores
     },
     secondary: {
-      main: '#54678F', // Azul intermediário
+      main: '#54678F', // Cor secundária da paleta de cores
     },
     background: {
       default: '#212624', // Fundo escuro
       paper: '#2E303E', // Papel mais escuro
     },
     text: {
-      primary: '#F5F5F5', // Texto claro
+      primary: '#C2D3DA', // Texto claro
       secondary: '#6C6B74', // Texto secundário
     },
   },
   typography: commonTypography,
   shape: {
-    borderRadius: 12,
+    borderRadius: 8, // Ajustando para ser menos arredondado
   },
   components: commonComponents,
 });
