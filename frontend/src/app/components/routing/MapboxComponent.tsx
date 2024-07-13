@@ -34,8 +34,9 @@ const panelStyle = {
 };
 
 const listContainerStyle = {
-  maxHeight: '400px',
-  overflowY: 'auto' as 'auto'
+  maxHeight: '200px',
+  overflowY: 'auto' as 'auto',
+  fontSize: '0.85em'
 };
 
 const geocodeAddress = async (address: string) => {
@@ -113,12 +114,14 @@ const OrderItem: React.FC<{ order: Order; index: number; moveOrder: (dragIndex: 
           <ListItemText
             primary={`Pedido ${index + 1} - Nº ${order.numero} - ${order.cliente}`}
             secondary={`CEP: ${order.cep}`}
+            primaryTypographyProps={{ variant: 'body2' }}
+            secondaryTypographyProps={{ variant: 'caption' }}
           />
           <Box display="flex" alignItems="center">
-            <IconButton edge="end" aria-label="details" onClick={() => openOrderDetails(order)}>
+            <IconButton edge="end" aria-label="details" onClick={() => openOrderDetails(order)} size="small">
               <InfoIcon />
             </IconButton>
-            <IconButton edge="end" aria-label="delete" onClick={() => removeOrder(index)}>
+            <IconButton edge="end" aria-label="delete" onClick={() => removeOrder(index)} size="small">
               <DeleteIcon />
             </IconButton>
           </Box>
@@ -297,14 +300,14 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
         const el = document.createElement('div');
         el.className = 'marker';
         el.style.backgroundColor = '#ADD8E6'; // Azul claro
-        el.style.width = '24px';
-        el.style.height = '24px';
+        el.style.width = '20px';
+        el.style.height = '20px';
         el.style.borderRadius = '50%';
         el.style.display = 'flex';
         el.style.justifyContent = 'center';
         el.style.alignItems = 'center';
         el.style.color = 'black';
-        el.style.fontSize = '12px';
+        el.style.fontSize = '10px';
         el.innerText = String(index);
 
         new mapboxgl.Marker(el)
@@ -439,12 +442,12 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
 
   return (
     <Box display="flex" height="100%">
-      <Box flex="3">
+      <Box flex="3" display="flex" height="100%">
         <div ref={mapContainer} style={containerStyle}></div>
       </Box>
-      <Box flex="1" display="flex" flexDirection="column" style={panelStyle}>
-        <Paper elevation={3} style={{ padding: '5px', marginBottom: '5px' }}>
-          <Typography variant="h6">Pedidos</Typography>
+      <Box flex="1" display="flex" flexDirection="column" style={panelStyle} height="100%">
+        <Paper elevation={3} style={{ padding: '5px', marginBottom: '5px', flexGrow: 1 }}>
+          <Typography variant="h6" style={{ fontSize: '1em' }}>Pedidos</Typography>
           <Box style={listContainerStyle}>
             <DndProvider backend={HTML5Backend}>
               {orderedOrders.map((order, index) => (
@@ -461,9 +464,9 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
           </Box>
         </Paper>
         <Box mt="auto">
-          <Box display="flex" flexDirection="column" gap={2} mb={2}>
-            <Typography variant="h6" gutterBottom>Seleção de Motorista</Typography>
-            <FormControl fullWidth>
+          <Box display="flex" flexDirection="column" gap={1} mb={1}>
+            <Typography variant="h6" gutterBottom style={{ fontSize: '1em' }}>Seleção de Motorista</Typography>
+            <FormControl fullWidth size="small">
               <InputLabel>Motorista</InputLabel>
               <Select value={selectedDriver} onChange={handleDriverChange}>
                 {drivers.map(driver => (
@@ -473,7 +476,7 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
                 ))}
               </Select>
             </FormControl>
-            <FormControl fullWidth>
+            <FormControl fullWidth size="small">
               <InputLabel>Veículo</InputLabel>
               <Select value={selectedVehicle} onChange={handleVehicleChange}>
                 {vehicles.map(vehicle => (
@@ -484,17 +487,18 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
               </Select>
             </FormControl>
           </Box>
-          <Box display="flex" flexDirection="row" gap={1} mb={2}>
+          <Box display="flex" flexDirection="row" gap={1} mb={1}>
             <Typography variant="body2">Total Peso: {calculateTotalWeightAndValue(orderedOrders).totalWeight.toFixed(2)} kg</Typography>
             <Typography variant="body2">Total Valor: R$ {calculateTotalWeightAndValue(orderedOrders).totalValue.toFixed(2)}</Typography>
             <Typography variant="body2">Valor do Frete: R$ {freightValue.toFixed(2)}</Typography>
             {distance && <Typography variant="body2">Distância Total: {distance}</Typography>}
           </Box>
-          <Box display="flex" justifyContent="flex-end" alignItems="center" gap={2}>
+          <Box display="flex" justifyContent="flex-end" alignItems="center" gap={1}>
             <Button
               variant="contained"
               color="primary"
               onClick={handleGenerateRoute}
+              size="small"
             >
               Gerar Rota
             </Button>
@@ -502,6 +506,7 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
               variant="contained"
               color="secondary"
               onClick={onClose}
+              size="small"
             >
               Fechar
             </Button>

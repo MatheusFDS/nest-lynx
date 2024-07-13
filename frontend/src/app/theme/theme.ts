@@ -1,111 +1,98 @@
 import { createTheme } from '@mui/material/styles';
 
-const lightTheme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#3f51b5', // Ajustado para um tom mais suave
-    },
-    secondary: {
-      main: '#f50057',
-    },
-    background: {
-      default: '#e0e0e0', // Tom mais suave de cinza claro
-      paper: '#f5f5f5',
-    },
-    text: {
-      primary: '#212121', // Ajustado para um tom mais escuro
-      secondary: '#757575',
-    },
+const commonTypography = {
+  fontFamily: 'GothicA1, Roboto, Arial, sans-serif',
+  h1: {
+    fontSize: '2.5rem',
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
   },
-  typography: {
-    fontFamily: 'Roboto, Arial, sans-serif',
-    h1: {
-      fontSize: '2.2rem',
-      fontWeight: 500,
-    },
-    h2: {
-      fontSize: '1.8rem',
-      fontWeight: 500,
-    },
-    h3: {
-      fontSize: '1.5rem',
-      fontWeight: 500,
-    },
-    button: {
-      textTransform: 'none',
-    },
+  h2: {
+    fontSize: '2rem',
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
   },
-  shape: {
-    borderRadius: 8,
+  h3: {
+    fontSize: '1.75rem',
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
   },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
+  button: {
+    textTransform: 'none' as const,
+    fontWeight: 700,
+  },
+};
+
+const commonComponents = {
+  MuiButton: {
+    styleOverrides: {
+      root: {
+        borderRadius: 12,
+        boxShadow: 'none',
+        padding: '8px 16px',
+        '&:hover': {
           boxShadow: 'none',
-          '&:hover': {
-            boxShadow: 'none',
-          },
         },
       },
     },
   },
+  MuiPaper: {
+    styleOverrides: {
+      root: {
+        borderRadius: 12,
+      },
+    },
+  },
+};
+
+const lightTheme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: {
+      main: '#54678F', // Azul intermediário
+    },
+    secondary: {
+      main: '#9199BE', // Azul claro
+    },
+    background: {
+      default: '#F5F5F5', // Fundo claro
+      paper: '#FFFFFF', // Papel branco
+    },
+    text: {
+      primary: '#2E303E', // Texto escuro
+      secondary: '#6C6B74', // Texto secundário
+    },
+  },
+  typography: commonTypography,
+  shape: {
+    borderRadius: 12,
+  },
+  components: commonComponents,
 });
 
 const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#90caf9', // Ajustado para um tom mais suave de azul
+      main: '#9199BE', // Azul claro
     },
     secondary: {
-      main: '#f48fb1', // Ajustado para um tom mais suave de rosa
+      main: '#54678F', // Azul intermediário
     },
     background: {
-      default: '#1c1c1c', // Tom mais suave de cinza escuro
-      paper: '#2e2e2e', // Tom mais suave de cinza médio
+      default: '#212624', // Fundo escuro
+      paper: '#2E303E', // Papel mais escuro
     },
     text: {
-      primary: '#e0e0e0', // Ajustado para um tom mais claro
-      secondary: '#b3b3b3',
+      primary: '#F5F5F5', // Texto claro
+      secondary: '#6C6B74', // Texto secundário
     },
   },
-  typography: {
-    fontFamily: 'Roboto, Arial, sans-serif',
-    h1: {
-      fontSize: '2.2rem',
-      fontWeight: 500,
-    },
-    h2: {
-      fontSize: '1.8rem',
-      fontWeight: 500,
-    },
-    h3: {
-      fontSize: '1.5rem',
-      fontWeight: 500,
-    },
-    button: {
-      textTransform: 'none',
-    },
-  },
+  typography: commonTypography,
   shape: {
-    borderRadius: 8,
+    borderRadius: 12,
   },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-          boxShadow: 'none',
-          '&:hover': {
-            boxShadow: 'none',
-          },
-        },
-      },
-    },
-  },
+  components: commonComponents,
 });
 
 export { lightTheme, darkTheme };

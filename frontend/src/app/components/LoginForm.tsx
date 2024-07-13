@@ -36,7 +36,7 @@ const LoginForm = () => {
 
   return (
     <Container maxWidth="xs">
-      <Typography variant="h4" component="h1" gutterBottom>
+      <Typography variant="h6" component="h1" gutterBottom>
         Login
       </Typography>
       <form onSubmit={handleSubmit}>
