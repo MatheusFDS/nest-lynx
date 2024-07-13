@@ -34,9 +34,22 @@ export class AuthService {
       throw new Error('Invalid credentials');
     }
     const payload = { email: user.email, sub: user.id, role: user.role.name, tenantId: user.tenantId };
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '120m' }); // Ajuste o tempo de expiração do access token aqui
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' }); // Ajuste o tempo de expiração do refresh token aqui
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: accessToken,
+      refresh_token: refreshToken,
     };
+  }
+
+  async refreshToken(token: string) {
+    try {
+      const payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET });
+      const newAccessToken = this.jwtService.sign({ email: payload.email, sub: payload.sub, role: payload.role, tenantId: payload.tenantId }, { expiresIn: '120m' }); // Ajuste o tempo de expiração do novo access token aqui
+      return { access_token: newAccessToken };
+    } catch (e) {
+      throw new Error('Invalid refresh token');
+    }
   }
 
   async logout(token: string): Promise<void> {

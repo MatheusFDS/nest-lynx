@@ -2,7 +2,7 @@ import React from 'react';
 import { Grid, Paper, Typography, Button, IconButton } from '@mui/material';
 import { ExpandMore } from '@mui/icons-material';
 import { Droppable, Draggable } from 'react-beautiful-dnd';
-import { Order, Direction } from '../../../types';
+import { Order, Direction } from '../../../../types';
 
 interface DirectionCardProps {
   direction: Direction;

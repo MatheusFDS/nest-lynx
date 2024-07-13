@@ -16,7 +16,7 @@ const withAuth = (WrappedComponent: React.ComponentType, { requiredRole }: WithA
     useEffect(() => {
       const token = localStorage.getItem('token');
       if (!token) {
-        router.push('/  ');
+        router.push('/login'); // Ajuste o redirecionamento para '/login'
         return;
       }
 
@@ -25,7 +25,7 @@ const withAuth = (WrappedComponent: React.ComponentType, { requiredRole }: WithA
         router.push('/login');
         return;
       }
-    }, [isLoggedIn, router]);
+    }, [isLoggedIn, router, requiredRole]);
 
     if (!isLoggedIn) {
       return null; // Render null while redirecting

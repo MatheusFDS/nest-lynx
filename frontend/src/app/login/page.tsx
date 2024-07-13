@@ -1,10 +1,11 @@
-// src/app/login/page.tsx
 'use client';
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Container, Box, Paper, Typography } from '@mui/material';
+import { Box, Paper, Typography } from '@mui/material';
 import LoginForm from '../components/login/LoginForm';
+import loginTheme from '../theme/loginTheme';
+import { ThemeProvider } from '@mui/material/styles';
 
 const LoginPage = () => {
   const router = useRouter();
@@ -17,42 +18,46 @@ const LoginPage = () => {
   }, [router]);
 
   return (
-    <Container
-      component="main"
-      maxWidth="xs"
-      sx={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundImage: 'url(/background.jpg)', // Adicione sua imagem de fundo
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
-    >
-      <Paper
-        elevation={6}
+    <ThemeProvider theme={loginTheme}>
+      <Box
         sx={{
-          padding: 4,
-          borderRadius: 2,
-          boxShadow: '0 3px 5px 2px rgba(0, 0, 0, .3)',
-          backgroundColor: 'rgba(255, 255, 255, 0.9)', // Fundo semi-transparente
+          height: '100vh',
+          width: '100vw',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          backgroundImage: 'url(/background.jpg)', 
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          padding: 10,
         }}
       >
-        <Box
+        <Paper
+          elevation={6}
           sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
+            width: '350px',
+            padding: 4,
+            borderRadius: 7,
+            boxShadow: '0 3px 5px 2px rgba(0, 0, 0, .3)',
+            backgroundColor: '#S2S2S2'
           }}
         >
-          <Typography component="h1" variant="h5" sx={{ mb: 2 }}>
-            Nest Lynx
-          </Typography>
-          <LoginForm />
-        </Box>
-      </Paper>
-    </Container>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              
+            }}
+          >
+            <Typography component="h1" variant="h5" sx={{ mb: 2 }}>
+              TMS LYNX
+            </Typography>
+            <LoginForm />
+          </Box>
+        </Paper>
+      </Box>
+    </ThemeProvider>
   );
 };
 

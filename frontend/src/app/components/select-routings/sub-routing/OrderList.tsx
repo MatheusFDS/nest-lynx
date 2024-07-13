@@ -2,7 +2,7 @@ import React from 'react';
 import { ListItem, ListItemText, IconButton, Paper, Typography } from '@mui/material';
 import { Info } from '@mui/icons-material';
 import { Draggable } from 'react-beautiful-dnd';
-import { Order } from '../../../types';
+import { Order } from '../../../../types';
 
 interface OrderListProps {
   orders: Order[];

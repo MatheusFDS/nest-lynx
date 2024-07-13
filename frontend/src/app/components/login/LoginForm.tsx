@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextField, Button, Container, Typography } from '@mui/material';
+import { TextField, Button, Box, Typography } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 
 const LoginForm = () => {
@@ -26,51 +26,48 @@ const LoginForm = () => {
 
       const data = await response.json();
       const token = data.access_token;
+      const refreshToken = data.refresh_token;
 
       // Utilize o contexto para fazer o login e redirecionar
-      login(token);
+      login(token, refreshToken);
     } catch (error) {
       setError('Failed to login. Please check your credentials and try again.');
     }
   };
 
   return (
-    <Container maxWidth="xs">
-      <Typography variant="h6" component="h1" gutterBottom>
-        Login
+    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+      <TextField
+        label="E-mail de acesso"
+        variant="outlined"
+        fullWidth
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <TextField
+        label="Senha"
+        type="password"
+        variant="outlined"
+        fullWidth
+        required
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      {error && <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>}
+      <Button
+        type="submit"
+        fullWidth
+        variant="contained"
+        color="primary"
+        sx={{ mt: 3, mb: 2 }}
+      >
+        ENTRAR
+      </Button>
+      <Typography variant="body2" color="textSecondary" align="center">
+        Esqueceu a senha?
       </Typography>
-      <form onSubmit={handleSubmit}>
-        <TextField
-          label="Email"
-          variant="outlined"
-          margin="normal"
-          fullWidth
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <TextField
-          label="Password"
-          type="password"
-          variant="outlined"
-          margin="normal"
-          fullWidth
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {error && <Typography color="error">{error}</Typography>}
-        <Button
-          type="submit"
-          fullWidth
-          variant="contained"
-          color="primary"
-          style={{ marginTop: '16px' }}
-        >
-          Login
-        </Button>
-      </form>
-    </Container>
+    </Box>
   );
 };
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid, Paper, Typography, IconButton } from '@mui/material';
 import { Info } from '@mui/icons-material';
-import { Order } from '../../../types';
+import { Order } from '../../../../types';
 
 interface ExpandedOrdersDialogProps {
   open: boolean;
