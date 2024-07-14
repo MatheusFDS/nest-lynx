@@ -9,6 +9,7 @@ export interface Category {
 }
 
 export interface Delivery {
+  region: any;
   Vehicle: Vehicle;
   Driver: Driver;
   dataFim: string | number | Date;
