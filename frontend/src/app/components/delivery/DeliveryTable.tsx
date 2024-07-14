@@ -1,3 +1,4 @@
+// components/DeliveryTable.tsx
 import React from 'react';
 import {
   Table,
@@ -9,8 +10,9 @@ import {
   Paper,
   IconButton,
 } from '@mui/material';
-import { Edit, Delete, Map } from '@mui/icons-material';
+import { Edit, Delete, Map, Print } from '@mui/icons-material';
 import { Delivery, Driver, Vehicle, Order } from '../../../types';
+import { generatePDF } from './DeliveryReport';
 
 interface DeliveryTableProps {
   deliveries: Delivery[];
@@ -30,57 +32,70 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({
   getRegionName,
   handleEditDelivery,
   handleDeleteDelivery,
-}) => (
-  <TableContainer component={Paper} style={{ marginTop: '16px' }}>
-    <Table>
-      <TableHead>
-        <TableRow>
-          <TableCell>ID</TableCell>
-          <TableCell>Região</TableCell>
-          <TableCell>Motorista</TableCell>
-          <TableCell>Veículo</TableCell>
-          <TableCell>Total Valor</TableCell>
-          <TableCell>Total Peso</TableCell>
-          <TableCell>Data Início</TableCell>
-          <TableCell>Data Finalização</TableCell>
-          <TableCell>Status</TableCell>
-          <TableCell>Ações</TableCell>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {deliveries.map(delivery => {
-          const driver = drivers.find(driver => driver.id === delivery.motoristaId);
-          const vehicle = vehicles.find(vehicle => vehicle.id === delivery.veiculoId);
-          const { totalWeight, totalValue } = calculateTotalWeightAndValue(delivery.orders as Order[]);
-          const regionName = getRegionName(delivery);
+}) => {
+  const handlePrintDelivery = (delivery: Delivery) => {
+    const driver = drivers.find(driver => driver.id === delivery.motoristaId);
+    const vehicle = vehicles.find(vehicle => vehicle.id === delivery.veiculoId);
+    generatePDF(delivery, driver, vehicle, calculateTotalWeightAndValue, getRegionName);
+  };
 
-          return (
-            <TableRow key={delivery.id}>
-              <TableCell>{delivery.id}</TableCell>
-              <TableCell>{regionName}</TableCell>
-              <TableCell>{driver?.name}</TableCell>
-              <TableCell>{vehicle?.model}</TableCell>
-              <TableCell>R$ {totalValue.toFixed(2)}</TableCell>
-              <TableCell>{totalWeight.toFixed(2)} kg</TableCell>
-              <TableCell>{delivery.dataInicio ? new Date(delivery.dataInicio).toLocaleString() : 'N/A'}</TableCell>
-              <TableCell>{delivery.dataFim ? new Date(delivery.dataFim).toLocaleString() : 'N/A'}</TableCell>
-              <TableCell>{delivery.status}</TableCell>
-              <TableCell>
-                {delivery.status !== 'A liberar' && (
-                  <IconButton onClick={() => handleEditDelivery(delivery)}>
-                    <Edit />
+  return (
+    <TableContainer component={Paper} style={{ marginTop: '16px' }}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>ID</TableCell>
+            <TableCell>Região</TableCell>
+            <TableCell>Motorista</TableCell>
+            <TableCell>Veículo</TableCell>
+            <TableCell>Total Valor</TableCell>
+            <TableCell>Total Peso</TableCell>
+            <TableCell>Data Início</TableCell>
+            <TableCell>Data Finalização</TableCell>
+            <TableCell>Status</TableCell>
+            <TableCell>Ações</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {deliveries.map(delivery => {
+            const driver = drivers.find(driver => driver.id === delivery.motoristaId);
+            const vehicle = vehicles.find(vehicle => vehicle.id === delivery.veiculoId);
+            const { totalWeight, totalValue } = calculateTotalWeightAndValue(delivery.orders as Order[]);
+            const regionName = getRegionName(delivery);
+
+            return (
+              <TableRow key={delivery.id}>
+                <TableCell>{delivery.id}</TableCell>
+                <TableCell>{regionName}</TableCell>
+                <TableCell>{driver?.name}</TableCell>
+                <TableCell>{vehicle?.model}</TableCell>
+                <TableCell>R$ {totalValue.toFixed(2)}</TableCell>
+                <TableCell>{totalWeight.toFixed(2)} kg</TableCell>
+                <TableCell>{delivery.dataInicio ? new Date(delivery.dataInicio).toLocaleString() : 'N/A'}</TableCell>
+                <TableCell>{delivery.dataFim ? new Date(delivery.dataFim).toLocaleString() : 'N/A'}</TableCell>
+                <TableCell>{delivery.status}</TableCell>
+                <TableCell>
+                  {delivery.status !== 'A liberar' && (
+                    <>
+                      <IconButton onClick={() => handleEditDelivery(delivery)}>
+                        <Edit />
+                      </IconButton>
+                      <IconButton onClick={() => handlePrintDelivery(delivery)}>
+                        <Print />
+                      </IconButton>
+                    </>
+                  )}
+                  <IconButton onClick={() => handleDeleteDelivery(delivery.id)}>
+                    <Delete />
                   </IconButton>
-                )}
-                <IconButton onClick={() => handleDeleteDelivery(delivery.id)}>
-                  <Delete />
-                </IconButton>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-  </TableContainer>
-);
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+};
 
 export default DeliveryTable;

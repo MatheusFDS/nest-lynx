@@ -21,12 +21,11 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { useTheme as useCustomTheme } from '../context/ThemeContext';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-
 
 interface ToolbarProps {
   title: string;
@@ -34,6 +33,7 @@ interface ToolbarProps {
 
 const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const { isDarkMode, toggleTheme } = useCustomTheme();
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -41,6 +41,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
   const [openConfig, setOpenConfig] = useState(false);
   const [openCadastros, setOpenCadastros] = useState(false);
   const [openRotinas, setOpenRotinas] = useState(false);
+
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -70,11 +71,43 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
     setOpenRotinas(!openRotinas);
   };
 
+  const getCurrentPageName = () => {
+    const route = pathname.split('/').pop();
+    switch (route) {
+      case 'users':
+        return 'Usuários';
+      case 'company':
+        return 'Empresa';
+      case 'categories':
+        return 'Categorias';
+      case 'drivers':
+        return 'Motoristas';
+      case 'vehicles':
+        return 'Veículos';
+      case 'directions':
+        return 'Direções';
+      case 'deliveries':
+        return 'Expedição';
+      case 'routing':
+        return 'Triagem';
+      case 'orders':
+        return 'Documentos';
+      case 'payments':
+        return 'Financeiro';
+      case 'releases':
+        return 'Liberações';
+      case 'statistics':
+        return 'Dados';
+      default:
+        return 'Página Inicial';
+    }
+  };
+
   return (
     <AppBar position="static" sx={{ height: '64px' }}>
       <MuiToolbar>
         <Typography variant="h6" sx={{ flexGrow: 1 }}>
-          {title}
+          {title} - {getCurrentPageName()}
         </Typography>
         <IconButton color="inherit" onClick={toggleTheme}>
           {isDarkMode ? <Brightness7Icon /> : <Brightness4Icon />}
@@ -108,7 +141,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
                   <Collapse in={openConfig} timeout="auto" unmountOnExit>
                     <List component="div" disablePadding>
                       <MenuItem onClick={() => handleNavigation('/users')}>Usuários</MenuItem>
-                      <MenuItem onClick={() => handleNavigation('/company')}>Empresa</MenuItem>
+                      <MenuItem onClick={() => handleNavigation('/tenant')}>Empresa</MenuItem>
                     </List>
                   </Collapse>
                   <ListItem button onClick={toggleCadastros}>
@@ -143,8 +176,8 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
               <Grid container spacing={2} justifyContent="flex-end">
                 <Grid item>
                   <Box
-                    onMouseEnter={toggleRotinas}
-                    onMouseLeave={toggleRotinas}
+                    onMouseEnter={() => setOpenRotinas(true)}
+                    onMouseLeave={() => setOpenRotinas(false)}
                     sx={{ position: 'relative' }}
                   >
                     <Button color="inherit">
@@ -162,33 +195,33 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
                       p={1}
                       borderRadius={1}
                     >
-                    <Button color="inherit" onClick={() => handleNavigation('/statistics')}>
-                        Análise
-                      </Button>
-                      <Button color="inherit" onClick={() => handleNavigation('/deliveries')}>
-                        Entregas
+                      <Button color="inherit" onClick={() => handleNavigation('/statistics')}>
+                        Dados
                       </Button>
                       <Button color="inherit" onClick={() => handleNavigation('/routing')}>
                         Triagem
                       </Button>
+                      <Button color="inherit" onClick={() => handleNavigation('/deliveries')}>
+                        Expedição
+                      </Button>
                       <Button color="inherit" onClick={() => handleNavigation('/orders')}>
-                        Ordens
+                        Documentos
                       </Button>
                       <Button color="inherit" onClick={() => handleNavigation('/payments')}>
-                        Pagamentos
+                        Financeiro
                       </Button>
-                     {userRole === 'admin' && (
-                      <Button color="inherit" onClick={() => handleNavigation('/releases')}>
-                        Liberação
-                      </Button>
-                        )}
+                      {userRole === 'admin' && (
+                        <Button color="inherit" onClick={() => handleNavigation('/releases')}>
+                          Liberações
+                        </Button>
+                      )}
                     </Box>
                   </Box>
                 </Grid>
                 <Grid item>
                   <Box
-                    onMouseEnter={toggleCadastros}
-                    onMouseLeave={toggleCadastros}
+                    onMouseEnter={() => setOpenCadastros(true)}
+                    onMouseLeave={() => setOpenCadastros(false)}
                     sx={{ position: 'relative' }}
                   >
                     <Button color="inherit">
@@ -222,37 +255,37 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
                   </Box>
                 </Grid>
                 {userRole === 'admin' && (
-                <Grid item>
-                  <Box
-                    onMouseEnter={toggleConfig}
-                    onMouseLeave={toggleConfig}
-                    sx={{ position: 'relative' }}
-                  >
-                    <Button color="inherit">
-                      Configurações {openConfig ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                    </Button>
+                  <Grid item>
                     <Box
-                      position="absolute"
-                      top="100%"
-                      left="0"
-                      right="0"
-                      bgcolor={theme.palette.background.paper}
-                      color={theme.palette.text.primary}
-                      zIndex="tooltip"
-                      display={openConfig ? 'block' : 'none'}
-                      p={1}
-                      borderRadius={1}
-                    > 
-                      <Button color="inherit" onClick={() => handleNavigation('/users')}>
-                        Usuários
+                      onMouseEnter={() => setOpenConfig(true)}
+                      onMouseLeave={() => setOpenConfig(false)}
+                      sx={{ position: 'relative' }}
+                    >
+                      <Button color="inherit">
+                        Configurações {openConfig ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                       </Button>
-                      <Button color="inherit" onClick={() => handleNavigation('/tenant')}>
-                        Empresa
-                      </Button>
+                      <Box
+                        position="absolute"
+                        top="100%"
+                        left="0"
+                        right="0"
+                        bgcolor={theme.palette.background.paper}
+                        color={theme.palette.text.primary}
+                        zIndex="tooltip"
+                        display={openConfig ? 'block' : 'none'}
+                        p={1}
+                        borderRadius={1}
+                      >
+                        <Button color="inherit" onClick={() => handleNavigation('/users')}>
+                          Usuários
+                        </Button>
+                        <Button color="inherit" onClick={() => handleNavigation('/tenant')}>
+                          Empresa
+                        </Button>
+                      </Box>
                     </Box>
-                  </Box>
-                </Grid>
-                                 )}
+                  </Grid>
+                )}
                 <Grid item>
                   <Button color="inherit" onClick={handleLogout}>
                     Logout

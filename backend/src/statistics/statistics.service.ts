@@ -53,7 +53,7 @@ export class StatisticsService {
     const freightsPaid = await this.prisma.accountsPayable.count({
       where: {
         tenantId: tenantId,
-        status: 'Pago',
+        status: 'Baixado',
         createdAt: {
           gte: startDate,
           lte: endDate,

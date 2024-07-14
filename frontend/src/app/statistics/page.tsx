@@ -58,7 +58,7 @@ const StatisticsPage = () => {
 
   const freightsData = [
     { name: 'A pagar', value: statistics.freightsToPay },
-    { name: 'Pago', value: statistics.freightsPaid },
+    { name: 'Biaxado', value: statistics.freightsPaid },
   ];
 
   const deliveriesByDriverData = statistics.deliveriesByDriver.map((d: any) => ({

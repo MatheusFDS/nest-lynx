@@ -32,7 +32,7 @@ const PaymentsPage = () => {
   const [endDate, setEndDate] = useState<string>('');
   const [grouped, setGrouped] = useState<boolean>(false);
   const [paid, setPaid] = useState<boolean>(false);
-  const [pending, setPending] = useState<boolean>(false);
+  const [pending, setPending] = useState<boolean>(true);
   const [selectedPayments, setSelectedPayments] = useState<number[]>([]);
   const [error, setError] = useState<string>('');
   const [detailsOpen, setDetailsOpen] = useState<boolean>(false);
@@ -47,7 +47,7 @@ const PaymentsPage = () => {
         fetchDirections(token),
       ]);
       setPayments(paymentsData);
-      setFilteredPayments(paymentsData);
+      setFilteredPayments(paymentsData.filter(payment => payment.status === 'Pendente'));
       setDirections(directionsData);
     } catch (error) {
       setError('Failed to fetch payments.');
@@ -116,6 +116,10 @@ const PaymentsPage = () => {
 
     if (pending) {
       filtered = filtered.filter(payment => payment.status === 'Pendente');
+    }
+
+    if (!searchTerm && !startDate && !endDate && !grouped && !paid && !pending) {
+      filtered = [];
     }
 
     setFilteredPayments(filtered);
@@ -223,77 +227,83 @@ const PaymentsPage = () => {
       </Grid>
 
       <Grid item xs={12} sm={2}>
-      <StyledButton
-        variant="contained"
-        color="primary"
-        onClick={handleGroupPayments}
-        style={{ marginBottom: '16px' }}
-        disabled={selectedPayments.length === 0 || selectedPayments.some(id => payments.find(payment => payment.id === id)?.groupedPaymentId)}
-      >
-        Agrupar Selecionados
-      </StyledButton>
+        <StyledButton
+          variant="contained"
+          color="primary"
+          onClick={handleGroupPayments}
+          style={{ marginBottom: '16px' }}
+          disabled={selectedPayments.length === 0 || selectedPayments.some(id => payments.find(payment => payment.id === id)?.groupedPaymentId)}
+        >
+          Agrupar Selecionados
+        </StyledButton>
 
-          <FormControlLabel
-            control={<Checkbox checked={grouped} onChange={handleStatusFilterChange} name="grouped" />}
-            label="Agrupados"
-          />
-          <FormControlLabel
-            control={<Checkbox checked={paid} onChange={handleStatusFilterChange} name="paid" />}
-            label="Baixados"
-          />
-          <FormControlLabel
-            control={<Checkbox checked={pending} onChange={handleStatusFilterChange} name="pending" />}
-            label="Pendentes"
-          />
-          
-        </Grid>
+        <FormControlLabel
+          control={<Checkbox checked={grouped} onChange={handleStatusFilterChange} name="grouped" />}
+          label="Agrupados"
+        />
+        <FormControlLabel
+          control={<Checkbox checked={paid} onChange={handleStatusFilterChange} name="paid" />}
+          label="Baixados"
+        />
+        <FormControlLabel
+          control={<Checkbox checked={pending} onChange={handleStatusFilterChange} name="pending" />}
+          label="Pendentes"
+        />
+      </Grid>
+      
       <Paper elevation={3}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Selecionar</TableCell>
-              <TableCell>ID Pagamento</TableCell>
-              <TableCell>ID Roteiros</TableCell>
-              <TableCell>Valor Total</TableCell>
-              <TableCell>Data Criação</TableCell>
-              <TableCell>Data Baixa</TableCell>
-              <TableCell>Nome Motorista</TableCell>
-              <TableCell>isGroup</TableCell>
-              <TableCell>Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredPayments.map(payment => (
-              <TableRow key={payment.id}>
-                <TableCell>
-                  <Checkbox
-                    checked={selectedPayments.includes(payment.id)}
-                    onChange={() => handlePaymentSelect(payment.id)}
-                    disabled={payment.isGroup || payment.groupedPaymentId !== null}
-                  />
-                </TableCell>
-                <TableCell>{payment.id}</TableCell>
-                <TableCell>{payment.paymentDeliveries.map(pd => pd.delivery.id).join(', ')}</TableCell>
-                <TableCell>{payment.amount}</TableCell>
-                <TableCell>{new Date(payment.createdAt).toLocaleString()}</TableCell>
-                <TableCell>{payment.status === 'Baixado' ? new Date(payment.updatedAt).toLocaleString() : 'N/A'}</TableCell>
-                <TableCell>{payment.Driver?.name || 'N/A'}</TableCell>
-                <TableCell>{payment.isGroup ? 'Sim' : 'Não'}</TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleViewDetails(payment.paymentDeliveries.map(pd => pd.delivery.id))}>
-                    <InfoIcon />
-                  </IconButton>
-                  <IconButton onClick={() => handlePaymentStatusChange(payment.id, payment.status === 'Baixado' ? 'Pendente' : 'Baixado')}>
-                    {payment.status === 'Baixado' ? <GetAppIcon style={{ color: 'red' }} /> : <GetAppIcon />}
-                  </IconButton>
-                  {payment.isGroup && (
-                    <StyledButton onClick={() => handleUngroupPayments(payment.id)}>Desagrupar</StyledButton>
-                  )}
-                </TableCell>
+        {filteredPayments.length > 0 ? (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Selecionar</TableCell>
+                <TableCell>ID Pagamento</TableCell>
+                <TableCell>ID Roteiros</TableCell>
+                <TableCell>Valor Total</TableCell>
+                <TableCell>Data Criação</TableCell>
+                <TableCell>Data Baixa</TableCell>
+                <TableCell>Nome Motorista</TableCell>
+                <TableCell>isGroup</TableCell>
+                <TableCell>Ações</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {filteredPayments.map(payment => (
+                <TableRow key={payment.id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedPayments.includes(payment.id)}
+                      onChange={() => handlePaymentSelect(payment.id)}
+                      disabled={payment.isGroup || payment.groupedPaymentId !== null}
+                    />
+                  </TableCell>
+                  <TableCell>{payment.id}</TableCell>
+                  <TableCell>{payment.paymentDeliveries.map(pd => pd.delivery.id).join(', ')}</TableCell>
+                  <TableCell>{payment.amount}</TableCell>
+                  <TableCell>{new Date(payment.createdAt).toLocaleString()}</TableCell>
+                  <TableCell>{payment.status === 'Baixado' ? new Date(payment.updatedAt).toLocaleString() : 'N/A'}</TableCell>
+                  <TableCell>{payment.Driver?.name || 'N/A'}</TableCell>
+                  <TableCell>{payment.isGroup ? 'Sim' : 'Não'}</TableCell>
+                  <TableCell>
+                    <IconButton onClick={() => handleViewDetails(payment.paymentDeliveries.map(pd => pd.delivery.id))}>
+                      <InfoIcon />
+                    </IconButton>
+                    <IconButton onClick={() => handlePaymentStatusChange(payment.id, payment.status === 'Baixado' ? 'Pendente' : 'Baixado')}>
+                      {payment.status === 'Baixado' ? <GetAppIcon style={{ color: 'red' }} /> : <GetAppIcon />}
+                    </IconButton>
+                    {payment.isGroup && (
+                      <StyledButton onClick={() => handleUngroupPayments(payment.id)}>Desagrupar</StyledButton>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <Typography align="center" style={{ padding: '16px' }}>
+            Nenhum pagamento encontrado. Use os filtros para buscar pagamentos.
+          </Typography>
+        )}
       </Paper>
 
       <Dialog open={detailsOpen} onClose={handleDetailsClose} fullWidth maxWidth="md">
