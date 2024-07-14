@@ -1,130 +1,190 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Typography, Container, Button, Grid, Paper, TextField } from '@mui/material';
+import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import { Direction } from '../../types';
 import withAuth from '../hoc/withAuth';
+import { fetchDirections, addDirection, updateDirection, deleteDirection } from '../../services/directionsService';
+import { Delete, Edit } from '@mui/icons-material';
 
-const DirectionsPage = () => {
+const DirectionsPage: React.FC = () => {
   const [directions, setDirections] = useState<Direction[]>([]);
-  const [newDirection, setNewDirection] = useState({
+  const [filteredDirections, setFilteredDirections] = useState<Direction[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [currentDirection, setCurrentDirection] = useState<Partial<Direction>>({
     rangeInicio: '',
     rangeFim: '',
     valorDirecao: '',
     regiao: '',
   });
+  const [selectedDirection, setSelectedDirection] = useState<Direction | null>(null);
+  const [showForm, setShowForm] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const fetchDirections = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return;
-    }
+  const token = localStorage.getItem('token') || '';
 
+  const loadDirections = async () => {
     try {
-      const response = await fetch('http://localhost:4000/directions', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch directions');
-      }
-
-      const data = await response.json();
+      const data = await fetchDirections(token);
+      data.sort((a, b) => a.rangeInicio.localeCompare(b.rangeInicio));
       setDirections(data);
+      setFilteredDirections(data);
     } catch (error) {
       setError('Failed to fetch directions.');
     }
   };
 
   useEffect(() => {
-    fetchDirections();
+    loadDirections();
   }, []);
 
-  const handleAddDirection = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return;
-    }
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    const filtered = directions.filter(direction =>
+      direction.rangeInicio.toLowerCase().includes(e.target.value.toLowerCase()) ||
+      direction.rangeFim.toLowerCase().includes(e.target.value.toLowerCase()) ||
+      direction.regiao.toLowerCase().includes(e.target.value.toLowerCase())
+    );
+    setFilteredDirections(filtered);
+  };
 
+  const handleAddOrEditDirection = async () => {
     try {
-      const response = await fetch('http://localhost:4000/directions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(newDirection),
-      });
+      const directionToSave = {
+        ...currentDirection,
+        valorDirecao: parseFloat(currentDirection.valorDirecao || '0'),
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to add direction');
+      if (selectedDirection) {
+        await updateDirection(token, selectedDirection.id, directionToSave as unknown as Direction);
+      } else {
+        await addDirection(token, directionToSave as unknown as Direction);
       }
 
-      setNewDirection({
+      setCurrentDirection({
         rangeInicio: '',
         rangeFim: '',
         valorDirecao: '',
         regiao: '',
       });
-      fetchDirections();
+      setSelectedDirection(null);
+      setShowForm(false);
+      loadDirections();
     } catch (error) {
-      setError('Failed to add direction.');
+      setError('Failed to submit direction.');
     }
+  };
+
+  const handleEdit = (direction: Direction) => {
+    setSelectedDirection(direction);
+    setCurrentDirection({
+      ...direction,
+      valorDirecao: direction.valorDirecao.toString(),
+    });
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteDirection(token, id);
+      loadDirections();
+    } catch (error) {
+      setError('Failed to delete direction.');
+    }
+  };
+
+  const handleFormClose = () => {
+    setSelectedDirection(null);
+    setCurrentDirection({
+      rangeInicio: '',
+      rangeFim: '',
+      valorDirecao: '',
+      regiao: '',
+    });
+    setShowForm(false);
   };
 
   return (
     <Container>
       {error && <Typography color="error">{error}</Typography>}
-      <Grid container spacing={3} style={{ marginTop: '16px' }}>
-        <Grid item xs={12}>
-          <Paper elevation={3} style={{ padding: '16px' }}>
-            <TextField
-              label="Range Início"
-              value={newDirection.rangeInicio}
-              onChange={(e) => setNewDirection({ ...newDirection, rangeInicio: e.target.value })}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              label="Range Fim"
-              value={newDirection.rangeFim}
-              onChange={(e) => setNewDirection({ ...newDirection, rangeFim: e.target.value })}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              label="Valor Direção"
-              value={newDirection.valorDirecao}
-              onChange={(e) => setNewDirection({ ...newDirection, valorDirecao: e.target.value })}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              label="Região"
-              value={newDirection.regiao}
-              onChange={(e) => setNewDirection({ ...newDirection, regiao: e.target.value })}
-              fullWidth
-              margin="normal"
-            />
-            <Button variant="contained" color="primary" onClick={handleAddDirection}>
-              Add Direction
-            </Button>
-          </Paper>
-        </Grid>
-        {directions.map((direction) => (
-          <Grid item xs={12} sm={6} md={4} key={direction.id}>
-            <Paper elevation={3} style={{ padding: '16px' }}>
-              <Typography variant="h6">Range: {direction.rangeInicio} - {direction.rangeFim}</Typography>
-              <Typography variant="body1">Valor: {direction.valorDirecao}</Typography>
-              <Typography variant="body1">Região: {direction.regiao}</Typography>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
+      <TextField
+        label="Search Directions"
+        value={searchTerm}
+        onChange={handleSearch}
+        fullWidth
+        margin="normal"
+      />
+      <Button variant="contained" color="primary" onClick={() => setShowForm(true)}>
+        Add Direction
+      </Button>
+      {showForm && (
+        <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
+          <TextField
+            label="Range Início"
+            value={currentDirection.rangeInicio || ''}
+            onChange={(e) => setCurrentDirection({ ...currentDirection, rangeInicio: e.target.value })}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Range Fim"
+            value={currentDirection.rangeFim || ''}
+            onChange={(e) => setCurrentDirection({ ...currentDirection, rangeFim: e.target.value })}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Valor Direção"
+            value={currentDirection.valorDirecao || ''}
+            onChange={(e) => setCurrentDirection({ ...currentDirection, valorDirecao: e.target.value })}
+            type="number"
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Região"
+            value={currentDirection.regiao || ''}
+            onChange={(e) => setCurrentDirection({ ...currentDirection, regiao: e.target.value })}
+            fullWidth
+            margin="normal"
+          />
+          <Button variant="contained" color="primary" onClick={handleAddOrEditDirection}>
+            {selectedDirection ? 'Update Direction' : 'Add Direction'}
+          </Button>
+          <Button onClick={handleFormClose}>Cancel</Button>
+        </Paper>
+      )}
+      <TableContainer component={Paper} style={{ marginTop: '16px' }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Range Início</TableCell>
+              <TableCell>Range Fim</TableCell>
+              <TableCell>Valor Direção</TableCell>
+              <TableCell>Região</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredDirections.map((direction) => (
+              <TableRow key={direction.id}>
+                <TableCell>{direction.rangeInicio}</TableCell>
+                <TableCell>{direction.rangeFim}</TableCell>
+                <TableCell>{direction.valorDirecao}</TableCell>
+                <TableCell>{direction.regiao}</TableCell>
+                <TableCell>
+                  <IconButton onClick={() => handleEdit(direction)}>
+                    <Edit />
+                  </IconButton>
+                  <IconButton onClick={() => handleDelete(direction.id)}>
+                    <Delete />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Container>
   );
 };

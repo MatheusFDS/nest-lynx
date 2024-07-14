@@ -5,13 +5,13 @@ import { Droppable, Draggable } from 'react-beautiful-dnd';
 import { Order, Direction } from '../../../../types';
 
 interface DirectionCardProps {
-  direction: Direction;
+  direction: Direction | null;
   orders: Order[];
-  handleGenerateDelivery: (directionId: number) => void;
-  handleExpandedOrdersDialogOpen: (directionId: number) => void;
+  handleGenerateDelivery: (directionId: number | null) => void;
+  handleExpandedOrdersDialogOpen: (directionId: number | null) => void;
   handleDetailsDialogOpen: (order: Order) => void;
   calculateTotalWeightAndValue: (orders: Order[]) => { totalWeight: number; totalValue: number };
-  handleShowMap: (directionId: number) => void;
+  handleShowMap: (directionId: number | null) => void;
 }
 
 const DirectionCard: React.FC<DirectionCardProps> = ({
@@ -24,12 +24,18 @@ const DirectionCard: React.FC<DirectionCardProps> = ({
   handleShowMap,
 }) => {
   const { totalWeight, totalValue } = calculateTotalWeightAndValue(orders);
+  const directionId = direction ? direction.id : 'no-region';
+  const regionLabel = direction ? direction.regiao : 'Sem Região';
 
   return (
     <Grid item xs={12} sm={6} md={4}>
       <Paper elevation={3} style={{ padding: '8px', height: '550px', overflow: 'hidden' }}>
-        <Typography variant="subtitle1">{direction.regiao}</Typography>
-        <Typography variant="body2">CEP: {direction.rangeInicio} - {direction.rangeFim}</Typography>
+        <Typography variant="subtitle1">{regionLabel}</Typography>
+        {direction && (
+          <>
+            <Typography variant="body2">CEP: {direction.rangeInicio} - {direction.rangeFim}</Typography>
+          </>
+        )}
         <Typography variant="body2">Total Valor: R$ {totalValue.toFixed(2)}</Typography>
         <Typography variant="body2">Total Peso: {totalWeight.toFixed(2)} kg</Typography>
         <Typography variant="body2">Total de Pedidos: {orders.length}</Typography>
@@ -38,19 +44,19 @@ const DirectionCard: React.FC<DirectionCardProps> = ({
           color="primary"
           size="small"
           style={{ marginTop: '8px' }}
-          onClick={() => handleGenerateDelivery(direction.id)}
+          onClick={() => handleGenerateDelivery(direction ? direction.id : null)}
         >
           Gerar Rota
         </Button>
         <IconButton
           edge="end"
           size="small"
-          onClick={() => handleExpandedOrdersDialogOpen(direction.id)}
+          onClick={() => handleExpandedOrdersDialogOpen(direction ? direction.id : null)}
           style={{ marginLeft: '8px' }}
         >
           <ExpandMore fontSize="small" />
         </IconButton>
-        <Droppable droppableId={direction.id.toString()}>
+        <Droppable droppableId={directionId.toString()}>
           {(provided) => (
             <div ref={provided.innerRef} {...provided.droppableProps} style={{ marginTop: '8px', overflowY: 'auto', maxHeight: '100%' }}>
               {orders.map((order, index) => (

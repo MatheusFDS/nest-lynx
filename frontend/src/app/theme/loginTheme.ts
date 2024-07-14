@@ -1,22 +1,30 @@
-// src/theme/loginTheme.ts
 import { createTheme } from '@mui/material/styles';
+
+const futuristicPalette = {
+  primary: '#0D7377',
+  secondary: '#14FFEC',
+  background: '#323232',
+  surface: '#212121',
+  textPrimary: '#E1E1E1',
+  textSecondary: '#A1A1A1',
+};
 
 const loginTheme = createTheme({
   palette: {
     primary: {
-      main: '#54678F',
+      main: futuristicPalette.primary,
     },
     secondary: {
-      main: '#9199BE',
+      main: futuristicPalette.secondary,
     },
     background: {
-        default: '#F0F0F0', // Branco fosco para fundo
-        paper: '#E0E0E0', // Branco fosco para papel
+      default: futuristicPalette.background, // Fundo escuro futurístico
+      paper: futuristicPalette.surface, // Superfície escura futurística
     },
     text: {
-        primary: '#2E303E', // Texto escuro
-        secondary: '#54678F', // Texto secundário
-      },
+      primary: futuristicPalette.textPrimary, // Texto claro
+      secondary: futuristicPalette.textSecondary, // Texto secundário claro
+    },
   },
   typography: {
     fontFamily: 'Roboto, Arial, sans-serif',
@@ -35,6 +43,8 @@ const loginTheme = createTheme({
         root: {
           borderRadius: '10px',
           padding: '20px',
+          backgroundColor: futuristicPalette.surface,
+          color: futuristicPalette.textPrimary,
         },
       },
     },
@@ -42,6 +52,12 @@ const loginTheme = createTheme({
       styleOverrides: {
         root: {
           marginBottom: '20px',
+          '& .MuiInputBase-root': {
+            color: futuristicPalette.textPrimary,
+          },
+          '& .MuiInputLabel-root': {
+            color: futuristicPalette.textSecondary,
+          },
         },
       },
     },
@@ -50,6 +66,12 @@ const loginTheme = createTheme({
         root: {
           borderRadius: '8px',
           padding: '10px 20px',
+          backgroundColor: futuristicPalette.primary,
+          color: futuristicPalette.textPrimary,
+          '&:hover': {
+            backgroundColor: futuristicPalette.secondary,
+            color: futuristicPalette.background,
+          },
         },
       },
     },

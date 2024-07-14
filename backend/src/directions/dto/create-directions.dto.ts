@@ -1,7 +1,7 @@
 export class CreateDirectionsDto {
     rangeInicio: string;
     rangeFim: string;
-    valorDirecao: string;
+    valorDirecao: number;
     regiao: string;
   }
   

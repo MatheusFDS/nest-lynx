@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Container, Grid, Typography } from '@mui/material';
+import { Container, Typography } from '@mui/material';
 import Modal from 'react-modal';
 import { DragDropContext, DropResult } from 'react-beautiful-dnd';
-import { Order } from '../../types';
+import { Order, Direction } from '../../types';
 import withAuth from '../hoc/withAuth';
 import OrderSection from '../components/select-routings/OrderSection';
 import DirectionsSection from '../components/select-routings/DirectionsSection';
@@ -12,6 +12,11 @@ import MapSection from '../components/select-routings/MapSection';
 import { useTheme } from '../context/ThemeContext';
 import useRoutingData from '../hooks/useRoutingData';
 import OrderDetailsDialog from '../components/select-routings/OrderDetailsDialog';
+
+interface SelectedOrders {
+  [key: number]: Order[];
+  noRegion: Order[];
+}
 
 const RoutingPage: React.FC = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -24,13 +29,33 @@ const RoutingPage: React.FC = () => {
 
   const { isDarkMode } = useTheme();
   const token = localStorage.getItem('token') || '';
-  const { orders, directions, drivers, vehicles, categories, tenantData, selectedOrders, setSelectedOrders, error } = useRoutingData(token);
+  const { orders, directions, drivers, vehicles, categories, tenantData, error } = useRoutingData(token);
+  const [selectedOrders, setSelectedOrders] = useState<SelectedOrders>({ noRegion: [] });
 
   useEffect(() => {
     Modal.setAppElement('#__next');
   }, []);
 
-  const handleOrderTransfer = (orderId: number, fromDirectionId: number, toDirectionId: number) => {
+  useEffect(() => {
+    const ordersByDirection: SelectedOrders = directions.reduce((acc, direction) => {
+      acc[direction.id] = orders.filter(order => 
+        order.cep >= direction.rangeInicio && order.cep <= direction.rangeFim
+      );
+      return acc;
+    }, { noRegion: [] } as SelectedOrders);
+
+    const ordersWithoutDirection = orders.filter(order => 
+      !directions.some(direction => 
+        order.cep >= direction.rangeInicio && order.cep <= direction.rangeFim
+      )
+    );
+
+    ordersByDirection.noRegion = ordersWithoutDirection;
+
+    setSelectedOrders(ordersByDirection);
+  }, [orders, directions]);
+
+  const handleOrderTransfer = (orderId: number, fromDirectionId: number | 'noRegion', toDirectionId: number | 'noRegion') => {
     setSelectedOrders(prevState => {
       const fromOrders = prevState[fromDirectionId].filter(order => order.id !== orderId);
       const toOrders = [...prevState[toDirectionId], orders.find(order => order.id === orderId)!];
@@ -48,7 +73,7 @@ const RoutingPage: React.FC = () => {
     setSelectedOrder(null);
   };
 
-  const handleExpandedOrdersDialogOpen = (directionId: number) => {
+  const handleExpandedOrdersDialogOpen = (directionId: number | null) => {
     setCurrentDirectionId(directionId);
     setExpandedOrdersDialogOpen(true);
   };
@@ -63,13 +88,17 @@ const RoutingPage: React.FC = () => {
     const { source, destination } = result;
 
     if (source.droppableId !== destination.droppableId) {
-      handleOrderTransfer(parseInt(result.draggableId), parseInt(source.droppableId), parseInt(destination.droppableId));
+      handleOrderTransfer(
+        parseInt(result.draggableId),
+        source.droppableId === 'no-region' ? 'noRegion' : parseInt(source.droppableId),
+        destination.droppableId === 'no-region' ? 'noRegion' : parseInt(destination.droppableId)
+      );
     }
   };
 
-  const handleShowMap = (directionId: number) => {
+  const handleShowMap = (directionId: number | null) => {
     setCurrentDirectionId(directionId);
-    const validOrders = selectedOrders[directionId].filter(order => order.lat !== undefined && order.lng !== undefined);
+    const validOrders = selectedOrders[directionId!].filter(order => order.lat !== undefined && order.lng !== undefined);
     setOrdersForMap(validOrders);
     setShowMap(true);
   };

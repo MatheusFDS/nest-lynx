@@ -128,7 +128,7 @@ model Directions {
   id            Int      @id @default(autoincrement())
   rangeInicio   String
   rangeFim      String
-  valorDirecao  String
+  valorDirecao  Int
   regiao        String
   tenantId      Int
   Tenant        Tenant   @relation(fields: [tenantId], references: [id])

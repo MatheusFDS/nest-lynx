@@ -8,6 +8,9 @@ export interface Category {
   tenantId: number;
 }
 
+
+
+
 export interface Delivery {
   region: any;
   Vehicle: Vehicle;
@@ -31,7 +34,7 @@ export interface Direction {
   id: number;
   rangeInicio: string;
   rangeFim: string;
-  valorDirecao: string;
+  valorDirecao:  string   ;
   regiao: string;
   tenantId: number;
   createdAt: string;
@@ -58,6 +61,7 @@ export interface Metadata {
 }
 
 export interface Order {
+  directionId: any;
   sorting: number;
   address: any;
   lat: number;

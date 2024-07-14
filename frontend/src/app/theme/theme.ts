@@ -45,27 +45,36 @@ const commonComponents = {
   },
 };
 
+const futuristicPalette = {
+  primary: '#0D7377',
+  secondary: '#14FFEC',
+  background: '#323232',
+  surface: '#212121',
+  textPrimary: '#E1E1E1',
+  textSecondary: '#A1A1A1',
+};
+
 const lightTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#54678F', // Cor principal da paleta de cores
+      main: futuristicPalette.primary,
     },
     secondary: {
-      main: '#9199BE', // Cor secundária da paleta de cores
+      main: futuristicPalette.secondary,
     },
     background: {
-      default: '#F0F0F0', // Branco fosco para fundo
-      paper: '#E0E0E0', // Branco fosco para papel
+      default: '#F5F5F5', // Claro, para melhor contraste com os elementos futurísticos
+      paper: '#FFFFFF',
     },
     text: {
-      primary: '#2E303E', // Texto escuro
-      secondary: '#54678F', // Texto secundário
+      primary: '#0A3D62',
+      secondary: '#0A3D62',
     },
   },
   typography: commonTypography,
   shape: {
-    borderRadius: 8, // Ajustando para ser menos arredondado
+    borderRadius: 8,
   },
   components: commonComponents,
 });
@@ -74,23 +83,23 @@ const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#9199BE', // Cor principal da paleta de cores
+      main: futuristicPalette.primary,
     },
     secondary: {
-      main: '#54678F', // Cor secundária da paleta de cores
+      main: futuristicPalette.secondary,
     },
     background: {
-      default: '#212624', // Fundo escuro
-      paper: '#2E303E', // Papel mais escuro
+      default: futuristicPalette.background,
+      paper: futuristicPalette.surface,
     },
     text: {
-      primary: '#C2D3DA', // Texto claro
-      secondary: '#6C6B74', // Texto secundário
+      primary: futuristicPalette.textPrimary,
+      secondary: futuristicPalette.textSecondary,
     },
   },
   typography: commonTypography,
   shape: {
-    borderRadius: 8, // Ajustando para ser menos arredondado
+    borderRadius: 8,
   },
   components: commonComponents,
 });

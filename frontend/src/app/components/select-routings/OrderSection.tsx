@@ -5,9 +5,9 @@ import { Direction, Order } from '../../../types';
 
 interface OrderSectionProps {
   directions: Direction[];
-  selectedOrders: { [key: number]: Order[] };
-  handleShowMap: (directionId: number) => void;
-  handleExpandedOrdersDialogOpen: (directionId: number) => void;
+  selectedOrders: { [key: number]: Order[]; noRegion: Order[] };
+  handleShowMap: (directionId: number | null) => void;
+  handleExpandedOrdersDialogOpen: (directionId: number | null) => void;
   handleDetailsDialogOpen: (order: Order) => void;
 }
 
@@ -16,7 +16,7 @@ const OrderSection: React.FC<OrderSectionProps> = ({
   selectedOrders,
   handleShowMap,
   handleExpandedOrdersDialogOpen,
-  handleDetailsDialogOpen
+  handleDetailsDialogOpen,
 }) => {
 
   const calculateTotalWeightAndValue = (orders: Order[]): { totalWeight: number; totalValue: number } => {
@@ -30,9 +30,13 @@ const OrderSection: React.FC<OrderSectionProps> = ({
     );
   };
 
+  const ordersWithoutDirection = selectedOrders.noRegion || [];
+
+  const sortedDirections = [...directions].sort((a, b) => a.rangeInicio.localeCompare(b.rangeInicio));
+
   return (
     <Grid container spacing={3}>
-      {directions.map(direction => {
+      {sortedDirections.map(direction => {
         const ordersInDirection = selectedOrders[direction.id] || [];
         if (ordersInDirection.length === 0) return null;
 
@@ -45,10 +49,22 @@ const OrderSection: React.FC<OrderSectionProps> = ({
             handleExpandedOrdersDialogOpen={handleExpandedOrdersDialogOpen}
             handleDetailsDialogOpen={handleDetailsDialogOpen}
             calculateTotalWeightAndValue={calculateTotalWeightAndValue}
-            handleShowMap={handleShowMap} // Adicionando a propriedade handleShowMap
+            handleShowMap={handleShowMap}
           />
         );
       })}
+      {ordersWithoutDirection.length > 0 && (
+        <DirectionCard
+          key="no-region"
+          direction={null}
+          orders={ordersWithoutDirection}
+          handleGenerateDelivery={() => handleShowMap(null)}
+          handleExpandedOrdersDialogOpen={() => handleExpandedOrdersDialogOpen(null)}
+          handleDetailsDialogOpen={handleDetailsDialogOpen}
+          calculateTotalWeightAndValue={calculateTotalWeightAndValue}
+          handleShowMap={handleShowMap}
+        />
+      )}
     </Grid>
   );
 };
