@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { Payment, Direction, Delivery } from '../../types';
-import withAuth from '../components/withAuth';
+import withAuth from '../hoc/withAuth';
 import { fetchPayments, updatePaymentStatus, groupPayments, ungroupPayments, fetchDeliveryDetails } from '../../services/paymentService';
 import { fetchDirections } from '../../services/auxiliaryService';
 import InfoIcon from '@mui/icons-material/Info';

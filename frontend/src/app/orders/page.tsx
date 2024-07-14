@@ -15,7 +15,7 @@ import {
   MoreVert,
   Refresh,
 } from '@mui/icons-material';
-import withAuth from '../components/withAuth';
+import withAuth from '../hoc/withAuth';
 import { fetchOrders, uploadOrders, fetchUserSettings, updateUserSettings } from '../../services/orderService';
 import { Order } from '../../types';
 import { AgGridReact } from 'ag-grid-react';

@@ -47,7 +47,17 @@ export interface Driver {
   updatedAt: string;
 }
 
+export interface Column {
+  column_name: string;
+  data_type: string;
+}
+
+export interface Metadata {
+  [table: string]: Column[];
+}
+
 export interface Order {
+  sorting: number;
   address: any;
   lat: number;
   lng: number;

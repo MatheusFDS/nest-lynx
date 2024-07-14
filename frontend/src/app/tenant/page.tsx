@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Typography, Container, Grid, Paper, TextField, Button } from '@mui/material';
-import withAuth from '../components/withAuth';
+import withAuth from '../hoc/withAuth';
 import { Tenant } from '../../types';
 
 const TenantPage = () => {

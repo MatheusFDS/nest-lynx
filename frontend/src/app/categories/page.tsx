@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import { Category } from '../../types';
-import withAuth from '../components/withAuth';
+import withAuth from '../hoc/withAuth';
 import { fetchCategories, addCategory, updateCategory, deleteCategory } from '../../services/categoryService';
 import { Delete, Edit } from '@mui/icons-material';
 

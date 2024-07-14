@@ -1,6 +1,4 @@
-// src/delivery/dto/create-delivery.dto.ts
-
-import { IsNumber, IsArray, ValidateNested, IsString, IsOptional, IsNotEmpty } from 'class-validator';
+import { IsNumber, IsArray, ValidateNested, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderDto } from '../../orders/dto/order.dto';
 

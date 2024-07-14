@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Typography, Grid, Box, Paper } from '@mui/material';
 import DateFilter from '../components/statistics/DateFilter';
 import StatisticsChart from '../components/statistics/StatisticsChart';
-import withAuth from '../components/withAuth';
+import withAuth from '../hoc/withAuth';
 
 const StatisticsPage = () => {
   const [statistics, setStatistics] = useState<any>({
@@ -16,7 +16,7 @@ const StatisticsPage = () => {
     deliveriesByDriver: [],
     deliveriesInRoute: 0,
     deliveriesFinalized: 0,
-    notesByRegion: [],
+    deliveriesByRegion: [], // Renomeado para entregar a região corretamente
   });
   const [startDate, setStartDate] = useState('2024-01-01');
   const [endDate, setEndDate] = useState('2024-12-31');
@@ -24,7 +24,6 @@ const StatisticsPage = () => {
   const fetchStatistics = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      // Redirecione para a página de login se o token não estiver presente
       return;
     }
 
@@ -52,54 +51,44 @@ const StatisticsPage = () => {
   }, [startDate, endDate]);
 
   const ordersData = [
-    { name: 'In Route', value: statistics.ordersInRoute },
-    { name: 'Finalized', value: statistics.ordersFinalized },
-    { name: 'Pending', value: statistics.ordersPending },
+    { name: 'Em Rota', value: statistics.ordersInRoute },
+    { name: 'Finalizado', value: statistics.ordersFinalized },
+    { name: 'Pendente', value: statistics.ordersPending },
   ];
 
   const freightsData = [
-    { name: 'To Pay', value: statistics.freightsToPay },
-    { name: 'Paid', value: statistics.freightsPaid },
+    { name: 'A pagar', value: statistics.freightsToPay },
+    { name: 'Pago', value: statistics.freightsPaid },
   ];
 
   const deliveriesByDriverData = statistics.deliveriesByDriver.map((d: any) => ({
-    name: `Driver ${d.motoristaId}`,
+    name: `Motorista ${d.motoristaId}`,
     value: d._count.motoristaId,
   }));
 
-  const notesByRegionData = statistics.notesByRegion.map((n: any) => ({
-    name: n.cidade,
-    value: n._count.cidade,
-  }));
+ 
 
   return (
     <Box sx={{ flexGrow: 1, padding: 2 }}>
-      <DateFilter
-        startDate={startDate}
-        endDate={endDate}
-        setStartDate={setStartDate}
-        setEndDate={setEndDate}
-        fetchStatistics={fetchStatistics}
-      />
       <Grid container spacing={3} sx={{ marginTop: 2 }}>
         <Grid item xs={12} sm={6} md={6}>
-          <Paper elevation={3} sx={{ padding: 2 }}>
-            <StatisticsChart title="Total Orders" data={ordersData} />
+          <Paper elevation={3} sx={{ padding:  2 }}>
+            <StatisticsChart title="Total de Entregas" data={ordersData} />
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6} md={6}>
           <Paper elevation={3} sx={{ padding: 2 }}>
-            <StatisticsChart title="Freights" data={freightsData} />
+            <StatisticsChart title="Fretes" data={freightsData} />
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6} md={6}>
           <Paper elevation={3} sx={{ padding: 2 }}>
-            <StatisticsChart title="Deliveries by Driver" data={deliveriesByDriverData} />
+            <StatisticsChart title="Entregas por Motorista" data={deliveriesByDriverData} />
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6} md={6}>
           <Paper elevation={3} sx={{ padding: 2 }}>
-            <StatisticsChart title="Notes by Region" data={notesByRegionData} />
+
           </Paper>
         </Grid>
       </Grid>

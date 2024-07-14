@@ -14,7 +14,7 @@ const DateFilter: React.FC<DateFilterProps> = ({ startDate, endDate, setStartDat
     <Grid container spacing={2} alignItems="center">
       <Grid item>
         <TextField
-          label="Start Date"
+          label="Data Inicial"
           type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
@@ -25,7 +25,7 @@ const DateFilter: React.FC<DateFilterProps> = ({ startDate, endDate, setStartDat
       </Grid>
       <Grid item>
         <TextField
-          label="End Date"
+          label="Data Final"
           type="date"
           value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
@@ -36,7 +36,7 @@ const DateFilter: React.FC<DateFilterProps> = ({ startDate, endDate, setStartDat
       </Grid>
       <Grid item>
         <Button variant="contained" color="primary" onClick={fetchStatistics}>
-          Filter
+          Filtrar
         </Button>
       </Grid>
     </Grid>

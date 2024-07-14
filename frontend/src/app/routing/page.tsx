@@ -5,7 +5,7 @@ import { Container, Grid, Typography } from '@mui/material';
 import Modal from 'react-modal';
 import { DragDropContext, DropResult } from 'react-beautiful-dnd';
 import { Order } from '../../types';
-import withAuth from '../components/withAuth';
+import withAuth from '../hoc/withAuth';
 import OrderSection from '../components/select-routings/OrderSection';
 import DirectionsSection from '../components/select-routings/DirectionsSection';
 import MapSection from '../components/select-routings/MapSection';

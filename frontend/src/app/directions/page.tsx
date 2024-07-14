@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Typography, Container, Button, Grid, Paper, TextField } from '@mui/material';
 import { Direction } from '../../types';
-import withAuth from '../components/withAuth';
+import withAuth from '../hoc/withAuth';
 
 const DirectionsPage = () => {
   const [directions, setDirections] = useState<Direction[]>([]);

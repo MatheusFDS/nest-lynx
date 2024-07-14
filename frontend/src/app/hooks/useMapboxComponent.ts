@@ -101,7 +101,7 @@ export const useMapboxComponent = (tenantId: number, orders: Order[], onClose: (
   }, [tenantAddress, isDarkMode, map]);
 
   useEffect(() => {
-    const addMarker = (position: { lat: number; lng: number }, index: number, color: string) => {
+    const addMarker = (position: { lat: number; lng: number }, index: number, color: string, label: string) => {
       const el = document.createElement('div');
       el.className = 'marker';
       el.style.backgroundColor = color;
@@ -113,7 +113,7 @@ export const useMapboxComponent = (tenantId: number, orders: Order[], onClose: (
       el.style.alignItems = 'center';
       el.style.color = 'WHITE';
       el.style.fontSize = '10px';
-      el.innerText = String(index + 1);
+      el.innerText = label;
 
       const marker = new mapboxgl.Marker(el)
         .setLngLat([position.lng, position.lat])
@@ -128,12 +128,12 @@ export const useMapboxComponent = (tenantId: number, orders: Order[], onClose: (
 
       const tenantLocation = await geocodeAddress(tenantAddress!);
       if (tenantLocation) {
-        addMarker(tenantLocation, 0, '#FF0000'); // Marcador para a localização do inquilino (vermelho)
+        addMarker(tenantLocation, 0, '#FFC107', ''); // Marcador para a localização do inquilino (vermelho) sem numeral
       }
 
       orderedOrders.forEach((order, index) => {
-        const color = index === orderedOrders.length - 1 ? '#0000FF' : '#194b32'; // Último pedido em azul
-        addMarker({ lat: order.lat, lng: order.lng }, index, color);
+        const color = index === orderedOrders.length - 1 ? '#FF8042 ' : '#28A745' ; // Último pedido em azul
+        addMarker({ lat: order.lat, lng: order.lng }, index, color, String(index + 1));
       });
     };
 
@@ -226,8 +226,13 @@ export const useMapboxComponent = (tenantId: number, orders: Order[], onClose: (
 
   const handleGenerateRoute = async () => {
     const token = localStorage.getItem('token')!;
-    const ordersInDirection = orderedOrders;
-    const { totalWeight, totalValue } = calculateTotalWeightAndValue(ordersInDirection);
+    const ordersInDirection = orderedOrders.map((order, index) => ({
+      id: order.id,
+      cliente: order.cliente,
+      numero: order.numero,
+      sorting: index + 1, // Adiciona a ordem dos pedidos
+    }));
+    const { totalWeight, totalValue } = calculateTotalWeightAndValue(orderedOrders);
 
     const deliveryData = {
       motoristaId: selectedDriver as number,
@@ -236,11 +241,7 @@ export const useMapboxComponent = (tenantId: number, orders: Order[], onClose: (
       totalPeso: totalWeight,
       totalValor: totalValue,
       tenantId: tenantId,
-      orders: ordersInDirection.map(order => ({
-        id: order.id,
-        cliente: order.cliente,
-        numero: order.numero,
-      })),
+      orders: ordersInDirection,
     };
 
     try {
@@ -271,12 +272,18 @@ export const useMapboxComponent = (tenantId: number, orders: Order[], onClose: (
     if (driverVehicles.length > 0) {
       const vehicle = driverVehicles[0];
       setSelectedVehicle(vehicle.id);
+      setFreightValue(calculateFreightValue(vehicle.categoryId, categories, directions));
     }
   };
 
   const handleVehicleChange = (event: SelectChangeEvent<number | string>) => {
     const vehicleId = event.target.value as number;
     setSelectedVehicle(vehicleId);
+
+    const vehicle = vehicles.find(vehicle => vehicle.id === vehicleId);
+    if (vehicle) {
+      setFreightValue(calculateFreightValue(vehicle.categoryId, categories, directions));
+    }
   };
 
   const handleOpenOrderDetails = (order: Order) => {
@@ -319,6 +326,16 @@ export const useMapboxComponent = (tenantId: number, orders: Order[], onClose: (
   };
 };
 
-function calculateTotalWeightAndValue(ordersInDirection: Order[]): { totalWeight: any; totalValue: any; } {
-  throw new Error('Function not implemented.');
+function calculateTotalWeightAndValue(ordersInDirection: Order[]): { totalWeight: number; totalValue: number; } {
+  return ordersInDirection.reduce((acc, order) => {
+    acc.totalWeight += order.peso;
+    acc.totalValue += order.valor;
+    return acc;
+  }, { totalWeight: 0, totalValue: 0 });
+}
+
+function calculateFreightValue(categoryId: number, categories: Category[], directions: Direction[]): number {
+  const category = categories.find(category => category.id === categoryId);
+  const directionValue = directions.length > 0 ? parseFloat(directions[0].valorDirecao) : 0;
+  return (category ? category.valor : 0) + directionValue;
 }

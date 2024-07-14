@@ -42,6 +42,7 @@ export const fetchDeliveries = async (token: string): Promise<Delivery[]> => {
       cep: order.cep,
       status: order.status,
       tenantId: order.tenantId,
+      sorting: order.sorting,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
     })),

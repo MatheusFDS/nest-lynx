@@ -12,6 +12,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { StatisticsModule } from './statistics/statistics.module';
 import { UserSettingsModule } from './user-settings/user-settings.module';
 import { TenantModule } from './tenant/tenant.module';
+import { MetadataModule } from './meta/metadata.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { TenantModule } from './tenant/tenant.module';
     VehiclesModule,
     DeliveryModule,
     UserSettingsModule,
+    MetadataModule,
   ],
 })
 export class AppModule {}

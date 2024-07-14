@@ -87,10 +87,12 @@ export class DeliveryService {
       },
     });
 
-    await this.prisma.order.updateMany({
-      where: { id: { in: orders.map(order => order.id) } },
-      data: { status: status, deliveryId: delivery.id },
-    });
+    for (const order of orders) {
+      await this.prisma.order.update({
+        where: { id: order.id },
+        data: { status: status, deliveryId: delivery.id, sorting: order.sorting ?? null },
+      });
+    }
 
     return delivery;
   }

@@ -1,6 +1,4 @@
-// create a new file named order.dto.ts or add it in the same file
-
-import { IsNumber, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class OrderDto {
   @IsNumber()
@@ -11,4 +9,8 @@ export class OrderDto {
 
   @IsString()
   numero: string;
+
+  @IsOptional()
+  @IsNumber()
+  sorting?: number; 
 }

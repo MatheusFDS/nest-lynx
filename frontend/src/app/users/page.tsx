@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Typography, Container, Grid, Paper } from '@mui/material';
-import withAuth from '../components/withAuth';
+import withAuth from '../hoc/withAuth';
 import { User } from '../../types';
 
 const UsersPage = () => {

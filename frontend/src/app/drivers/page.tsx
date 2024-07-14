@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import { Driver } from '../../types'; // Certifique-se de que Driver está corretamente importado
-import withAuth from '../components/withAuth';
+import withAuth from '../hoc/withAuth';
 import { fetchDrivers, addDriver, updateDriver, deleteDriver } from '../../services/driverService';
 import { Delete, Edit } from '@mui/icons-material';
 

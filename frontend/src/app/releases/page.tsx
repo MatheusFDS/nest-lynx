@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 import { fetchDeliveries, releaseDelivery } from '../../services/deliveryService';
 import { Delivery, Order } from '../../types';
-import withAuth from '../components/withAuth';
+import withAuth from '../hoc/withAuth';
 import { Info } from '@mui/icons-material';
 
 const ReleasePage: React.FC = () => {

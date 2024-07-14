@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
 import { Vehicle, Driver, Category } from '../../types'; // Importando os tipos
-import withAuth from '../components/withAuth';
+import withAuth from '../hoc/withAuth';
 import { fetchVehicles, addVehicle, updateVehicle, deleteVehicle } from '../../services/vehicleService';
 import { fetchDrivers } from '../../services/driverService'; // Certifique-se de que estas funções existem
 import { fetchCategories } from '../../services/categoryService'; // Certifique-se de que estas funções existem

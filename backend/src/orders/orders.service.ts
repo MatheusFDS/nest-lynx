@@ -1,6 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Order } from '@prisma/client';
 import { parse, isValid } from 'date-fns';
 
 @Injectable()
@@ -29,7 +28,7 @@ export class OrdersService {
 
       const existingOrder = await this.prisma.order.findFirst({
         where: {
-          numero: order.numero.toString(), // Certifique-se de que é string
+          numero: order.numero.toString(),
           tenantId: tenantId,
         },
       });
@@ -63,6 +62,7 @@ export class OrdersService {
           status: 'Pendente', // Define todos os pedidos como "Pendente"
           deliveryId: order.deliveryId ? parseInt(order.deliveryId) : null,
           tenantId: tenantId,
+          sorting: 0
         },
       });
       createdOrders.push(createdOrder);

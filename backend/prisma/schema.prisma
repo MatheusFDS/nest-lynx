@@ -118,9 +118,11 @@ model Order {
   tenantId          Int
   Tenant            Tenant   @relation(fields: [tenantId], references: [id])
   Delivery          Delivery? @relation(fields: [deliveryId], references: [id])
+  sorting           Int?      // Novo campo para a sequência dos pedidos
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
+
 
 model Directions {
   id            Int      @id @default(autoincrement())

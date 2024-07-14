@@ -21,7 +21,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
 
   return (
     <>
-      {isLoggedIn && <Toolbar title="My App" />}
+      {isLoggedIn && <Toolbar title="TMS LYNX" />}
       <div id="__next" style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
         {children}
       </div>
