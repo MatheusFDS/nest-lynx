@@ -88,7 +88,7 @@ const DriversPage: React.FC = () => {
         margin="normal"
       />
       <Button variant="contained" color="primary" onClick={() => setShowForm(true)}>
-        Add Driver
+        Adicionar Motorista
       </Button>
       {showForm && (
         <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>

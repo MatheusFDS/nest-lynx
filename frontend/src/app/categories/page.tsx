@@ -88,7 +88,7 @@ const CategoriesPage: React.FC = () => {
         margin="normal"
       />
       <Button variant="contained" color="primary" onClick={() => setShowForm(true)}>
-        Add Category
+        Adicionar Categoria
       </Button>
       {showForm && (
         <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>

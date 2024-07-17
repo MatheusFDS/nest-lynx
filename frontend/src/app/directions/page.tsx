@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
 import { Direction } from '../../types';
 import withAuth from '../hoc/withAuth';
 import { fetchDirections, addDirection, updateDirection, deleteDirection } from '../../services/directionsService';
@@ -20,6 +20,8 @@ const DirectionsPage: React.FC = () => {
   const [selectedDirection, setSelectedDirection] = useState<Direction | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [dialogOpen, setDialogOpen] = useState<boolean>(false);
+  const [dialogContent, setDialogContent] = useState<string>('');
 
   const token = localStorage.getItem('token') || '';
 
@@ -30,7 +32,7 @@ const DirectionsPage: React.FC = () => {
       setDirections(data);
       setFilteredDirections(data);
     } catch (error) {
-      setError('Failed to fetch directions.');
+      handleError('Falha ao buscar direções.');
     }
   };
 
@@ -48,12 +50,31 @@ const DirectionsPage: React.FC = () => {
     setFilteredDirections(filtered);
   };
 
+  const validateCepRange = (startCep: string, endCep: string): boolean => {
+    const invalidDirection = directions.find(direction =>
+      (startCep >= direction.rangeInicio && startCep <= direction.rangeFim) ||
+      (endCep >= direction.rangeInicio && endCep <= direction.rangeFim)
+    );
+
+    if (invalidDirection) {
+      const range = `${invalidDirection.rangeInicio} - ${invalidDirection.rangeFim}`;
+      handleError(`O CEP de início ou de fim está em uma faixa existente: ${range} na região ${invalidDirection.regiao}.`);
+      return false;
+    }
+
+    return true;
+  };
+
   const handleAddOrEditDirection = async () => {
     try {
       const directionToSave = {
         ...currentDirection,
         valorDirecao: parseFloat(currentDirection.valorDirecao || '0'),
       };
+
+      if (!validateCepRange(currentDirection.rangeInicio!, currentDirection.rangeFim!)) {
+        return;
+      }
 
       if (selectedDirection) {
         await updateDirection(token, selectedDirection.id, directionToSave as unknown as Direction);
@@ -71,7 +92,7 @@ const DirectionsPage: React.FC = () => {
       setShowForm(false);
       loadDirections();
     } catch (error) {
-      setError('Failed to submit direction.');
+      handleError('Falha ao enviar direção.');
     }
   };
 
@@ -89,7 +110,7 @@ const DirectionsPage: React.FC = () => {
       await deleteDirection(token, id);
       loadDirections();
     } catch (error) {
-      setError('Failed to delete direction.');
+      handleError('Falha ao deletar direção.');
     }
   };
 
@@ -104,18 +125,27 @@ const DirectionsPage: React.FC = () => {
     setShowForm(false);
   };
 
+  const handleError = (message: string) => {
+    setDialogContent(message);
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+  };
+
   return (
     <Container>
       {error && <Typography color="error">{error}</Typography>}
       <TextField
-        label="Search Directions"
+        label="Buscar Direções"
         value={searchTerm}
         onChange={handleSearch}
         fullWidth
         margin="normal"
       />
       <Button variant="contained" color="primary" onClick={() => setShowForm(true)}>
-        Add Direction
+        Adicionar Direção
       </Button>
       {showForm && (
         <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
@@ -149,9 +179,9 @@ const DirectionsPage: React.FC = () => {
             margin="normal"
           />
           <Button variant="contained" color="primary" onClick={handleAddOrEditDirection}>
-            {selectedDirection ? 'Update Direction' : 'Add Direction'}
+            {selectedDirection ? 'Atualizar Direção' : 'Adicionar Direção'}
           </Button>
-          <Button onClick={handleFormClose}>Cancel</Button>
+          <Button onClick={handleFormClose}>Cancelar</Button>
         </Paper>
       )}
       <TableContainer component={Paper} style={{ marginTop: '16px' }}>
@@ -162,7 +192,7 @@ const DirectionsPage: React.FC = () => {
               <TableCell>Range Fim</TableCell>
               <TableCell>Valor Direção</TableCell>
               <TableCell>Região</TableCell>
-              <TableCell>Actions</TableCell>
+              <TableCell>Ações</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -185,6 +215,18 @@ const DirectionsPage: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+      >
+        <DialogTitle>Erro</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{dialogContent}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="primary">Fechar</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

@@ -8,10 +8,8 @@ export interface Category {
   tenantId: number;
 }
 
-
-
-
 export interface Delivery {
+  user: any;
   region: any;
   Vehicle: Vehicle;
   Driver: Driver;
@@ -28,13 +26,17 @@ export interface Delivery {
   status?: string;
   createdAt?: Date;
   updatedAt?: Date;
+  dataLiberacao?: Date;
+  liberador?: string; 
+  motivo?: string; 
+  liberacoes: Approval[]; // Adicionado para relação com Approval
 }
 
 export interface Direction {
   id: number;
   rangeInicio: string;
   rangeFim: string;
-  valorDirecao:  string   ;
+  valorDirecao: string;
   regiao: string;
   tenantId: number;
   createdAt: string;
@@ -103,6 +105,17 @@ export interface Order {
   };
 }
 
+export interface Approval {
+  id: number;
+  deliveryId: number;
+  tenantId: number;
+  action: string; // 'approved' ou 'rejected'
+  motivo?: string; // Campo opcional para motivo de rejeição
+  userId: number;
+  createdAt: string;
+  userName?: string; // Adicionado para exibir o nome do usuário
+}
+
 export interface Payment {
   id: number;
   amount: number;
@@ -123,6 +136,7 @@ export interface User {
   id: number;
   email: string;
   role: string;
+  name: string;
   tenantId: number;
   createdAt: string;
   updatedAt: string;
@@ -149,5 +163,5 @@ export interface Vehicle {
   categoryId: number;
   createdAt: string;
   updatedAt: string;
-  valor: number; // Adicionando o valor do veículo
+  valor: number; // Adicionado o valor do veículo
 }

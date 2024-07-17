@@ -1,42 +1,34 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import {
-  Container,
-  Typography,
-  Grid,
-  Paper,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
-} from '@mui/material';
-import { fetchDeliveries, releaseDelivery } from '../../services/deliveryService';
+import { Container, Typography, Grid, TextField, Button } from '@mui/material';
+import { fetchDeliveries, releaseDelivery, rejectRelease } from '../../services/deliveryService';
 import { Delivery, Order } from '../../types';
 import withAuth from '../hoc/withAuth';
-import { Info } from '@mui/icons-material';
+import DeliveryTable from '../components/realese/DeliveryTable';
+import ReleaseDialog from '../components/realese/ReleaseDialog';
+import RejectDialog from '../components/realese/RejectDialog';
+import DetailsDialog from '../components/realese/DetailsDialog';
+import FilterBar from '../components/realese/FilterBar';
 
 const ReleasePage: React.FC = () => {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [error, setError] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [dateRange, setDateRange] = useState<{ startDate: string; endDate: string }>({ startDate: '', endDate: '' });
+  const [rejectReason, setRejectReason] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('A liberar');
 
   const token = localStorage.getItem('token') || '';
 
   const loadDeliveries = async () => {
     try {
       const deliveriesData = await fetchDeliveries(token);
-      setDeliveries(deliveriesData.filter((delivery: Delivery) => delivery.status === 'A liberar'));
+      setDeliveries(deliveriesData.filter((delivery: Delivery) => delivery.status === statusFilter));
     } catch (error: unknown) {
       setError('Failed to load deliveries.');
     }
@@ -44,26 +36,28 @@ const ReleasePage: React.FC = () => {
 
   useEffect(() => {
     loadDeliveries();
-  }, []);
+  }, [statusFilter]);
 
   const handleReleaseDialogOpen = (delivery: Delivery) => {
     setSelectedDelivery(delivery);
     setReleaseDialogOpen(true);
   };
 
-  const handleReleaseDialogClose = () => {
+  const handleRejectDialogOpen = (delivery: Delivery) => {
+    setSelectedDelivery(delivery);
+    setRejectDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
     setReleaseDialogOpen(false);
+    setRejectDialogOpen(false);
+    setDetailsDialogOpen(false);
     setSelectedDelivery(null);
   };
 
   const handleDetailsDialogOpen = (delivery: Delivery) => {
     setSelectedDelivery(delivery);
     setDetailsDialogOpen(true);
-  };
-
-  const handleDetailsDialogClose = () => {
-    setDetailsDialogOpen(false);
-    setSelectedDelivery(null);
   };
 
   const handleRelease = async () => {
@@ -78,150 +72,87 @@ const ReleasePage: React.FC = () => {
     }
   };
 
-  const calculateTotalWeightAndValue = (orders: Order[]) => {
-    let totalWeight = 0;
-    let totalValue = 0;
-    orders.forEach(order => {
-      totalWeight += order.peso;
-      totalValue += order.valor;
-    });
-    return { totalWeight, totalValue };
+  const handleReject = async () => {
+    if (!selectedDelivery || !rejectReason) return;
+
+    try {
+      await rejectRelease(token, selectedDelivery.id, rejectReason);
+      setRejectDialogOpen(false);
+      loadDeliveries();
+    } catch (error: unknown) {
+      setError('Failed to reject delivery.');
+    }
   };
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value.toLowerCase());
+  };
+
+  const handleDateFilter = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setDateRange(prevState => ({ ...prevState, [name]: value }));
+  };
+
+  const filteredDeliveries = deliveries.filter((delivery) => {
+    const { startDate, endDate } = dateRange;
+    if (searchTerm) {
+      return (
+        Object.values(delivery).some(value =>
+          value ? value.toString().toLowerCase().includes(searchTerm.toLowerCase()) : false
+        ) ||
+        delivery.orders.some(order =>
+          Object.values(order).some(value =>
+            value ? value.toString().toLowerCase().includes(searchTerm.toLowerCase()) : false
+          )
+        )
+      );
+    }
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const dataInicio = new Date(delivery.dataInicio);
+      return dataInicio >= start && dataInicio <= end;
+    }
+    return true;
+  });
 
   return (
     <Container style={{ marginTop: '24px' }}>
       {error && <Typography color="error">{error}</Typography>}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Motorista</TableCell>
-              <TableCell>Veículo</TableCell>
-              <TableCell>Total Peso</TableCell>
-              <TableCell>Total Valor</TableCell>
-              <TableCell>Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {deliveries.map(delivery => (
-              <TableRow key={delivery.id}>
-                <TableCell>{delivery.id}</TableCell>
-                <TableCell>{delivery.Driver.name}</TableCell>
-                <TableCell>{delivery.Vehicle.model}</TableCell>
-                <TableCell>{delivery.totalPeso?.toFixed(2)} kg</TableCell>
-                <TableCell>R$ {delivery.totalValor?.toFixed(2)}</TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleDetailsDialogOpen(delivery)}>
-                    <Info />
-                  </IconButton>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="small"
-                    onClick={() => handleReleaseDialogOpen(delivery)}
-                  >
-                    Liberar
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
+      <FilterBar
+        searchTerm={searchTerm}
+        handleSearch={handleSearch}
+        dateRange={dateRange}
+        handleDateFilter={handleDateFilter}
+        setStatusFilter={setStatusFilter}
+      />
+      <DeliveryTable
+        deliveries={filteredDeliveries}
+        handleDetailsDialogOpen={handleDetailsDialogOpen}
+        handleReleaseDialogOpen={handleReleaseDialogOpen}
+        handleRejectDialogOpen={handleRejectDialogOpen}
+      />
       {selectedDelivery && (
         <>
-          <Dialog open={releaseDialogOpen} onClose={handleReleaseDialogClose} fullWidth maxWidth="sm">
-            <DialogTitle>Liberar Roteiro</DialogTitle>
-            <DialogContent>
-              <Typography variant="body2">Tem certeza que deseja liberar o roteiro {selectedDelivery.id}?</Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Número do Pedido</TableCell>
-                      <TableCell>Cliente</TableCell>
-                      <TableCell>CEP</TableCell>
-                      <TableCell>Valor</TableCell>
-                      <TableCell>Peso</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {selectedDelivery.orders.map(order => (
-                      <TableRow key={order.id}>
-                        <TableCell>{order.numero}</TableCell>
-                        <TableCell>{order.cliente}</TableCell>
-                        <TableCell>{order.cep}</TableCell>
-                        <TableCell>R$ {order.valor.toFixed(2)}</TableCell>
-                        <TableCell>{order.peso.toFixed(2)} kg</TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <Typography variant="body2" style={{ marginTop: '16px' }}>
-                Total Peso: {calculateTotalWeightAndValue(selectedDelivery.orders).totalWeight.toFixed(2)} kg
-              </Typography>
-              <Typography variant="body2">
-                Total Valor: R$ {calculateTotalWeightAndValue(selectedDelivery.orders).totalValue.toFixed(2)}
-              </Typography>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handleReleaseDialogClose} color="secondary">
-                Cancelar
-              </Button>
-              <Button onClick={handleRelease} color="primary">
-                Liberar
-              </Button>
-            </DialogActions>
-          </Dialog>
-
-          <Dialog open={detailsDialogOpen} onClose={handleDetailsDialogClose} fullWidth maxWidth="sm">
-            <DialogTitle>Detalhes do Roteiro</DialogTitle>
-            <DialogContent>
-              <Typography variant="h6">Roteiro ID: {selectedDelivery.id}</Typography>
-              <Typography variant="body2">Motorista: {selectedDelivery.Driver.name}</Typography>
-              <Typography variant="body2">Veículo: {selectedDelivery.Vehicle.model}</Typography>
-              <Typography variant="body2">Total Peso: {selectedDelivery.totalPeso?.toFixed(2)} kg</Typography>
-              <Typography variant="body2">Total Valor: R$ {selectedDelivery.totalValor?.toFixed(2)}</Typography>
-              <TableContainer component={Paper} style={{ marginTop: '16px' }}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Número do Pedido</TableCell>
-                      <TableCell>Cliente</TableCell>
-                      <TableCell>CEP</TableCell>
-                      <TableCell>Valor</TableCell>
-                      <TableCell>Peso</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {selectedDelivery.orders.map(order => (
-                      <TableRow key={order.id}>
-                        <TableCell>{order.numero}</TableCell>
-                        <TableCell>{order.cliente}</TableCell>
-                        <TableCell>{order.cep}</TableCell>
-                        <TableCell>R$ {order.valor.toFixed(2)}</TableCell>
-                        <TableCell>{order.peso.toFixed(2)} kg</TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <Typography variant="body2" style={{ marginTop: '16px' }}>
-                Total Peso: {calculateTotalWeightAndValue(selectedDelivery.orders).totalWeight.toFixed(2)} kg
-              </Typography>
-              <Typography variant="body2">
-                Total Valor: R$ {calculateTotalWeightAndValue(selectedDelivery.orders).totalValue.toFixed(2)}
-              </Typography>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handleDetailsDialogClose} color="primary">
-                Fechar
-              </Button>
-            </DialogActions>
-          </Dialog>
+          <ReleaseDialog
+            open={releaseDialogOpen}
+            onClose={handleDialogClose}
+            delivery={selectedDelivery}
+            onRelease={handleRelease}
+          />
+          <RejectDialog
+            open={rejectDialogOpen}
+            onClose={handleDialogClose}
+            delivery={selectedDelivery}
+            rejectReason={rejectReason}
+            setRejectReason={setRejectReason}
+            onReject={handleReject}
+          />
+          <DetailsDialog
+            open={detailsDialogOpen}
+            onClose={handleDialogClose}
+            delivery={selectedDelivery}
+          />
         </>
       )}
     </Container>

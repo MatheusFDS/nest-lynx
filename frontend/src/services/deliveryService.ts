@@ -16,7 +16,6 @@ export const fetchDeliveries = async (token: string): Promise<Delivery[]> => {
 
   const data = await response.json();
 
-  // Processar os dados para incluir os detalhes dos pedidos diretamente nas entregas
   const deliveries = data.map((delivery: any) => ({
     ...delivery,
     orders: delivery.orders.map((order: any) => ({
@@ -46,13 +45,23 @@ export const fetchDeliveries = async (token: string): Promise<Delivery[]> => {
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
     })),
+    approvals: delivery.liberacoes.map((approval: any) => ({
+      id: approval.id,
+      deliveryId: approval.deliveryId,
+      tenantId: approval.tenantId,
+      action: approval.action,
+      motivo: approval.motivo,
+      userId: approval.userId,
+      createdAt: approval.createdAt,
+      userName: approval.User?.name || 'N/A',
+    })),
   }));
 
   return deliveries;
 };
 
 export const addDelivery = async (token: string, data: any): Promise<any> => {
-  const response = await fetch('http://localhost:4000/delivery', {
+  const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -69,8 +78,6 @@ export const addDelivery = async (token: string, data: any): Promise<any> => {
 
   return await response.json();
 };
-
-
 
 export const updateDelivery = async (token: string, id: number, data: any): Promise<void> => {
   const response = await fetch(`${API_URL}/${id}`, {
@@ -134,4 +141,25 @@ export const releaseDelivery = async (token: string, id: number): Promise<void> 
     console.error('Failed to release delivery:', errorData);
     throw new Error('Failed to release delivery');
   }
+
+  return await response.json();
+};
+
+export const rejectRelease = async (token: string, id: number, motivo: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/${id}/reject`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ motivo }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error('Failed to reject delivery:', errorData);
+    throw new Error('Failed to reject delivery');
+  }
+
+  return await response.json();
 };

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Container, Typography } from '@mui/material';
+import { Container, Typography, Button } from '@mui/material';
 import Modal from 'react-modal';
 import { DragDropContext, DropResult } from 'react-beautiful-dnd';
 import { Order, Direction } from '../../types';
@@ -12,6 +12,7 @@ import MapSection from '../components/select-routings/MapSection';
 import { useTheme } from '../context/ThemeContext';
 import useRoutingData from '../hooks/useRoutingData';
 import OrderDetailsDialog from '../components/select-routings/OrderDetailsDialog';
+import CreateRouteTable from '../components/select-routings/sub-routing/CreateRouteSection'; // Importar o novo componente
 
 interface SelectedOrders {
   [key: number]: Order[];
@@ -26,6 +27,7 @@ const RoutingPage: React.FC = () => {
   const [showMap, setShowMap] = useState(false);
   const [ordersForMap, setOrdersForMap] = useState<Order[]>([]);
   const [tenantId, setTenantId] = useState<number>(1);
+  const [useTableLayout, setUseTableLayout] = useState(false); // Estado para alternar entre layouts
 
   const { isDarkMode } = useTheme();
   const token = localStorage.getItem('token') || '';
@@ -96,11 +98,19 @@ const RoutingPage: React.FC = () => {
     }
   };
 
-  const handleShowMap = (directionId: number | null) => {
-    setCurrentDirectionId(directionId);
-    const validOrders = selectedOrders[directionId!].filter(order => order.lat !== undefined && order.lng !== undefined);
+  const handleShowMapFromTable = (selectedOrders: Order[]) => {
+    const validOrders = selectedOrders.filter(order => order.lat !== undefined && order.lng !== undefined);
     setOrdersForMap(validOrders);
     setShowMap(true);
+  };
+
+  const handleShowMapFromSection = (directionId: number | null) => {
+    if (directionId !== null) {
+      const validOrders = selectedOrders[directionId].filter(order => order.lat !== undefined && order.lng !== undefined);
+      setOrdersForMap(validOrders);
+      setCurrentDirectionId(directionId);
+      setShowMap(true);
+    }
   };
 
   const handleGenerateRouteFromMap = (orderedOrders: Order[]) => {
@@ -117,37 +127,52 @@ const RoutingPage: React.FC = () => {
       <Typography style={{ marginTop: '10px', marginBottom: '10px' }}>
         {error && <Typography color="error">{error}</Typography>}
       </Typography>
-      <DragDropContext onDragEnd={onDragEnd}>
-        <OrderSection
-          directions={directions}
-          selectedOrders={selectedOrders}
-          handleShowMap={handleShowMap}
-          handleExpandedOrdersDialogOpen={handleExpandedOrdersDialogOpen}
-          handleDetailsDialogOpen={handleDetailsDialogOpen}
-        />
-      </DragDropContext>
 
-      <DirectionsSection
-        open={expandedOrdersDialogOpen}
-        onClose={handleExpandedOrdersDialogClose}
-        orders={selectedOrders[currentDirectionId!] || []}
-        handleDetailsDialogOpen={handleDetailsDialogOpen}
-      />
+      <Button
+        variant="outlined"
+        onClick={() => setUseTableLayout(!useTableLayout)}
+        style={{ marginBottom: '16px' }}
+      >
+        {useTableLayout ? 'Usar Layout de Arrastar e Soltar' : 'Usar Layout de Tabela'}
+      </Button>
 
-      <MapSection
-        showMap={showMap}
-        ordersForMap={ordersForMap}
-        tenantId={tenantId}
-        isDarkMode={isDarkMode}
-        handleGenerateRouteFromMap={handleGenerateRouteFromMap}
-        handleCloseMap={handleCloseMap}
-      />
+      {useTableLayout ? (
+        <CreateRouteTable orders={orders} directions={directions} handleShowMap={handleShowMapFromTable} />
+      ) : (
+        <>
+          <DragDropContext onDragEnd={onDragEnd}>
+            <OrderSection
+              directions={directions}
+              selectedOrders={selectedOrders}
+              handleShowMap={handleShowMapFromSection}
+              handleExpandedOrdersDialogOpen={handleExpandedOrdersDialogOpen}
+              handleDetailsDialogOpen={handleDetailsDialogOpen}
+            />
+          </DragDropContext>
 
-      <OrderDetailsDialog
-        open={detailsDialogOpen}
-        onClose={handleDetailsDialogClose}
-        order={selectedOrder}
-      />
+          <DirectionsSection
+            open={expandedOrdersDialogOpen}
+            onClose={handleExpandedOrdersDialogClose}
+            orders={selectedOrders[currentDirectionId!] || []}
+            handleDetailsDialogOpen={handleDetailsDialogOpen}
+          />
+
+          <MapSection
+            showMap={showMap}
+            ordersForMap={ordersForMap}
+            tenantId={tenantId}
+            isDarkMode={isDarkMode}
+            handleGenerateRouteFromMap={handleGenerateRouteFromMap}
+            handleCloseMap={handleCloseMap}
+          />
+
+          <OrderDetailsDialog
+            open={detailsDialogOpen}
+            onClose={handleDetailsDialogClose}
+            order={selectedOrder}
+          />
+        </>
+      )}
     </Container>
   );
 };

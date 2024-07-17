@@ -11,6 +11,7 @@ model User {
   id        Int           @id @default(autoincrement())
   email     String        @unique
   password  String
+  name      String        // Adicionado o campo name
   role      Role          @relation(fields: [roleId], references: [id])
   roleId    Int
   tenant    Tenant        @relation(fields: [tenantId], references: [id])
@@ -18,6 +19,8 @@ model User {
   settings  UserSettings?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+
+  Approval Approval[]
 }
 
 model UserSettings {
@@ -38,7 +41,7 @@ model Role {
 model Tenant {
   id                 Int              @id @default(autoincrement())
   name               String           @unique
-  minDeliveryPercentage Float?   // Alterado para porcentagem
+  minDeliveryPercentage Float?        // Alterado para porcentagem
   address            String?          // Endereço do tenant
   domain             String?          // Campo restrito ao desenvolvedor
   databaseSchema     String?          // Campo restrito ao desenvolvedor
@@ -53,11 +56,13 @@ model Tenant {
   categories         Category[]
   accountsPayable    AccountsPayable[]
   paymentDeliveries  PaymentDelivery[]
+  deliveryProofs     DeliveryProof[]
+  payments           Payment[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @default(now())
+
+  Approval Approval[]
 }
-
-
 
 model Driver {
   id            Int       @id @default(autoincrement())
@@ -68,7 +73,10 @@ model Driver {
   Tenant        Tenant    @relation(fields: [tenantId], references: [id])
   vehicles      Vehicle[]
   deliveries    Delivery[]
+  orders        Order[]   // Adicione esta linha para a relação inversa com Order
   accountsPayable AccountsPayable[]
+  deliveryProofs DeliveryProof[]
+  payments      Payment[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now())
 
@@ -93,7 +101,7 @@ model Vehicle {
 }
 
 model Order {
-  id                Int      @id @default(autoincrement())
+  id                Int       @id @default(autoincrement())
   numero            String
   data              DateTime
   idCliente         String
@@ -116,11 +124,16 @@ model Order {
   status            String
   deliveryId        Int?
   tenantId          Int
-  Tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  driverId          Int?      // Adicione esta linha para a relação com Driver
+  Tenant            Tenant    @relation(fields: [tenantId], references: [id])
   Delivery          Delivery? @relation(fields: [deliveryId], references: [id])
+  Driver            Driver?   @relation(fields: [driverId], references: [id]) // Adicione esta linha para a relação com Driver
   sorting           Int?      // Novo campo para a sequência dos pedidos
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  startedAt         DateTime? // Novo campo para marcar o início da entrega
+  completedAt       DateTime? // Novo campo para marcar a conclusão da entrega
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deliveryProofs    DeliveryProof[] // Adicionado para relação inversa
 }
 
 
@@ -147,16 +160,29 @@ model Delivery {
   dataFim                 DateTime?
   status                  String
   tenantId                Int
+  liberacoes              Approval[]
+  dataLiberacao           DateTime?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @default(now())
   Tenant                  Tenant            @relation(fields: [tenantId], references: [id])
   orders                  Order[]
   Driver                  Driver            @relation(fields: [motoristaId], references: [id])
   Vehicle                 Vehicle           @relation(fields: [veiculoId], references: [id])
   paymentDeliveries       PaymentDelivery[] @relation("DeliveryToPaymentDeliveries")
-  createdAt               DateTime          @default(now())
-  updatedAt               DateTime          @default(now())
 }
 
-
+model Approval {
+  id             Int      @id @default(autoincrement())
+  deliveryId     Int
+  tenantId       Int
+  action         String   // 'approved' ou 'rejected'
+  motivo         String?  // Campo opcional para motivo de rejeição
+  userId         Int
+  createdAt      DateTime @default(now())
+  Delivery       Delivery @relation(fields: [deliveryId], references: [id])
+  Tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  User           User     @relation(fields: [userId], references: [id])
+}
 
 model Category {
   id        Int      @id @default(autoincrement())
@@ -192,4 +218,27 @@ model PaymentDelivery {
   delivery          Delivery          @relation(fields: [deliveryId], references: [id], onDelete: Cascade, name: "DeliveryToPaymentDeliveries")
 
   @@id([paymentId, deliveryId])
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  amount    Float
+  driverId  Int
+  Driver    Driver   @relation(fields: [driverId], references: [id])
+  tenantId  Int
+  Tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DeliveryProof {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  Order     Order    @relation(fields: [orderId], references: [id])
+  driverId  Int
+  Driver    Driver   @relation(fields: [driverId], references: [id])
+  tenantId  Int
+  Tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  proofUrl  String
+  createdAt DateTime @default(now())
 }

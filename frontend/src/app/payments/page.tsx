@@ -1,8 +1,7 @@
-// pages/PaymentsPage.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, Grid, Button, Paper, TextField, FormControlLabel, Checkbox } from '@mui/material';
+import { Container, Typography, Grid, Button, Paper, TextField, FormControlLabel, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Badge } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { Payment, Delivery, Direction } from '../../types';
 import withAuth from '../hoc/withAuth';
@@ -14,7 +13,7 @@ import PaymentDetailsDialog from '../components/payments/PaymentDetailsDialog';
 import generateSummaryReport from '../components/payments/generateSummaryReport';
 
 const StyledButton = styled(Button)({
-  margin: '0 8px',
+  margin: '8px 0',
   padding: '8px 16px',
   backgroundColor: '#1976d2',
   color: '#fff',
@@ -50,7 +49,7 @@ const PaymentsPage = () => {
       filterPayments(searchTerm, startDate, endDate, grouped, paid, pending);
       setDirections(directionsData);
     } catch (error) {
-      setError('Failed to fetch payments.');
+      handleError('Failed to fetch payments.');
     }
   };
 
@@ -131,7 +130,7 @@ const PaymentsPage = () => {
 
   const handleGroupPayments = async () => {
     if (selectedPayments.length === 0) {
-      setError('Nenhum pagamento selecionado para agrupar.');
+      handleError('Nenhum pagamento selecionado para agrupar.');
       return;
     }
 
@@ -140,7 +139,7 @@ const PaymentsPage = () => {
       loadPayments();
       setSelectedPayments([]);
     } catch (error) {
-      setError('Failed to group payments.');
+      handleError('Failed to group payments.');
     }
   };
 
@@ -149,7 +148,7 @@ const PaymentsPage = () => {
       await ungroupPayments(token, paymentId);
       loadPayments();
     } catch (error) {
-      setError('Failed to ungroup payment.');
+      handleError('Failed to ungroup payment.');
     }
   };
 
@@ -158,7 +157,7 @@ const PaymentsPage = () => {
       await updatePaymentStatus(token, paymentId, status);
       loadPayments();
     } catch (error) {
-      setError(`Failed to update payment status: ${error}`);
+      handleError(`Failed to update payment status: ${error}`);
     }
   };
 
@@ -169,7 +168,7 @@ const PaymentsPage = () => {
       setSelectedDeliveries(details);
       setDetailsOpen(true);
     } catch (error) {
-      setError('Failed to fetch delivery details.');
+      handleError('Failed to fetch delivery details.');
     }
   };
 
@@ -178,10 +177,19 @@ const PaymentsPage = () => {
     setSelectedDeliveries([]);
   };
 
+  const handleError = (message: string) => {
+    setError(message);
+    setDialogOpen(true);
+  };
+
+  const [dialogOpen, setDialogOpen] = useState<boolean>(false);
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+  };
+
   return (
     <Container>
-      {error && <Typography color="error">{error}</Typography>}
-      <Grid container spacing={3} style={{ marginTop: '16px', marginBottom: '16px' }}>
+      <Grid container spacing={2} style={{ marginTop: '16px', marginBottom: '16px' }}>
         <Grid item xs={12}>
           <TextField
             label="Buscar"
@@ -193,7 +201,7 @@ const PaymentsPage = () => {
             placeholder="Pesquisar por qualquer campo"
           />
         </Grid>
-        <Grid item xs={6} sm={3}>
+        <Grid item xs={12} sm={6}>
           <TextField
             label="Data Início"
             type="datetime-local"
@@ -206,7 +214,7 @@ const PaymentsPage = () => {
             variant="outlined"
           />
         </Grid>
-        <Grid item xs={6} sm={3}>
+        <Grid item xs={12} sm={6}>
           <TextField
             label="Data Fim"
             type="datetime-local"
@@ -219,7 +227,7 @@ const PaymentsPage = () => {
             variant="outlined"
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid item xs={12}>
           <FormControlLabel
             control={<Checkbox checked={grouped} onChange={handleStatusFilterChange} name="grouped" />}
             label="Agrupados"
@@ -232,11 +240,15 @@ const PaymentsPage = () => {
             control={<Checkbox checked={pending} onChange={handleStatusFilterChange} name="pending" />}
             label="Pendentes"
           />
+          <Badge badgeContent={filteredPayments.length} color="primary" showZero>
+          </Badge>
+
         </Grid>
+
       </Grid>
       {filteredPayments.length > 0 ? (
         <>
-          <Grid container spacing={3} style={{ marginBottom: '16px' }}>
+          <Grid container spacing={2} style={{ marginBottom: '16px' }}>
             <Grid item xs={12} sm={6}>
               <StyledButton
                 variant="contained"
@@ -275,6 +287,19 @@ const PaymentsPage = () => {
         deliveries={selectedDeliveries}
         onClose={handleDetailsClose}
       />
+
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+      >
+        <DialogTitle>Erro</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{error}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="primary">Fechar</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

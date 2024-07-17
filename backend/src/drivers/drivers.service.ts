@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDriverDto } from './dto/create-driver.dto';
 import { UpdateDriverDto } from './dto/update-driver.dto';
+import { Express } from 'express';
 
 @Injectable()
 export class DriversService {
@@ -24,10 +25,10 @@ export class DriversService {
 
   async update(id: number, updateDriverDto: UpdateDriverDto, tenantId: number) {
     const driver = await this.prisma.driver.findUnique({
-      where: { id, tenantId },
+      where: { id },
     });
 
-    if (!driver) {
+    if (!driver || driver.tenantId !== tenantId) {
       throw new NotFoundException('Driver not found');
     }
 
@@ -44,12 +45,45 @@ export class DriversService {
       where: { id, tenantId },
     });
 
-    if (!driver) {
+    if (!driver || driver.tenantId !== tenantId) {
       throw new NotFoundException('Driver not found');
     }
 
     return this.prisma.driver.delete({
       where: { id },
+    });
+  }
+
+  async findOrdersByDriver(driverId: number) {
+    return this.prisma.order.findMany({
+      where: { driverId },
+    });
+  }
+
+  async updateOrderStatus(orderId: number, status: string, driverId: number) {
+    return this.prisma.order.updateMany({
+      where: { id: orderId, driverId },
+      data: { status, updatedAt: new Date() },
+    });
+  }
+
+  async saveProof(orderId: number, file: Express.Multer.File, driverId: number) {
+    const proofUrl = `path/to/your/proof/${file.filename}`;
+  
+    return this.prisma.deliveryProof.create({
+      data: {
+        Order: { connect: { id: orderId } }, // Utiliza 'Order' em vez de 'order'
+        Driver: { connect: { id: driverId } },
+        Tenant: { connect: { id: driverId } }, // Utiliza 'Tenant' em vez de 'tenant'
+        proofUrl,
+        createdAt: new Date(),
+      },
+    });
+  }
+  
+  async findPaymentsByDriver(driverId: number) {
+    return this.prisma.payment.findMany({
+      where: { driverId },
     });
   }
 }

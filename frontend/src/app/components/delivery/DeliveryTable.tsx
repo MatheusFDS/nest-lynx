@@ -1,4 +1,3 @@
-// components/DeliveryTable.tsx
 import React from 'react';
 import {
   Table,
@@ -44,16 +43,18 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell>ID</TableCell>
-            <TableCell>Região</TableCell>
-            <TableCell>Motorista</TableCell>
-            <TableCell>Veículo</TableCell>
-            <TableCell>Total Valor</TableCell>
-            <TableCell>Total Peso</TableCell>
-            <TableCell>Data Início</TableCell>
-            <TableCell>Data Finalização</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell>Ações</TableCell>
+            <TableCell style={{ whiteSpace: 'nowrap' }}>ID</TableCell>
+            <TableCell style={{ whiteSpace: 'nowrap' }}>Região</TableCell>
+            <TableCell style={{ whiteSpace: 'nowrap' }}>Motorista</TableCell>
+            <TableCell style={{ whiteSpace: 'nowrap' }}>Veículo</TableCell>
+            <TableCell style={{ whiteSpace: 'nowrap' }}>Total Valor</TableCell>
+            <TableCell style={{ whiteSpace: 'nowrap' }}>Total Peso</TableCell>
+            <TableCell style={{ whiteSpace: 'nowrap' }}>Data Início</TableCell>
+            <TableCell style={{ whiteSpace: 'nowrap' }}>Data Finalização</TableCell>
+            <TableCell style={{ whiteSpace: 'nowrap' }}>Status</TableCell>
+            <TableCell style={{ whiteSpace: 'nowrap' }}>Liberador</TableCell>
+            <TableCell style={{ whiteSpace: 'nowrap' }}>Data de Liberação</TableCell>
+            <TableCell style={{ whiteSpace: 'nowrap' }}>Ações</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -65,16 +66,18 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({
 
             return (
               <TableRow key={delivery.id}>
-                <TableCell>{delivery.id}</TableCell>
-                <TableCell>{regionName}</TableCell>
-                <TableCell>{driver?.name}</TableCell>
-                <TableCell>{vehicle?.model}</TableCell>
-                <TableCell>R$ {totalValue.toFixed(2)}</TableCell>
-                <TableCell>{totalWeight.toFixed(2)} kg</TableCell>
-                <TableCell>{delivery.dataInicio ? new Date(delivery.dataInicio).toLocaleString() : 'N/A'}</TableCell>
-                <TableCell>{delivery.dataFim ? new Date(delivery.dataFim).toLocaleString() : 'N/A'}</TableCell>
-                <TableCell>{delivery.status}</TableCell>
-                <TableCell>
+                <TableCell style={{ whiteSpace: 'nowrap' }}>{delivery.id}</TableCell>
+                <TableCell style={{ whiteSpace: 'nowrap' }}>{regionName}</TableCell>
+                <TableCell style={{ whiteSpace: 'nowrap' }}>{driver?.name}</TableCell>
+                <TableCell style={{ whiteSpace: 'nowrap' }}>{vehicle?.model}</TableCell>
+                <TableCell style={{ whiteSpace: 'nowrap' }}>R$ {totalValue.toFixed(2)}</TableCell>
+                <TableCell style={{ whiteSpace: 'nowrap' }}>{totalWeight.toFixed(2)} kg</TableCell>
+                <TableCell style={{ whiteSpace: 'nowrap' }}>{delivery.dataInicio ? new Date(delivery.dataInicio).toLocaleString() : 'N/A'}</TableCell>
+                <TableCell style={{ whiteSpace: 'nowrap' }}>{delivery.dataFim ? new Date(delivery.dataFim).toLocaleString() : 'N/A'}</TableCell>
+                <TableCell style={{ whiteSpace: 'nowrap' }}>{delivery.status}</TableCell>
+                <TableCell style={{ whiteSpace: 'nowrap' }}>{delivery.liberador}</TableCell>
+                <TableCell style={{ whiteSpace: 'nowrap' }}>{delivery.dataLiberacao ? new Date(delivery.dataLiberacao).toLocaleString() : 'N/A'}</TableCell>
+                <TableCell style={{ whiteSpace: 'nowrap' }}>
                   {delivery.status !== 'A liberar' && (
                     <>
                       <IconButton onClick={() => handleEditDelivery(delivery)}>

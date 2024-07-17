@@ -3,18 +3,35 @@
 import React, { useEffect, useState } from 'react';
 import {
   Container,
-  SelectChangeEvent,
   Typography,
+  Grid,
+  TextField,
+  FormControlLabel,
+  Checkbox,
+  Button,
+  Paper,
+  Badge,
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
+import { SelectChangeEvent } from '@mui/material';
 import { fetchDeliveries, updateDelivery, removeOrderFromDelivery, deleteDelivery } from '../../services/deliveryService';
 import { fetchDrivers, fetchVehicles, fetchCategories, fetchDirections } from '../../services/auxiliaryService';
 import { Order, Driver, Vehicle, Category, Delivery, Direction } from '../../types';
 import withAuth from '../hoc/withAuth';
-import DeliveryFilters from '../components/delivery/DeliveryFilters';
 import DeliveryTable from '../components/delivery/DeliveryTable';
 import EditDeliveryDialog from '../components/delivery/EditDeliveryDialog';
 import OrderDetailsDialog from '../components/delivery/OrderDetailsDialog';
 import ConfirmDialog from '../components/delivery/ConfirmDialog';
+
+const StyledButton = styled(Button)({
+  margin: '8px',
+  padding: '8px 16px',
+  backgroundColor: '#1976d2',
+  color: '#fff',
+  '&:hover': {
+    backgroundColor: '#115293',
+  },
+});
 
 const DeliveriesPage: React.FC = () => {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -271,26 +288,77 @@ const DeliveriesPage: React.FC = () => {
 
   return (
     <Container>
-      {error && <Typography color="error">{error}</Typography>}
-      <DeliveryFilters
-        searchTerm={searchTerm}
-        handleSearch={handleSearch}
-        dateRange={dateRange}
-        handleDateFilter={handleDateFilter}
-        showFinalized={showFinalized}
-        handleStatusFilterChange={handleStatusFilterChange}
-        showPending={showPending}
-        showToRelease={showToRelease}
-      />
-      <DeliveryTable
-        deliveries={filteredDeliveries}
-        drivers={drivers}
-        vehicles={vehicles}
-        calculateTotalWeightAndValue={calculateTotalWeightAndValue}
-        getRegionName={getRegionName}
-        handleEditDelivery={handleEditDelivery}
-        handleDeleteDelivery={handleDeleteDelivery}
-      />
+      <Grid container spacing={2} style={{ marginTop: '16px', marginBottom: '16px' }}>
+        <Grid item xs={12}>
+          <TextField
+            label="Buscar"
+            fullWidth
+            value={searchTerm}
+            onChange={handleSearch}
+            variant="outlined"
+            size="small"
+            placeholder="Pesquisar por qualquer campo"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            label="Data Início"
+            type="datetime-local"
+            fullWidth
+            value={dateRange.startDate}
+            onChange={handleDateFilter}
+            name="startDate"
+            InputLabelProps={{ shrink: true }}
+            size="small"
+            variant="outlined"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            label="Data Fim"
+            type="datetime-local"
+            fullWidth
+            value={dateRange.endDate}
+            onChange={handleDateFilter}
+            name="endDate"
+            InputLabelProps={{ shrink: true }}
+            size="small"
+            variant="outlined"
+          />
+        </Grid>
+        <Grid item xs={12}>
+          <FormControlLabel
+            control={<Checkbox checked={showFinalized} onChange={handleStatusFilterChange} name="showFinalized" />}
+            label="Finalizadas"
+          />
+          <FormControlLabel
+            control={<Checkbox checked={showPending} onChange={handleStatusFilterChange} name="showPending" />}
+            label="Em Rota"
+          />
+          <FormControlLabel
+            control={<Checkbox checked={showToRelease} onChange={handleStatusFilterChange} name="showToRelease" />}
+            label="A Liberar"
+          />
+          <Badge badgeContent={filteredDeliveries.length} color="primary" showZero></Badge>
+        </Grid>
+      </Grid>
+      <Paper elevation={3}>
+        {filteredDeliveries.length > 0 ? (
+          <DeliveryTable
+            deliveries={filteredDeliveries}
+            drivers={drivers}
+            vehicles={vehicles}
+            calculateTotalWeightAndValue={calculateTotalWeightAndValue}
+            getRegionName={getRegionName}
+            handleEditDelivery={handleEditDelivery}
+            handleDeleteDelivery={handleDeleteDelivery}
+          />
+        ) : (
+          <Typography align="center" style={{ padding: '16px' }}>
+            Nenhuma entrega encontrada. Use os filtros para buscar entregas.
+          </Typography>
+        )}
+      </Paper>
       <EditDeliveryDialog
         dialogOpen={dialogOpen}
         handleDialogClose={handleDialogClose}

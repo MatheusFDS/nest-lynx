@@ -23,10 +23,10 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
   <Dialog open={detailsDialogOpen} onClose={handleDetailsDialogClose} fullWidth maxWidth="sm">
     <DialogTitle>Detalhes do Pedido</DialogTitle>
     <DialogContent>
-      {selectedOrder && (
+      {selectedOrder ? (
         <>
           <Typography variant="body1"><strong>Pedido Número:</strong> {selectedOrder.numero}</Typography>
-          <Typography variant="body1"><strong>Data:</strong> {selectedOrder.data}</Typography>
+          <Typography variant="body1"><strong>Data:</strong> {new Date(selectedOrder.data).toLocaleString()}</Typography>
           <Typography variant="body1"><strong>ID Cliente:</strong> {selectedOrder.idCliente}</Typography>
           <Typography variant="body1"><strong>Cliente:</strong> {selectedOrder.cliente}</Typography>
           <Typography variant="body1"><strong>Endereço:</strong> {selectedOrder.endereco}</Typography>
@@ -45,17 +45,19 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
           <Typography variant="body1"><strong>CPF/CNPJ:</strong> {selectedOrder.cpfCnpj}</Typography>
           <Typography variant="body1"><strong>CEP:</strong> {selectedOrder.cep}</Typography>
           <Typography variant="body1"><strong>Status:</strong> {selectedOrder.status}</Typography>
-          <Typography variant="body1"><strong>Data de Criação:</strong> {selectedOrder.createdAt}</Typography>
-          <Typography variant="body1"><strong>Data de Atualização:</strong> {selectedOrder.updatedAt}</Typography>
+          <Typography variant="body1"><strong>Data de Criação:</strong> {new Date(selectedOrder.createdAt).toLocaleString()}</Typography>
+          <Typography variant="body1"><strong>Data de Atualização:</strong> {new Date(selectedOrder.updatedAt).toLocaleString()}</Typography>
           {selectedOrder.Delivery && (
             <>
-              <Typography variant="body1"><strong>Data de Entrega:</strong> {selectedOrder.Delivery.dataFim}</Typography>
+              <Typography variant="body1"><strong>Data de Entrega:</strong> {new Date(selectedOrder.Delivery.dataFim).toLocaleString()}</Typography>
               {selectedOrder.Delivery.Driver && (
                 <Typography variant="body1"><strong>Motorista:</strong> {selectedOrder.Delivery.Driver.name}</Typography>
               )}
             </>
           )}
         </>
+      ) : (
+        <Typography variant="body1">Selecione um pedido para ver os detalhes</Typography>
       )}
     </DialogContent>
     <DialogActions>

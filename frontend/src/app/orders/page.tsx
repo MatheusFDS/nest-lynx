@@ -2,10 +2,27 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Typography, Container, TextField, IconButton, Dialog,
-  DialogActions, DialogContent, DialogTitle, FormGroup, FormControlLabel, Checkbox,
-  Menu, MenuItem, Box, Badge
+  Container,
+  Typography,
+  Grid,
+  TextField,
+  FormControlLabel,
+  Checkbox,
+  Button,
+  Paper,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  IconButton,
+  Menu,
+  MenuItem,
+  Box,
+  Badge,
+  FormGroup
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import {
   Add,
   CloudUpload,
@@ -15,16 +32,15 @@ import {
   MoreVert,
   Refresh,
 } from '@mui/icons-material';
-import withAuth from '../hoc/withAuth';
-import { fetchOrders, uploadOrders, fetchUserSettings, updateUserSettings } from '../../services/orderService';
-import { Order } from '../../types';
 import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-balham.css'; // Importar o tema claro
-
+import 'ag-grid-community/styles/ag-theme-balham.css';
 import { utils, read, writeFile } from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import withAuth from '../hoc/withAuth';
+import { fetchOrders, uploadOrders, fetchUserSettings, updateUserSettings } from '../../services/orderService';
+import { Order } from '../../types';
 import { useTheme } from '../context/ThemeContext'; // Importar o contexto de tema
 
 enum Field {
@@ -89,6 +105,16 @@ const formatDateTimeBR = (date: string) => {
   return `${day}/${month}/${year} ${timePart.split('.')[0]}`;
 };
 
+const StyledButton = styled(Button)({
+  margin: '8px 0',
+  padding: '8px 16px',
+  backgroundColor: '#1976d2',
+  color: '#fff',
+  '&:hover': {
+    backgroundColor: '#115293',
+  },
+});
+
 const OrdersPage: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -110,7 +136,7 @@ const OrdersPage: React.FC = () => {
     Finalizado: false,
   });
 
-  const { isDarkMode } = useTheme(); // Obter o tema atual do contexto
+  const { isDarkMode } = useTheme();
   const token = localStorage.getItem('token') || '';
 
   useEffect(() => {
@@ -344,47 +370,70 @@ const OrdersPage: React.FC = () => {
     <Container>
       {error && <Typography color="error">{error}</Typography>}
       {success && <Typography color="primary">{success}</Typography>}
-      <TextField
-        label="Search Orders"
-        value={searchTerm}
-        onChange={handleSearch}
-        fullWidth
-        margin="normal"
-      />
-      <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" mt={2} mb={2}>
-        <Box display="flex" gap={2} alignItems="center">
+      <Grid container spacing={2} style={{ marginTop: '16px', marginBottom: '16px' }}>
+        <Grid item xs={12}>
+          <TextField
+            label="Buscar"
+            fullWidth
+            value={searchTerm}
+            onChange={handleSearch}
+            variant="outlined"
+            size="small"
+            placeholder="Pesquisar por qualquer campo"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6}>
           <TextField
             label="Data Início"
             type="datetime-local"
+            fullWidth
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            InputLabelProps={{
-              shrink: true,
-            }}
+            InputLabelProps={{ shrink: true }}
+            size="small"
+            variant="outlined"
           />
+        </Grid>
+        <Grid item xs={12} sm={6}>
           <TextField
             label="Data Fim"
             type="datetime-local"
+            fullWidth
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            InputLabelProps={{
-              shrink: true,
-            }}
+            InputLabelProps={{ shrink: true }}
+            size="small"
+            variant="outlined"
           />
-          {['Em Rota', 'A liberar', 'Pendente', 'Reentrega', 'Finalizado'].map((status) => (
-            <FormControlLabel
-              key={status}
-              control={
-                <Checkbox
-                  checked={statusFilters[status.replace(' ', '')]}
-                  onChange={() => handleStatusFilterChange(status.replace(' ', ''))}
-                />
-              }
-              label={status}
-            />
-          ))}
-          <Badge badgeContent={filteredOrders.length} color="primary" showZero>
-          </Badge>
+        </Grid>
+        <Grid item xs={12}>
+          <FormControlLabel
+            control={<Checkbox checked={statusFilters.EmRota} onChange={() => handleStatusFilterChange('EmRota')} />}
+            label="Em Rota"
+          />
+          <FormControlLabel
+            control={<Checkbox checked={statusFilters.ALiberar} onChange={() => handleStatusFilterChange('ALiberar')} />}
+            label="A Liberar"
+          />
+          <FormControlLabel
+            control={<Checkbox checked={statusFilters.Pendente} onChange={() => handleStatusFilterChange('Pendente')} />}
+            label="Pendente"
+          />
+          <FormControlLabel
+            control={<Checkbox checked={statusFilters.Reentrega} onChange={() => handleStatusFilterChange('Reentrega')} />}
+            label="Reentrega"
+          />
+          <FormControlLabel
+            control={<Checkbox checked={statusFilters.Finalizado} onChange={() => handleStatusFilterChange('Finalizado')} />}
+            label="Finalizado"
+          />
+                  <Badge badgeContent={filteredOrders.length} color="primary" showZero>
+                  </Badge>
+        </Grid>
+
+      </Grid>
+      <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" mt={2} mb={2}>
+        <Box display="flex" gap={2} alignItems="center">
         </Box>
         <Box display="flex" gap={2}>
           <IconButton color="primary" onClick={applyFilters}>
@@ -445,23 +494,29 @@ const OrdersPage: React.FC = () => {
           </Menu>
         </Box>
       </Box>
-      {filteredOrders.length > 0 && (
-        <div className={isDarkMode ? "ag-theme-balham-dark" : "ag-theme-balham"} style={{ height: 800, width: '100%', marginTop: '16px', overflowY: 'auto' }}>
-          <AgGridReact
-            rowData={filteredOrders}
-            columnDefs={columns}
-            pagination={true}
-            paginationPageSize={100}
-            domLayout="autoHeight"
-            defaultColDef={{
-              sortable: true,
-              filter: true,
-              resizable: true,
-            }}
-            rowSelection="multiple"
-            onGridReady={onGridReady}
-          />
-        </div>
+      {filteredOrders.length > 0 ? (
+        <Paper elevation={3}>
+          <div className={isDarkMode ? "ag-theme-balham-dark" : "ag-theme-balham"} style={{ height: 800, width: '100%', marginTop: '16px', overflowY: 'auto' }}>
+            <AgGridReact
+              rowData={filteredOrders}
+              columnDefs={columns}
+              pagination={true}
+              paginationPageSize={100}
+              domLayout="autoHeight"
+              defaultColDef={{
+                sortable: true,
+                filter: true,
+                resizable: true,
+              }}
+              rowSelection="multiple"
+              onGridReady={onGridReady}
+            />
+          </div>
+        </Paper>
+      ) : (
+        <Typography align="center" style={{ padding: '16px' }}>
+          Nenhuma ordem encontrada. Use os filtros para buscar ordens.
+        </Typography>
       )}
       <Dialog open={open} onClose={handleDialogClose}>
         <DialogTitle>Escolher Colunas para Exibir</DialogTitle>

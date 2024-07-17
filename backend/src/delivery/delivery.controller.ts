@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Logger, BadRequestException } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { UpdateDeliveryDto } from './dto/update-delivery.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { RejectDeliveryDto } from './dto/reject-delivery.dto';
 
 @Controller('delivery')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -54,6 +55,29 @@ export class DeliveryController {
   @Roles('admin')
   async releaseDelivery(@Param('id') id: string, @Req() req) {
     const tenantId = req.user.tenantId;
-    return this.deliveryService.release(+id, tenantId);
+    const userId = req.user.userId;
+    if (!userId) {
+      this.logger.error('User ID is missing');
+      throw new BadRequestException('User ID is missing');
+    }
+    this.logger.log(`Releasing delivery ID: ${id} for tenant: ${tenantId} by user: ${userId}`);
+    return this.deliveryService.release(+id, tenantId, userId);
+  }
+
+  @Patch(':id/reject')
+  @Roles('admin')
+  async rejectRelease(
+    @Param('id') id: string,
+    @Body() rejectDeliveryDto: RejectDeliveryDto,
+    @Req() req
+  ) {
+    const tenantId = req.user.tenantId;
+    const userId = req.user.userId;
+    if (!userId) {
+      this.logger.error('User ID is missing');
+      throw new BadRequestException('User ID is missing');
+    }
+    this.logger.log(`Rejecting release of delivery ID: ${id} for tenant: ${tenantId} by user: ${userId} with reason: ${rejectDeliveryDto.motivo}`);
+    return this.deliveryService.rejectRelease(+id, tenantId, userId, rejectDeliveryDto.motivo);
   }
 }
