@@ -1,3 +1,5 @@
+// src/context/AuthContext.tsx
+
 'use client';
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
@@ -6,6 +8,7 @@ import { useRouter } from 'next/navigation';
 interface AuthContextProps {
   isLoggedIn: boolean;
   userRole: string | null;
+  token: string | null;
   login: (token: string, refreshToken: string) => void;
   logout: () => void;
 }
@@ -15,15 +18,17 @@ const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const storedToken = localStorage.getItem('token');
     const refreshToken = localStorage.getItem('refreshToken');
-    if (token) {
+    if (storedToken) {
+      setToken(storedToken);
       setIsLoggedIn(true);
-      setUserRole(JSON.parse(atob(token.split('.')[1])).role);
-      const tokenExp = JSON.parse(atob(token.split('.')[1])).exp;
+      setUserRole(JSON.parse(atob(storedToken.split('.')[1])).role);
+      const tokenExp = JSON.parse(atob(storedToken.split('.')[1])).exp;
       const currentTime = Math.floor(Date.now() / 1000);
       if (tokenExp - currentTime < 300 && refreshToken) { // Ajuste o tempo para renovar o token antes de expirar
         refreshAccessToken(refreshToken);
@@ -49,9 +54,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const data = await response.json();
-      const token = data.access_token;
-      localStorage.setItem('token', token);
-      setUserRole(JSON.parse(atob(token.split('.')[1])).role);
+      const newToken = data.access_token;
+      localStorage.setItem('token', newToken);
+      setToken(newToken);
+      setUserRole(JSON.parse(atob(newToken.split('.')[1])).role);
     } catch (error) {
       console.error('Failed to refresh token:', error);
     }
@@ -60,6 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = (token: string, refreshToken: string) => {
     localStorage.setItem('token', token);
     localStorage.setItem('refreshToken', refreshToken);
+    setToken(token);
     setIsLoggedIn(true);
     setUserRole(JSON.parse(atob(token.split('.')[1])).role);
     router.push('/statistics');
@@ -68,13 +75,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
+    setToken(null);
     setIsLoggedIn(false);
     setUserRole(null);
     router.push('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, userRole, login, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, userRole, token, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

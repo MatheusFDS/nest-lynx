@@ -2,7 +2,6 @@ import axios from 'axios';
 import mapboxgl from 'mapbox-gl';
 import { Order } from '../types';
 
-// Verifique se o token está definido corretamente
 const mapboxAccessToken = process.env.NEXT_PUBLIC_MAPBOX_API_KEY;
 if (!mapboxAccessToken) {
   throw new Error("Mapbox API key is not defined in environment variables.");
@@ -60,7 +59,7 @@ export const calculateRoute = async (
     return tempArray;
   };
 
-  const orderChunks = chunkArray(orderedOrders, 10);
+  const orderChunks = chunkArray(orderedOrders, 10); // Use chunks of 10 to stay under the limit of 12 including tenant coordinates
   let combinedRoute: any = {
     distance: 0,
     duration: 0,
@@ -91,7 +90,6 @@ export const calculateRoute = async (
         combinedRoute.duration += route.duration;
         if (route.geometry && route.geometry.coordinates) {
           combinedRoute.geometry.coordinates.push(...route.geometry.coordinates.slice(1, -1));
-          // Adiciona a linha de volta para o ponto inicial
           if (chunk === orderChunks[orderChunks.length - 1]) {
             combinedRoute.returnLine.coordinates.push(route.geometry.coordinates[route.geometry.coordinates.length - 2]);
             combinedRoute.returnLine.coordinates.push(route.geometry.coordinates[route.geometry.coordinates.length - 1]);
@@ -158,7 +156,6 @@ export const calculateRoute = async (
         filter: ['==', '$type', 'LineString'],
       });
 
-      // Adiciona a fonte de dados e a camada para a linha de volta
       if (map.getSource('return-line')) {
         (map.getSource('return-line') as mapboxgl.GeoJSONSource).setData(combinedRoute.returnLine);
       } else {
@@ -176,7 +173,7 @@ export const calculateRoute = async (
             'line-cap': 'round',
           },
           paint: {
-            'line-color': '#FF0000', // cor vermelha para o traçado de volta
+            'line-color': '#FF0000',
             'line-width': 6,
           },
           filter: ['==', '$type', 'LineString'],

@@ -1,16 +1,17 @@
+// src/layout/Layout.tsx
 'use client';
 
 import React, { ReactNode, useEffect, useState } from 'react';
 import CssBaseline from '@mui/material/CssBaseline';
-import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
-import { lightTheme, darkTheme } from './theme/theme'; // Importe os temas globais
-import loginTheme from './theme/loginTheme'; // Importe o tema específico da página de login
 import Toolbar from './components/Toolbar';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './globals.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { usePathname } from 'next/navigation';
-import { ThemeProvider, useTheme } from './context/ThemeContext'; // Importe seu ThemeProvider customizado
+import { ThemeProvider } from './context/ThemeContext'; // Importe seu ThemeProvider customizado
+import { UserSettingsProvider, useUserSettings } from './context/UserSettingsContext'; // Importe o UserSettingsProvider
+import { darkTheme, lightTheme } from './theme/theme';
+import loginTheme from './theme/loginTheme';
 
 interface LayoutProps {
   children: ReactNode;
@@ -31,16 +32,20 @@ const LayoutContent = ({ children }: LayoutProps) => {
 
 const Layout = ({ children }: LayoutProps) => {
   return (
-    <html lang="en">
+    <html lang="pt-br">
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>My App</title>
       </head>
       <body style={{ margin: 0, height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column' }}>
-        <ThemeProvider>
-          <AppContent>{children}</AppContent>
-        </ThemeProvider>
+        <AuthProvider>
+          <UserSettingsProvider>
+            <ThemeProvider>
+              <AppContent>{children}</AppContent>
+            </ThemeProvider>
+          </UserSettingsProvider>
+        </AuthProvider>
       </body>
     </html>
   );
@@ -48,7 +53,7 @@ const Layout = ({ children }: LayoutProps) => {
 
 const AppContent = ({ children }: LayoutProps) => {
   const pathname = usePathname();
-  const { isDarkMode } = useTheme();
+  const { settings } = useUserSettings();
   const [currentTheme, setCurrentTheme] = useState(lightTheme);
 
   useEffect(() => {
@@ -56,17 +61,15 @@ const AppContent = ({ children }: LayoutProps) => {
     if (isLoginPage) {
       setCurrentTheme(loginTheme);
     } else {
-      setCurrentTheme(isDarkMode ? darkTheme : lightTheme);
+      setCurrentTheme(settings?.theme === 'dark' ? darkTheme : lightTheme);
     }
-  }, [pathname, isDarkMode]);
+  }, [pathname, settings]);
 
   return (
-    <MuiThemeProvider theme={currentTheme}>
+    <ThemeProvider>
       <CssBaseline />
-      <AuthProvider>
-        <LayoutContent>{children}</LayoutContent>
-      </AuthProvider>
-    </MuiThemeProvider>
+      <LayoutContent>{children}</LayoutContent>
+    </ThemeProvider>
   );
 };
 

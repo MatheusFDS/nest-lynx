@@ -1,3 +1,5 @@
+// pages/routing.tsx
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -10,6 +12,7 @@ import OrderSection from '../components/select-routings/OrderSection';
 import DirectionsSection from '../components/select-routings/DirectionsSection';
 import MapSection from '../components/select-routings/MapSection';
 import { useTheme } from '../context/ThemeContext';
+import { useUserSettings } from '../context/UserSettingsContext';
 import useRoutingData from '../hooks/useRoutingData';
 import OrderDetailsDialog from '../components/select-routings/OrderDetailsDialog';
 import CreateRouteTable from '../components/select-routings/sub-routing/CreateRouteSection'; // Importar o novo componente
@@ -27,9 +30,13 @@ const RoutingPage: React.FC = () => {
   const [showMap, setShowMap] = useState(false);
   const [ordersForMap, setOrdersForMap] = useState<Order[]>([]);
   const [tenantId, setTenantId] = useState<number>(1);
-  const [useTableLayout, setUseTableLayout] = useState(false); // Estado para alternar entre layouts
+  const [useTableLayout, setUseTableLayout] = useState(() => {
+    const savedLayout = localStorage.getItem('useTableLayout');
+    return savedLayout ? JSON.parse(savedLayout) : false;
+  }); // Estado para alternar entre layouts
 
   const { isDarkMode } = useTheme();
+  const { settings } = useUserSettings();
   const token = localStorage.getItem('token') || '';
   const { orders, directions, drivers, vehicles, categories, tenantData, error } = useRoutingData(token);
   const [selectedOrders, setSelectedOrders] = useState<SelectedOrders>({ noRegion: [] });
@@ -122,6 +129,14 @@ const RoutingPage: React.FC = () => {
     setShowMap(false);
   };
 
+  const toggleLayout = () => {
+    setUseTableLayout((prev: any) => {
+      const newLayout = !prev;
+      localStorage.setItem('useTableLayout', JSON.stringify(newLayout));
+      return newLayout;
+    });
+  };
+
   return (
     <Container style={{ marginTop: '24px' }}>
       <Typography style={{ marginTop: '10px', marginBottom: '10px' }}>
@@ -130,7 +145,7 @@ const RoutingPage: React.FC = () => {
 
       <Button
         variant="outlined"
-        onClick={() => setUseTableLayout(!useTableLayout)}
+        onClick={toggleLayout}
         style={{ marginBottom: '16px' }}
       >
         {useTableLayout ? 'Usar Layout de Arrastar e Soltar' : 'Usar Layout de Tabela'}
@@ -156,23 +171,25 @@ const RoutingPage: React.FC = () => {
             orders={selectedOrders[currentDirectionId!] || []}
             handleDetailsDialogOpen={handleDetailsDialogOpen}
           />
-
-          <MapSection
-            showMap={showMap}
-            ordersForMap={ordersForMap}
-            tenantId={tenantId}
-            isDarkMode={isDarkMode}
-            handleGenerateRouteFromMap={handleGenerateRouteFromMap}
-            handleCloseMap={handleCloseMap}
-          />
-
-          <OrderDetailsDialog
-            open={detailsDialogOpen}
-            onClose={handleDetailsDialogClose}
-            order={selectedOrder}
-          />
         </>
       )}
+
+      {showMap && (
+        <MapSection
+          showMap={showMap}
+          ordersForMap={ordersForMap}
+          tenantId={tenantId}
+          isDarkMode={isDarkMode}
+          handleGenerateRouteFromMap={handleGenerateRouteFromMap}
+          handleCloseMap={handleCloseMap}
+        />
+      )}
+
+      <OrderDetailsDialog
+        open={detailsDialogOpen}
+        onClose={handleDetailsDialogClose}
+        order={selectedOrder}
+      />
     </Container>
   );
 };
