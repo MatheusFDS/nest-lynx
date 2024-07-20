@@ -8,16 +8,22 @@ export class DbConfigMiddleware implements NestMiddleware {
   constructor(private readonly prismaService: PrismaService) {}
 
   async use(req: any, res: any, next: () => void) {
-    const host = req.headers.host.split(':')[0]; // Ignorar a porta, se houver
-    this.logger.log(`Received request for host: ${host}`);
-    const tenantIdentifier = this.getTenantIdentifierFromHost(host);
+    // Extrair o host sem a porta
+    const host = req.headers.referer?.split('/')[2] || '';
+    const domain = host.split(':')[0]; // Remove a porta, se houver
+
+    this.logger.log(`Received request with domain: ${domain}`);
+
+    const tenantIdentifier = this.getTenantIdentifierFromHost(domain);
+    this.logger.log(`Tenant Identifier: ${tenantIdentifier}`);
 
     if (!tenantIdentifier) {
-      this.logger.error(`Invalid Tenant Identifier for host: ${host}`);
+      this.logger.error(`Invalid Tenant Identifier for domain: ${domain}`);
       throw new UnauthorizedException('Invalid Tenant Identifier');
     }
 
     const databaseUrl = this.getDatabaseUrl(tenantIdentifier);
+    this.logger.log(`Database URL for tenant ${tenantIdentifier}: ${databaseUrl}`);
 
     if (!databaseUrl) {
       this.logger.error(`No database URL found for tenant: ${tenantIdentifier}`);
@@ -33,16 +39,21 @@ export class DbConfigMiddleware implements NestMiddleware {
   }
 
   getTenantIdentifierFromHost(host: string): string | undefined {
+    // Normalizar o host e buscar a palavra-chave
+    const normalizedHost = host.toLowerCase().trim();
     const tenantMap = {
       'lynx.localhost': 'lynx',
-      'keromax.localhost': 'keromax',
-      'lynx.yourdomain.com': 'lynx',
-      'keromax.yourdomain.com': 'keromax',
-      'localhost': 'lynx', // Add this line to map localhost to lynx tenant for local development
+      'keromax.localhost': 'keromax'
     };
 
-    const tenantIdentifier = tenantMap[host];
-    this.logger.log(`Mapped host ${host} to tenant identifier: ${tenantIdentifier}`);
+    // Check if the host matches any key in tenantMap
+    const tenantIdentifier = tenantMap[normalizedHost];
+    if (tenantIdentifier) {
+      this.logger.log(`Mapped host ${normalizedHost} to tenant identifier: ${tenantIdentifier}`);
+    } else {
+      this.logger.error(`No matching tenant identifier for host: ${normalizedHost}`);
+    }
+
     return tenantIdentifier;
   }
 
@@ -57,4 +68,3 @@ export class DbConfigMiddleware implements NestMiddleware {
     return databaseUrl;
   }
 }
-  

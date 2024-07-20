@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Container, Typography, Grid, Button, Paper, TextField, FormControlLabel, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Badge } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { Payment, Delivery, Direction } from '../../types';
@@ -39,37 +39,37 @@ const PaymentsPage = () => {
 
   const token = localStorage.getItem('token') || '';
 
-  const loadPayments = async () => {
+  const loadPayments = useCallback(async () => {
     try {
       const [paymentsData, directionsData] = await Promise.all([
         fetchPayments(token),
         fetchDirections(token),
       ]);
       setPayments(paymentsData);
-      filterPayments(searchTerm, startDate, endDate, grouped, paid, pending);
+      filterPayments(searchTerm, startDate, endDate, grouped, paid, pending, paymentsData);
       setDirections(directionsData);
     } catch (error) {
       handleError('Failed to fetch payments.');
     }
-  };
+  }, [token, searchTerm, startDate, endDate, grouped, paid, pending]);
 
   useEffect(() => {
     loadPayments();
-  }, []);
+  }, [loadPayments]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    filterPayments(e.target.value, startDate, endDate, grouped, paid, pending);
+    filterPayments(e.target.value, startDate, endDate, grouped, paid, pending, payments);
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (name === 'startDate') {
       setStartDate(value);
-      filterPayments(searchTerm, value, endDate, grouped, paid, pending);
+      filterPayments(searchTerm, value, endDate, grouped, paid, pending, payments);
     } else {
       setEndDate(value);
-      filterPayments(searchTerm, startDate, value, grouped, paid, pending);
+      filterPayments(searchTerm, startDate, value, grouped, paid, pending, payments);
     }
   };
 
@@ -77,18 +77,18 @@ const PaymentsPage = () => {
     const { name, checked } = e.target;
     if (name === 'grouped') {
       setGrouped(checked);
-      filterPayments(searchTerm, startDate, endDate, checked, paid, pending);
+      filterPayments(searchTerm, startDate, endDate, checked, paid, pending, payments);
     } else if (name === 'paid') {
       setPaid(checked);
-      filterPayments(searchTerm, startDate, endDate, grouped, checked, pending);
+      filterPayments(searchTerm, startDate, endDate, grouped, checked, pending, payments);
     } else if (name === 'pending') {
       setPending(checked);
-      filterPayments(searchTerm, startDate, endDate, grouped, paid, checked);
+      filterPayments(searchTerm, startDate, endDate, grouped, paid, checked, payments);
     }
   };
 
-  const filterPayments = (searchTerm: string, startDate: string, endDate: string, grouped: boolean, paid: boolean, pending: boolean) => {
-    let filtered = payments;
+  const filterPayments = (searchTerm: string, startDate: string, endDate: string, grouped: boolean, paid: boolean, pending: boolean, paymentsData: Payment[]) => {
+    let filtered = paymentsData;
 
     if (searchTerm) {
       filtered = filtered.filter(payment =>

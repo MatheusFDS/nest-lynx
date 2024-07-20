@@ -14,6 +14,7 @@ import { DeliveryModule } from './delivery/delivery.module';
 import { UserSettingsModule } from './user-settings/user-settings.module';
 import { MetadataModule } from './meta/metadata.module';
 import { DbConfigMiddleware } from './middlewares/db-config.middleware';
+import { PrismaService } from './prisma/prisma.service';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { DbConfigMiddleware } from './middlewares/db-config.middleware';
     UserSettingsModule,
     MetadataModule,
   ],
+  providers: [PrismaService],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {

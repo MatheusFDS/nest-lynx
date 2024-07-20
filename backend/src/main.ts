@@ -7,5 +7,6 @@ async function bootstrap() {
   app.enableCors(); // Habilita CORS
   app.useGlobalPipes(new ValidationPipe());
   await app.listen(4000);
+  console.log('Application is running on: http://localhost:4000');
 }
 bootstrap();

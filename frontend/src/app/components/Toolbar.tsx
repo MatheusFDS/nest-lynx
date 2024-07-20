@@ -77,7 +77,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
     switch (route) {
       case 'users':
         return 'Usuários';
-      case 'company':
+      case 'tenant':
         return 'Empresa';
       case 'categories':
         return 'Categorias';
@@ -88,13 +88,13 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
       case 'directions':
         return 'Direções';
       case 'deliveries':
-        return 'Expedição';
+        return 'Entregas';
       case 'routing':
-        return 'Triagem';
+        return 'Gerar Rotas';
       case 'orders':
         return 'Documentos';
       case 'payments':
-        return 'Financeiro';
+        return 'Pagamentos';
       case 'releases':
         return 'Liberações';
       case 'statistics':
@@ -164,7 +164,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
                   <Collapse in={openRotinas} timeout="auto" unmountOnExit>
                     <List component="div" disablePadding>
                       <MenuItem onClick={() => handleNavigation('/deliveries')}>Entregas</MenuItem>
-                      <MenuItem onClick={() => handleNavigation('/routing')}>Triagem</MenuItem>
+                      <MenuItem onClick={() => handleNavigation('/routing')}>Gerar Rota</MenuItem>
                       <MenuItem onClick={() => handleNavigation('/orders')}>Ordens</MenuItem>
                       <MenuItem onClick={() => handleNavigation('/payments')}>Pagamentos</MenuItem>
                     </List>
@@ -174,7 +174,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
               </Menu>
             </Hidden>
             <Hidden smDown>
-              <Grid container spacing={2} justifyContent="flex-end">
+              <Grid container spacing={4} justifyContent="flex-end">
                 <Grid item>
                   <Box
                     onMouseEnter={() => setOpenRotinas(true)}
@@ -289,7 +289,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
                 )}
                 <Grid item>
                   <Button color="inherit" onClick={handleLogout}>
-                    Logout
+                    Sair
                   </Button>
                 </Grid>
               </Grid>

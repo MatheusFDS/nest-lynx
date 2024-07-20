@@ -38,7 +38,7 @@ const RoutingPage: React.FC = () => {
   const { isDarkMode } = useTheme();
   const { settings } = useUserSettings();
   const token = localStorage.getItem('token') || '';
-  const { orders, directions, drivers, vehicles, categories, tenantData, error } = useRoutingData(token);
+  const { orders, directions, drivers, vehicles, categories, tenantData, error, updateOrdersState } = useRoutingData(token);
   const [selectedOrders, setSelectedOrders] = useState<SelectedOrders>({ noRegion: [] });
 
   useEffect(() => {
@@ -123,10 +123,18 @@ const RoutingPage: React.FC = () => {
   const handleGenerateRouteFromMap = (orderedOrders: Order[]) => {
     setSelectedOrders({ ...selectedOrders, [currentDirectionId!]: orderedOrders });
     setShowMap(false);
+    updateOrdersState(); // Atualizar o estado dos pedidos quando uma rota é gerada
+    handleClearCart(); // Limpar o carrinho
   };
 
   const handleCloseMap = () => {
     setShowMap(false);
+    updateOrdersState(); // Atualizar o estado dos pedidos quando o mapa é fechado
+    handleClearCart(); // Limpar o carrinho
+  };
+
+  const handleClearCart = () => {
+    setSelectedOrders({ noRegion: [] });
   };
 
   const toggleLayout = () => {
