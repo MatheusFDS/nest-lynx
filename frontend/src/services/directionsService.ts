@@ -1,8 +1,11 @@
 // services/directionsService.ts
 import { Direction } from '../types';
+import { getApiUrl } from './utils/apiUtils';
+
+const API_URL = `${getApiUrl()}/directions`;
 
 export const fetchDirections = async (token: string): Promise<Direction[]> => {
-  const response = await fetch('http://localhost:4000/directions', {
+  const response = await fetch(API_URL, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -17,7 +20,7 @@ export const fetchDirections = async (token: string): Promise<Direction[]> => {
 };
 
 export const addDirection = async (token: string, newDirection: Partial<Direction>) => {
-  const response = await fetch('http://localhost:4000/directions', {
+  const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -32,7 +35,7 @@ export const addDirection = async (token: string, newDirection: Partial<Directio
 };
 
 export const updateDirection = async (token: string, id: number, updatedDirection: Partial<Direction>) => {
-  const response = await fetch(`http://localhost:4000/directions/${id}`, {
+  const response = await fetch(`${API_URL}/${id}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -47,7 +50,7 @@ export const updateDirection = async (token: string, id: number, updatedDirectio
 };
 
 export const deleteDirection = async (token: string, id: number) => {
-  const response = await fetch(`http://localhost:4000/directions/${id}`, {
+  const response = await fetch(`${API_URL}/${id}`, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${token}`,

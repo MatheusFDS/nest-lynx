@@ -1,18 +1,19 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { OrdersModule } from './orders/orders.module';
+import { StatisticsModule } from './statistics/statistics.module';
+import { PaymentsModule } from './payments/payments.module';
+import { CategoryModule } from './category/category.module';
+import { DirectionsModule } from './directions/directions.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { TenantModule } from './tenant/tenant.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { DriversModule } from './drivers/drivers.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
-import { OrdersModule } from './orders/orders.module';
-import { DirectionsModule } from './directions/directions.module';
 import { DeliveryModule } from './delivery/delivery.module';
-import { CategoryModule } from './category/category.module';
-import { PaymentsModule } from './payments/payments.module';
-import { StatisticsModule } from './statistics/statistics.module';
 import { UserSettingsModule } from './user-settings/user-settings.module';
-import { TenantModule } from './tenant/tenant.module';
 import { MetadataModule } from './meta/metadata.module';
+import { DbConfigMiddleware } from './middlewares/db-config.middleware';
 
 @Module({
   imports: [
@@ -32,4 +33,10 @@ import { MetadataModule } from './meta/metadata.module';
     MetadataModule,
   ],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(DbConfigMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

@@ -1,6 +1,11 @@
 import axios from 'axios';
 
-const accessToken = 'pk.eyJ1IjoibWF0aGV1c2ZkcyIsImEiOiJjbHlpdHB3dDYwamZuMmtvZnVjdTNzbjI3In0.hVf9wJoZ_7mRM_iy09cdWg';
+// Utilize a variável de ambiente para a chave de API do Mapbox
+const accessToken = process.env.NEXT_PUBLIC_MAPBOX_API_KEY;
+
+if (!accessToken) {
+  throw new Error("Mapbox API key is not defined in environment variables.");
+}
 
 export const geocodeAddress = async (address: string) => {
   try {

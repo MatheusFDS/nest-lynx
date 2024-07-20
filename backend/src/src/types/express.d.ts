@@ -1,4 +1,4 @@
-import { Request } from 'express';
+import { PrismaClient } from '@prisma/client';
 
 declare module 'express' {
   export interface Request {
@@ -9,5 +9,6 @@ declare module 'express' {
       role: string;
       tenantId: number;
     };
+    prisma?: PrismaClient;
   }
 }

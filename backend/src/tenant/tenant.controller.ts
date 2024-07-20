@@ -13,25 +13,23 @@ export class TenantController {
 
   @Get()
   async getTenants(@Req() req: Request) {
-    console.log('getTenants - req.user:', req.user); // Log para verificar req.user
     const tenantId = req.user.tenantId;
-    return this.tenantService.getTenants(tenantId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.tenantService.getTenants(prisma, tenantId);
   }
 
   @Put(':tenantId')
   async updateTenant(@Req() req: Request, @Param('tenantId') tenantId: string, @Body() updateTenantDto: UpdateTenantDto) {
-    console.log('updateTenant - req.user:', req.user); // Log para verificar req.user
-    console.log('updateTenant - updateTenantDto:', updateTenantDto); // Log para verificar os dados recebidos
     const userId = req.user.userId;
-    return this.tenantService.updateTenant(userId, parseInt(tenantId), updateTenantDto);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.tenantService.updateTenant(prisma, userId, parseInt(tenantId), updateTenantDto);
   }
 
   @Put('restricted/:tenantId')
   @Roles('admin')
   async updateRestrictedTenant(@Req() req: Request, @Param('tenantId') tenantId: string, @Body() updateRestrictedTenantDto: UpdateRestrictedTenantDto) {
-    console.log('updateRestrictedTenant - req.user:', req.user); // Log para verificar req.user
-    console.log('updateRestrictedTenant - updateRestrictedTenantDto:', updateRestrictedTenantDto); // Log para verificar os dados recebidos
     const userId = req.user.userId;
-    return this.tenantService.updateRestrictedTenant(userId, parseInt(tenantId), updateRestrictedTenantDto);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.tenantService.updateRestrictedTenant(prisma, userId, parseInt(tenantId), updateRestrictedTenantDto);
   }
 }

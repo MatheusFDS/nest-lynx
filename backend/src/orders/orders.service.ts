@@ -1,10 +1,10 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaClient } from '@prisma/client';
 import { parse, isValid } from 'date-fns';
 
 @Injectable()
 export class OrdersService {
-  constructor(private prisma: PrismaService) {}
+  constructor() {}
 
   // Função para converter o formato de data "dd/MM/yyyy" para ISO-8601
   convertToISODate(dateString: string): string {
@@ -15,7 +15,7 @@ export class OrdersService {
     return parsedDate.toISOString();
   }
 
-  async upload(orders: any[], tenantId: number) {
+  async upload(prisma: PrismaClient, orders: any[], tenantId: number) {
     const createdOrders = [];
     for (const order of orders) {
       let parsedDate: string | null = null;
@@ -26,7 +26,7 @@ export class OrdersService {
         throw new BadRequestException(`Invalid date format for order ${order.numero}`);
       }
 
-      const existingOrder = await this.prisma.order.findFirst({
+      const existingOrder = await prisma.order.findFirst({
         where: {
           numero: order.numero.toString(),
           tenantId: tenantId,
@@ -38,7 +38,7 @@ export class OrdersService {
         throw new BadRequestException(`Order with number ${order.numero} already exists for tenant ${tenantId}`);
       }
 
-      const createdOrder = await this.prisma.order.create({
+      const createdOrder = await prisma.order.create({
         data: {
           numero: order.numero.toString(),
           data: parsedDate,
@@ -62,7 +62,7 @@ export class OrdersService {
           status: 'Pendente', // Define todos os pedidos como "Pendente"
           deliveryId: order.deliveryId ? parseInt(order.deliveryId) : null,
           tenantId: tenantId,
-          sorting: 0
+          sorting: 0,
         },
       });
       createdOrders.push(createdOrder);
@@ -70,8 +70,8 @@ export class OrdersService {
     return createdOrders;
   }
 
-  async findAll(tenantId: number) {
-    return this.prisma.order.findMany({
+  async findAll(prisma: PrismaClient, tenantId: number) {
+    return prisma.order.findMany({
       where: { tenantId },
       include: {
         Delivery: {

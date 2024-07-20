@@ -5,6 +5,7 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { Request } from 'express';
 
 @Controller('category')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -12,30 +13,35 @@ export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
-  async create(@Body() createCategoryDto: CreateCategoryDto, @Req() req) {
+  async create(@Body() createCategoryDto: CreateCategoryDto, @Req() req: Request) {
     const tenantId = req.user.tenantId;
-    return this.categoryService.create({ ...createCategoryDto, tenantId });
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.categoryService.create(prisma, { ...createCategoryDto, tenantId });
   }
 
   @Get()
-  async findAll(@Req() req) {
+  async findAll(@Req() req: Request) {
     const tenantId = req.user.tenantId;
-    return this.categoryService.findAll(tenantId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.categoryService.findAll(prisma, tenantId);
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string, @Req() req) {
+  async findOne(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req.user.tenantId;
-    return this.categoryService.findOne(+id, tenantId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.categoryService.findOne(prisma, +id, tenantId);
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateCategoryDto: UpdateCategoryDto) {
-    return this.categoryService.update(+id, updateCategoryDto);
+  async update(@Param('id') id: string, @Body() updateCategoryDto: UpdateCategoryDto, @Req() req: Request) {
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.categoryService.update(prisma, +id, updateCategoryDto);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    return this.categoryService.remove(+id);
+  async remove(@Param('id') id: string, @Req() req: Request) {
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.categoryService.remove(prisma, +id);
   }
 }

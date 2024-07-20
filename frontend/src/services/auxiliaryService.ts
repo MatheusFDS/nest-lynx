@@ -1,9 +1,9 @@
+// src/api/api.ts
 import { Tenant } from '../types';
-
-const API_URL = 'http://localhost:4000';
+import { getApiUrl } from './utils/apiUtils';
 
 export const fetchOrders = async (token: string) => {
-  const response = await fetch(`${API_URL}/orders`, {
+  const response = await fetch(`${getApiUrl()}/orders`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -18,7 +18,7 @@ export const fetchOrders = async (token: string) => {
 };
 
 export const fetchDirections = async (token: string) => {
-  const response = await fetch(`${API_URL}/directions`, {
+  const response = await fetch(`${getApiUrl()}/directions`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -33,7 +33,7 @@ export const fetchDirections = async (token: string) => {
 };
 
 export const fetchDrivers = async (token: string) => {
-  const response = await fetch(`${API_URL}/drivers`, {
+  const response = await fetch(`${getApiUrl()}/drivers`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -48,7 +48,7 @@ export const fetchDrivers = async (token: string) => {
 };
 
 export const fetchVehicles = async (token: string) => {
-  const response = await fetch(`${API_URL}/vehicles`, {
+  const response = await fetch(`${getApiUrl()}/vehicles`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -63,7 +63,7 @@ export const fetchVehicles = async (token: string) => {
 };
 
 export const fetchCategories = async (token: string) => {
-  const response = await fetch(`${API_URL}/category`, {
+  const response = await fetch(`${getApiUrl()}/category`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -78,7 +78,7 @@ export const fetchCategories = async (token: string) => {
 };
 
 export const fetchTenantData = async (token: string): Promise<Tenant[]> => {
-  const response = await fetch(`${API_URL}/tenant`, {
+  const response = await fetch(`${getApiUrl()}/tenant`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,

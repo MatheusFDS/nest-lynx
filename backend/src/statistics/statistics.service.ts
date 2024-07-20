@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class StatisticsService {
-  constructor(private prisma: PrismaService) {}
+  constructor() {}
 
-  async getStatistics(tenantId: number, startDate: Date, endDate: Date) {
-    const ordersInRoute = await this.prisma.order.count({
+  async getStatistics(prisma: PrismaClient, tenantId: number, startDate: Date, endDate: Date) {
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new Error('Invalid date format for startDate or endDate');
+    }
+
+    const ordersInRoute = await prisma.order.count({
       where: {
         tenantId: tenantId,
         status: 'Em Rota',
@@ -17,7 +21,7 @@ export class StatisticsService {
       },
     });
 
-    const ordersFinalized = await this.prisma.order.count({
+    const ordersFinalized = await prisma.order.count({
       where: {
         tenantId: tenantId,
         status: 'Finalizado',
@@ -28,7 +32,7 @@ export class StatisticsService {
       },
     });
 
-    const ordersPending = await this.prisma.order.count({
+    const ordersPending = await prisma.order.count({
       where: {
         tenantId: tenantId,
         status: 'Pendente',
@@ -39,7 +43,7 @@ export class StatisticsService {
       },
     });
 
-    const freightsToPay = await this.prisma.accountsPayable.count({
+    const freightsToPay = await prisma.accountsPayable.count({
       where: {
         tenantId: tenantId,
         status: 'Pendente',
@@ -50,7 +54,7 @@ export class StatisticsService {
       },
     });
 
-    const freightsPaid = await this.prisma.accountsPayable.count({
+    const freightsPaid = await prisma.accountsPayable.count({
       where: {
         tenantId: tenantId,
         status: 'Baixado',
@@ -61,7 +65,7 @@ export class StatisticsService {
       },
     });
 
-    const deliveriesByDriver = await this.prisma.delivery.groupBy({
+    const deliveriesByDriver = await prisma.delivery.groupBy({
       by: ['motoristaId'],
       where: {
         tenantId: tenantId,
@@ -75,7 +79,7 @@ export class StatisticsService {
       },
     });
 
-    const deliveriesInRoute = await this.prisma.delivery.count({
+    const deliveriesInRoute = await prisma.delivery.count({
       where: {
         tenantId: tenantId,
         status: 'Em rota',
@@ -86,7 +90,7 @@ export class StatisticsService {
       },
     });
 
-    const deliveriesFinalized = await this.prisma.delivery.count({
+    const deliveriesFinalized = await prisma.delivery.count({
       where: {
         tenantId: tenantId,
         status: 'Finalizado',
@@ -97,7 +101,7 @@ export class StatisticsService {
       },
     });
 
-    const notesByRegion = await this.prisma.order.groupBy({
+    const notesByRegion = await prisma.order.groupBy({
       by: ['cidade'],
       where: {
         tenantId: tenantId,

@@ -1,32 +1,32 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class MetadataService {
-  constructor(public readonly prisma: PrismaService) {}
+  constructor() {}
 
-  async getTables() {
-    const tables = await this.prisma.$queryRaw<{ table_name: string }[]>`
+  async getTables(prisma: PrismaClient) {
+    const tables = await prisma.$queryRaw<{ table_name: string }[]>`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema='public'`;
     return tables;
   }
 
-  async getColumns(tableName: string) {
-    const columns = await this.prisma.$queryRaw<{ column_name: string, data_type: string }[]>`
+  async getColumns(prisma: PrismaClient, tableName: string) {
+    const columns = await prisma.$queryRaw<{ column_name: string, data_type: string }[]>`
       SELECT column_name, data_type 
       FROM information_schema.columns 
       WHERE table_name=${tableName}`;
     return columns;
   }
 
-  async getMetadata() {
-    const tables = await this.getTables();
+  async getMetadata(prisma: PrismaClient) {
+    const tables = await this.getTables(prisma);
     const metadata = {};
 
     for (const table of tables) {
-      const columns = await this.getColumns(table.table_name);
+      const columns = await this.getColumns(prisma, table.table_name);
       metadata[table.table_name] = columns;
     }
 

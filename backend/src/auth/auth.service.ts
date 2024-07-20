@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaClient } from '@prisma/client';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
 
@@ -10,32 +10,37 @@ export class AuthService {
   private invalidTokens = new Set<string>();
 
   constructor(
-    private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
   ) {}
 
-  async validateUser(email: string, pass: string): Promise<any> {
+  async validateUser(email: string, pass: string, prisma: PrismaClient): Promise<any> {
     this.logger.debug(`Validating user with email: ${email}`);
-    const user = await this.prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { email },
       include: { role: true },
     });
-    if (user && await bcrypt.compare(pass, user.password)) {
-      const { password, ...result } = user;
-      return result;
+    if (!user) {
+      this.logger.debug('User not found');
+      return null;
     }
-    return null;
+    const passwordValid = await bcrypt.compare(pass, user.password);
+    if (!passwordValid) {
+      this.logger.debug('Invalid password');
+      return null;
+    }
+    const { password, ...result } = user;
+    return result;
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto, prisma: PrismaClient) {
     this.logger.debug(`Logging in user with email: ${loginDto.email}`);
-    const user = await this.validateUser(loginDto.email, loginDto.password);
+    const user = await this.validateUser(loginDto.email, loginDto.password, prisma);
     if (!user) {
-      throw new Error('Invalid credentials');
+      throw new UnauthorizedException('Invalid credentials');
     }
     const payload = { email: user.email, sub: user.id, role: user.role.name, tenantId: user.tenantId };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '600m' }); // Ajuste o tempo de expiração do access token aqui
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' }); // Ajuste o tempo de expiração do refresh token aqui
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '600m' });
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
     return {
       access_token: accessToken,
       refresh_token: refreshToken,
@@ -45,10 +50,10 @@ export class AuthService {
   async refreshToken(token: string) {
     try {
       const payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET });
-      const newAccessToken = this.jwtService.sign({ email: payload.email, sub: payload.sub, role: payload.role, tenantId: payload.tenantId }, { expiresIn: '600m' }); // Ajuste o tempo de expiração do novo access token aqui
+      const newAccessToken = this.jwtService.sign({ email: payload.email, sub: payload.sub, role: payload.role, tenantId: payload.tenantId }, { expiresIn: '600m' });
       return { access_token: newAccessToken };
     } catch (e) {
-      throw new Error('Invalid refresh token');
+      throw new UnauthorizedException('Invalid refresh token');
     }
   }
 

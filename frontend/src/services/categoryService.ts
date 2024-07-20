@@ -1,4 +1,7 @@
-const API_URL = 'http://localhost:4000/category';
+// src/api/categoryApi.ts
+import { getApiUrl } from './utils/apiUtils';
+
+const API_URL = `${getApiUrl()}/category`;
 
 export const fetchCategories = async (token: string): Promise<any[]> => {
   const response = await fetch(API_URL, {

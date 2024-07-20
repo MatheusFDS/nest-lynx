@@ -1,6 +1,8 @@
+// src/api/deliveryApi.ts
+import { getApiUrl } from './utils/apiUtils';
 import { Delivery } from '../types';
 
-const API_URL = 'http://localhost:4000/delivery';
+const API_URL = `${getApiUrl()}/delivery`;
 
 export const fetchDeliveries = async (token: string): Promise<Delivery[]> => {
   const response = await fetch(API_URL, {

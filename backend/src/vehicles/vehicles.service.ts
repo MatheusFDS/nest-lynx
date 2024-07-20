@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaClient } from '@prisma/client';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 
 @Injectable()
 export class VehiclesService {
-  constructor(private prisma: PrismaService) {}
+  constructor() {}
 
-  async create(createVehicleDto: CreateVehicleDto, tenantId: number) {
-    return this.prisma.vehicle.create({
+  async create(prisma: PrismaClient, createVehicleDto: CreateVehicleDto, tenantId: number) {
+    return prisma.vehicle.create({
       data: {
         model: createVehicleDto.model,
         plate: createVehicleDto.plate,
@@ -19,22 +19,25 @@ export class VehiclesService {
     });
   }
 
-  async findAll(tenantId: number) {
-    return this.prisma.vehicle.findMany({ where: { tenantId } });
+  async findAll(prisma: PrismaClient, tenantId: number) {
+    return prisma.vehicle.findMany({ where: { tenantId } });
   }
 
-  async findOne(id: number, tenantId: number) {
-    return this.prisma.vehicle.findFirst({ where: { id, tenantId } });
+  async findOne(prisma: PrismaClient, id: number, tenantId: number) {
+    return prisma.vehicle.findFirst({ where: { id, tenantId } });
   }
 
-  async update(id: number, updateVehicleDto: UpdateVehicleDto, tenantId: number) {
-    return this.prisma.vehicle.update({
-      where: { id, tenantId },
-      data: updateVehicleDto,
+  async update(prisma: PrismaClient, id: number, updateVehicleDto: UpdateVehicleDto, tenantId: number) {
+    return prisma.vehicle.update({
+      where: { id },
+      data: {
+        ...updateVehicleDto,
+        tenantId,
+      },
     });
   }
 
-  async remove(id: number, tenantId: number) {
-    return this.prisma.vehicle.delete({ where: { id, tenantId } });
+  async remove(prisma: PrismaClient, id: number, tenantId: number) {
+    return prisma.vehicle.delete({ where: { id, tenantId } });
   }
 }

@@ -1,7 +1,17 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Typography, Container, Grid, Paper, TextField, Button } from '@mui/material';
+import { 
+  Typography, 
+  Container, 
+  Grid, 
+  Paper, 
+  TextField, 
+  Button, 
+  Tabs, 
+  Tab, 
+  Box 
+} from '@mui/material';
 import withAuth from '../hoc/withAuth';
 import { Tenant } from '../../types';
 
@@ -9,6 +19,7 @@ const TenantPage = () => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [error, setError] = useState<string>('');
   const [editTenant, setEditTenant] = useState<Tenant | null>(null);
+  const [activeTab, setActiveTab] = useState<number>(0);
 
   const fetchTenants = async () => {
     const token = localStorage.getItem('token');
@@ -84,6 +95,10 @@ const TenantPage = () => {
     }
   };
 
+  const handleTabChange = (event: React.ChangeEvent<{}>, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
   return (
     <Container>
       {error && <Typography color="error">{error}</Typography>}
@@ -108,56 +123,94 @@ const TenantPage = () => {
       {editTenant && (
         <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
           <Typography variant="h6">Edit Tenant</Typography>
-          <TextField
-            label="Name"
-            name="name"
-            value={editTenant.name}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Min Delivery Percentage"
-            name="minDeliveryPercentage"
-            type="number"
-            value={editTenant.minDeliveryPercentage}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Address"
-            name="address"
-            value={editTenant.address}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Database URL"
-            name="databaseUrl"
-            value={editTenant.databaseUrl || ''}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Schema"
-            name="databaseSchema"
-            value={editTenant.databaseSchema || ''}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Port"
-            name="port"
-            type="number"
-            value={editTenant.port || ''}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
+          <Tabs value={activeTab} onChange={handleTabChange}>
+            <Tab label="General" />
+            <Tab label="Database" />
+            <Tab label="Parameters" />
+          </Tabs>
+          <Box role="tabpanel" hidden={activeTab !== 0} style={{ padding: '16px' }}>
+            <TextField
+              label="Name"
+              name="name"
+              value={editTenant.name}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              label="Min Delivery Percentage"
+              name="minDeliveryPercentage"
+              type="number"
+              value={editTenant.minDeliveryPercentage}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              label="Address"
+              name="address"
+              value={editTenant.address}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+          </Box>
+          <Box role="tabpanel" hidden={activeTab !== 1} style={{ padding: '16px' }}>
+            <TextField
+              label="Database URL"
+              name="databaseUrl"
+              value={editTenant.databaseUrl || ''}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              label="Schema"
+              name="databaseSchema"
+              value={editTenant.databaseSchema || ''}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              label="Port"
+              name="port"
+              type="number"
+              value={editTenant.port || ''}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              label="User"
+              name="user"
+              value={editTenant.user || ''}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              label="Password"
+              name="password"
+              type="password"
+              value={editTenant.password || ''}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+          </Box>
+          <Box role="tabpanel" hidden={activeTab !== 2} style={{ padding: '16px' }}>
+            {/* Adicione aqui os campos de parâmetros gerais, conforme necessário */}
+            {/* Exemplo:
+            <TextField
+              label="Example Parameter"
+              name="exampleParameter"
+              value={editTenant.exampleParameter || ''}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            /> */}
+          </Box>
           <Button variant="contained" color="primary" onClick={handleSave} style={{ marginTop: '16px' }}>
             Save
           </Button>

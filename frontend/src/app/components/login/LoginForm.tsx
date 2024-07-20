@@ -21,17 +21,19 @@ const LoginForm = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to login');
+        const errorData = await response.json();
+        console.error('Resposta de Erro:', errorData);
+        throw new Error('Falha ao fazer login');
       }
 
       const data = await response.json();
       const token = data.access_token;
       const refreshToken = data.refresh_token;
 
-      // Utilize o contexto para fazer o login e redirecionar
       login(token, refreshToken);
     } catch (error) {
-      setError('Failed to login. Please check your credentials and try again.');
+      console.error('Erro de Login:', error);
+      setError('Falha ao fazer login. Verifique suas credenciais e tente novamente.');
     }
   };
 
@@ -44,6 +46,7 @@ const LoginForm = () => {
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
+        margin="normal"
       />
       <TextField
         label="Senha"
@@ -53,6 +56,7 @@ const LoginForm = () => {
         required
         value={password}
         onChange={(e) => setPassword(e.target.value)}
+        margin="normal"
       />
       {error && <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>}
       <Button

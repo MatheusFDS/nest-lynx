@@ -1,38 +1,11 @@
+// services/routeService.ts
 import axios from 'axios';
 import mapboxgl from 'mapbox-gl';
 import { Order } from '../types';
+import { MAPBOX_BASE_URL, MAPBOX_ACCESS_TOKEN } from './utils/config';
+import { geocodeAddress } from './geocodeService';
 
-const mapboxAccessToken = process.env.NEXT_PUBLIC_MAPBOX_API_KEY;
-if (!mapboxAccessToken) {
-  throw new Error("Mapbox API key is not defined in environment variables.");
-}
-
-mapboxgl.accessToken = mapboxAccessToken;
-
-export const geocodeAddress = async (address: string) => {
-  try {
-    const response = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json`, {
-      params: {
-        access_token: mapboxgl.accessToken,
-      },
-    });
-    const { data } = response;
-    if (data.features && data.features.length > 0) {
-      const { center } = data.features[0];
-      return { lat: center[1], lng: center[0] };
-    } else {
-      console.error('Geocoding error:', data.message);
-      return null;
-    }
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      console.error('Unauthorized: Check your Mapbox access token.');
-    } else {
-      console.error('Geocoding error:', error);
-    }
-    return null;
-  }
-};
+mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 
 export const calculateRoute = async (
   tenantAddress: string,
@@ -59,7 +32,7 @@ export const calculateRoute = async (
     return tempArray;
   };
 
-  const orderChunks = chunkArray(orderedOrders, 10); // Use chunks of 10 to stay under the limit of 12 including tenant coordinates
+  const orderChunks = chunkArray(orderedOrders, 10);
   let combinedRoute: any = {
     distance: 0,
     duration: 0,
@@ -78,8 +51,8 @@ export const calculateRoute = async (
     const waypoints = chunk.map(order => `${order.lng},${order.lat}`).join(';');
 
     const url = useOptimizedRoute
-      ? `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${tenantLocation.lng},${tenantLocation.lat};${waypoints};${tenantLocation.lng},${tenantLocation.lat}?access_token=${mapboxgl.accessToken}&geometries=geojson&roundtrip=true`
-      : `https://api.mapbox.com/directions/v5/mapbox/driving/${tenantLocation.lng},${tenantLocation.lat};${waypoints};${tenantLocation.lng},${tenantLocation.lat}?access_token=${mapboxgl.accessToken}&geometries=geojson`;
+      ? `${MAPBOX_BASE_URL}/optimized-trips/v1/mapbox/driving/${tenantLocation.lng},${tenantLocation.lat};${waypoints};${tenantLocation.lng},${tenantLocation.lat}?access_token=${MAPBOX_ACCESS_TOKEN}&geometries=geojson&roundtrip=true`
+      : `${MAPBOX_BASE_URL}/directions/v5/mapbox/driving/${tenantLocation.lng},${tenantLocation.lat};${waypoints};${tenantLocation.lng},${tenantLocation.lat}?access_token=${MAPBOX_ACCESS_TOKEN}&geometries=geojson`;
 
     try {
       const response = await axios.get(url);
@@ -184,3 +157,5 @@ export const calculateRoute = async (
     }
   }
 };
+export { geocodeAddress };
+

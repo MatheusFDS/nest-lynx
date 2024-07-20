@@ -18,49 +18,56 @@ export class DriversController {
   @Post()
   create(@Body() createDriverDto: CreateDriverDto, @Req() req: Request) {
     const tenantId = req.user.tenantId;
-    return this.driversService.create(createDriverDto, tenantId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.driversService.create(prisma, createDriverDto, tenantId);
   }
 
   @Roles('admin')
   @Get()
   findAll(@Req() req: Request) {
     const tenantId = req.user.tenantId;
-    return this.driversService.findAll(tenantId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.driversService.findAll(prisma, tenantId);
   }
 
   @Roles('admin')
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateDriverDto: UpdateDriverDto, @Req() req: Request) {
     const tenantId = req.user.tenantId;
-    return this.driversService.update(Number(id), updateDriverDto, tenantId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.driversService.update(prisma, Number(id), updateDriverDto, tenantId);
   }
 
   @Roles('admin')
   @Delete(':id')
   remove(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req.user.tenantId;
-    return this.driversService.remove(Number(id), tenantId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.driversService.remove(prisma, Number(id), tenantId);
   }
 
   @Roles('admin', 'driver')
   @Get('orders')
   getOrders(@Req() req: Request) {
     const driverId = req.user.id;
-    return this.driversService.findOrdersByDriver(driverId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.driversService.findOrdersByDriver(prisma, driverId);
   }
 
   @Roles('admin', 'driver')
   @Patch('orders/:id/start')
   startOrder(@Param('id') orderId: number, @Req() req: Request) {
     const driverId = req.user.id;
-    return this.driversService.updateOrderStatus(orderId, 'in_progress', driverId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.driversService.updateOrderStatus(prisma, orderId, 'in_progress', driverId);
   }
 
   @Roles('admin', 'driver')
   @Patch('orders/:id/complete')
   completeOrder(@Param('id') orderId: number, @Req() req: Request) {
     const driverId = req.user.id;
-    return this.driversService.updateOrderStatus(orderId, 'completed', driverId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.driversService.updateOrderStatus(prisma, orderId, 'completed', driverId);
   }
 
   @Roles('admin', 'driver')
@@ -68,13 +75,15 @@ export class DriversController {
   @UseInterceptors(FileInterceptor('file'))
   uploadProof(@Param('id') orderId: number, @UploadedFile() file: Express.Multer.File, @Req() req: Request) {
     const driverId = req.user.id;
-    return this.driversService.saveProof(orderId, file, driverId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.driversService.saveProof(prisma, orderId, file, driverId);
   }
 
   @Roles('admin', 'user')
   @Get('payments')
   getPayments(@Req() req: Request) {
     const driverId = req.user.id;
-    return this.driversService.findPaymentsByDriver(driverId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.driversService.findPaymentsByDriver(prisma, driverId);
   }
 }

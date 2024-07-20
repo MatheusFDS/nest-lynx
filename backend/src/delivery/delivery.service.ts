@@ -1,16 +1,16 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaClient } from '@prisma/client';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { UpdateDeliveryDto } from './dto/update-delivery.dto';
 
 @Injectable()
 export class DeliveryService {
-  constructor(private prisma: PrismaService) {}
+  constructor() {}
 
-  async create(createDeliveryDto: CreateDeliveryDto, tenantId: number) {
+  async create(prisma: PrismaClient, createDeliveryDto: CreateDeliveryDto, tenantId: number) {
     const { motoristaId, orders, veiculoId, ...rest } = createDeliveryDto;
 
-    const existingDelivery = await this.prisma.delivery.findFirst({
+    const existingDelivery = await prisma.delivery.findFirst({
       where: { motoristaId, status: { in: ['Em Rota', 'A liberar'] } },
     });
 
@@ -18,7 +18,7 @@ export class DeliveryService {
       throw new BadRequestException('O motorista já está em uma rota.');
     }
 
-    const orderRecords = await this.prisma.order.findMany({
+    const orderRecords = await prisma.order.findMany({
       where: {
         id: { in: orders.map(order => order.id) },
         status: { in: ['Pendente', 'Reentrega'] },
@@ -36,7 +36,7 @@ export class DeliveryService {
     let maxDirectionValue = 0;
 
     for (const order of orderRecords) {
-      const directionValue = await this.prisma.directions.findFirst({
+      const directionValue = await prisma.directions.findFirst({
         where: {
           tenantId: tenantId,
           rangeInicio: { lte: order.cep },
@@ -50,21 +50,21 @@ export class DeliveryService {
       }
     }
 
-    const vehicle = await this.prisma.vehicle.findUnique({
+    const vehicle = await prisma.vehicle.findUnique({
       where: { id: veiculoId },
       include: { Category: true },
     });
 
     const valorFrete = maxDirectionValue + (vehicle?.Category?.valor ?? 0);
 
-    const tenant = await this.prisma.tenant.findUnique({
+    const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
     });
 
     const percentualFrete = (valorFrete / totalValor) * 100;
     const status = percentualFrete > (tenant?.minDeliveryPercentage || 100) ? 'A liberar' : 'Em Rota';
 
-    const delivery = await this.prisma.delivery.create({
+    const delivery = await prisma.delivery.create({
       data: {
         motoristaId,
         veiculoId,
@@ -86,7 +86,7 @@ export class DeliveryService {
     });
 
     for (const order of orders) {
-      await this.prisma.order.update({
+      await prisma.order.update({
         where: { id: order.id },
         data: { status: status, deliveryId: delivery.id, sorting: order.sorting ?? null },
       });
@@ -95,33 +95,33 @@ export class DeliveryService {
     return delivery;
   }
 
-  async release(id: number, tenantId: number, userId: number) {
-    const delivery = await this.prisma.delivery.findFirst({
+  async release(prisma: PrismaClient, id: number, tenantId: number, userId: number) {
+    const delivery = await prisma.delivery.findFirst({
       where: { id, tenantId },
     });
-  
+
     if (!delivery) {
       throw new NotFoundException('Delivery not found');
     }
-  
+
     if (delivery.status !== 'A liberar') {
       throw new BadRequestException('A entrega não está no status "A liberar".');
     }
-  
-    const updatedDelivery = await this.prisma.delivery.update({
+
+    const updatedDelivery = await prisma.delivery.update({
       where: { id },
       data: {
         status: 'Em Rota',
         dataLiberacao: new Date(),
       },
     });
-  
-    await this.prisma.order.updateMany({
+
+    await prisma.order.updateMany({
       where: { deliveryId: id },
       data: { status: 'Em Rota' },
     });
-  
-    await this.prisma.approval.create({
+
+    await prisma.approval.create({
       data: {
         deliveryId: id,
         tenantId,
@@ -130,40 +130,37 @@ export class DeliveryService {
         createdAt: new Date(),
       },
     });
-  
+
     return {
       ...updatedDelivery,
       approval: {
-        userName: (await this.prisma.user.findUnique({ where: { id: userId } })).name,
+        userName: (await prisma.user.findUnique({ where: { id: userId } })).name,
         action: 'approved',
         createdAt: new Date().toISOString(),
       },
     };
   }
-  
-  async rejectRelease(id: number, tenantId: number, userId: number, motivo: string): Promise<void> {
-    const delivery = await this.prisma.delivery.findUnique({
+
+  async rejectRelease(prisma: PrismaClient, id: number, tenantId: number, userId: number, motivo: string): Promise<void> {
+    const delivery = await prisma.delivery.findUnique({
       where: { id },
       include: { orders: true, liberacoes: true },
     });
-  
+
     if (!delivery) {
       throw new NotFoundException('Delivery not found');
     }
-  
-    // Verificar se o tenantId corresponde ao delivery
+
     if (delivery.tenantId !== tenantId) {
       throw new NotFoundException('Delivery not found for the tenant');
     }
-  
-    // Atualizar status dos pedidos para "Pendente" e remover o deliveryId
-    await this.prisma.order.updateMany({
+
+    await prisma.order.updateMany({
       where: { deliveryId: id },
       data: { status: 'Pendente', deliveryId: null },
     });
-  
-    // Atualizar registro de negação
-    await this.prisma.approval.create({
+
+    await prisma.approval.create({
       data: {
         deliveryId: id,
         tenantId,
@@ -172,20 +169,19 @@ export class DeliveryService {
         userId,
       },
     });
-  
-    // Atualizar o status do delivery para "Negado"
-    await this.prisma.delivery.update({
+
+    await prisma.delivery.update({
       where: { id },
       data: {
         status: 'Negado',
       },
     });
   }
-  
-  async update(id: number, updateDeliveryDto: UpdateDeliveryDto, tenantId: number) {
+
+  async update(prisma: PrismaClient, id: number, updateDeliveryDto: UpdateDeliveryDto, tenantId: number) {
     const { motoristaId, veiculoId, orders, status, ...rest } = updateDeliveryDto;
 
-    const hasBaixadoPayments = await this.prisma.accountsPayable.findFirst({
+    const hasBaixadoPayments = await prisma.accountsPayable.findFirst({
       where: {
         paymentDeliveries: { some: { deliveryId: id } },
         status: 'Baixado',
@@ -199,14 +195,14 @@ export class DeliveryService {
     let updatedDelivery;
 
     if (status === 'Em Rota') {
-      await this.prisma.accountsPayable.deleteMany({
+      await prisma.accountsPayable.deleteMany({
         where: {
           paymentDeliveries: { some: { deliveryId: id } },
           status: 'Pendente',
         },
       });
 
-      updatedDelivery = await this.prisma.delivery.update({
+      updatedDelivery = await prisma.delivery.update({
         where: { id },
         data: {
           ...rest,
@@ -226,12 +222,12 @@ export class DeliveryService {
         },
       });
 
-      await this.prisma.order.updateMany({
+      await prisma.order.updateMany({
         where: { deliveryId: id },
         data: { status: 'Em Rota' },
       });
     } else if (status === 'Finalizado') {
-      updatedDelivery = await this.prisma.delivery.update({
+      updatedDelivery = await prisma.delivery.update({
         where: { id },
         data: {
           ...rest,
@@ -251,17 +247,17 @@ export class DeliveryService {
         },
       });
 
-      await this.prisma.order.updateMany({
+      await prisma.order.updateMany({
         where: { deliveryId: id },
         data: { status: 'Finalizado' },
       });
 
-      const existingPayment = await this.prisma.paymentDelivery.findFirst({
+      const existingPayment = await prisma.paymentDelivery.findFirst({
         where: { deliveryId: updatedDelivery.id },
       });
 
       if (!existingPayment) {
-        await this.prisma.accountsPayable.create({
+        await prisma.accountsPayable.create({
           data: {
             amount: updatedDelivery.valorFrete,
             status: 'Pendente',
@@ -278,7 +274,7 @@ export class DeliveryService {
         });
       }
     } else {
-      updatedDelivery = await this.prisma.delivery.update({
+      updatedDelivery = await prisma.delivery.update({
         where: { id },
         data: {
           ...rest,
@@ -301,8 +297,8 @@ export class DeliveryService {
     return updatedDelivery;
   }
 
-  async findAll(tenantId: number) {
-    return this.prisma.delivery.findMany({
+  async findAll(prisma: PrismaClient, tenantId: number) {
+    return prisma.delivery.findMany({
       where: { tenantId },
       include: {
         orders: true,
@@ -317,8 +313,8 @@ export class DeliveryService {
     });
   }
 
-  async findOne(id: number, tenantId: number) {
-    const delivery = await this.prisma.delivery.findFirst({
+  async findOne(prisma: PrismaClient, id: number, tenantId: number) {
+    const delivery = await prisma.delivery.findFirst({
       where: { id, tenantId },
       include: {
         orders: true,
@@ -331,85 +327,84 @@ export class DeliveryService {
         },
       },
     });
-  
+
     if (!delivery) {
       throw new NotFoundException('Delivery not found');
     }
-  
+
     return delivery;
   }
-  
-  async remove(id: number, tenantId: number) {
-    const delivery = await this.findOne(id, tenantId);
-  
+
+  async remove(prisma: PrismaClient, id: number, tenantId: number) {
+    const delivery = await this.findOne(prisma, id, tenantId);
+
     if (!delivery) {
       throw new NotFoundException('Delivery not found');
     }
-  
+
     if (delivery.status === 'Finalizado') {
       throw new BadRequestException('Não é possível excluir uma entrega finalizada.');
     }
-  
-    const hasPayments = await this.prisma.accountsPayable.findFirst({
+
+    const hasPayments = await prisma.accountsPayable.findFirst({
       where: {
         paymentDeliveries: { some: { deliveryId: id } },
         status: 'Baixado',
       },
     });
-  
+
     if (hasPayments) {
       throw new BadRequestException('Não é possível excluir uma entrega com pagamentos baixados.');
     }
-  
-    await this.prisma.order.updateMany({
+
+    await prisma.order.updateMany({
       where: { deliveryId: id },
       data: { status: 'Reentrega', deliveryId: null },
     });
-  
-    await this.prisma.paymentDelivery.deleteMany({
+
+    await prisma.paymentDelivery.deleteMany({
       where: { deliveryId: id },
     });
-  
-    await this.prisma.accountsPayable.deleteMany({
+
+    await prisma.accountsPayable.deleteMany({
       where: {
         paymentDeliveries: { some: { deliveryId: id } },
       },
     });
-  
-    // Excluir aprovações relacionadas ao delivery
-    await this.prisma.approval.deleteMany({
+
+    await prisma.approval.deleteMany({
       where: { deliveryId: id },
     });
-  
-    return this.prisma.delivery.delete({ where: { id } });
+
+    return prisma.delivery.delete({ where: { id } });
   }
-  
-  async removeOrderFromDelivery(deliveryId: number, orderId: number, tenantId: number) {
-    const delivery = await this.prisma.delivery.findFirst({
+
+  async removeOrderFromDelivery(prisma: PrismaClient, deliveryId: number, orderId: number, tenantId: number) {
+    const delivery = await prisma.delivery.findFirst({
       where: { id: deliveryId, tenantId },
       include: { orders: true },
     });
-  
+
     if (!delivery) {
       throw new NotFoundException('Delivery not found');
     }
-  
-    const hasBaixadoPayments = await this.prisma.accountsPayable.findFirst({
+
+    const hasBaixadoPayments = await prisma.accountsPayable.findFirst({
       where: {
         paymentDeliveries: { some: { deliveryId } },
         status: 'Baixado',
       },
     });
-  
+
     if (hasBaixadoPayments) {
       throw new BadRequestException('Não é possível remover pedidos de uma entrega com pagamentos baixados.');
     }
-  
+
     if (delivery.status === 'Finalizado') {
       throw new BadRequestException('Não é possível remover pedidos de uma entrega finalizada.');
     }
-  
-    const updatedDelivery = await this.prisma.delivery.update({
+
+    const updatedDelivery = await prisma.delivery.update({
       where: { id: deliveryId },
       data: {
         orders: {
@@ -418,12 +413,12 @@ export class DeliveryService {
       },
       include: { orders: true },
     });
-  
-    await this.prisma.order.update({
+
+    await prisma.order.update({
       where: { id: orderId },
       data: { status: 'Reentrega', deliveryId: null },
     });
-  
+
     return updatedDelivery;
   }
 }

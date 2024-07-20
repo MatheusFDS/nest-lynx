@@ -143,6 +143,8 @@ export interface User {
 }
 
 export interface Tenant {
+  password: string;
+  user: string;
   minDeliveryPercentage: number;
   id: number;
   name: string;

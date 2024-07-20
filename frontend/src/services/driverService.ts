@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { getApiUrl } from './utils/apiUtils';
 
-const API_URL = 'http://localhost:4000';
+const API_URL = getApiUrl();
 
 export const fetchDrivers = async (token: string) => {
   const response = await axios.get(`${API_URL}/drivers`, {

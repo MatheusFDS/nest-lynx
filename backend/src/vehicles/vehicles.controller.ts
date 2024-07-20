@@ -5,6 +5,7 @@ import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { Request } from 'express';
 
 @Controller('vehicles')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -13,32 +14,37 @@ export class VehiclesController {
 
   @Post()
   @Roles('admin')
-  async create(@Body() createVehicleDto: CreateVehicleDto, @Req() req) {
+  async create(@Body() createVehicleDto: CreateVehicleDto, @Req() req: Request) {
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
     const tenantId = req.user.tenantId;
-    return this.vehiclesService.create(createVehicleDto, tenantId);
+    return this.vehiclesService.create(prisma, createVehicleDto, tenantId);
   }
 
   @Get()
-  async findAll(@Req() req) {
+  async findAll(@Req() req: Request) {
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
     const tenantId = req.user.tenantId;
-    return this.vehiclesService.findAll(tenantId);
+    return this.vehiclesService.findAll(prisma, tenantId);
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string, @Req() req) {
+  async findOne(@Param('id') id: string, @Req() req: Request) {
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
     const tenantId = req.user.tenantId;
-    return this.vehiclesService.findOne(+id, tenantId);
+    return this.vehiclesService.findOne(prisma, +id, tenantId);
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateVehicleDto: UpdateVehicleDto, @Req() req) {
+  async update(@Param('id') id: string, @Body() updateVehicleDto: UpdateVehicleDto, @Req() req: Request) {
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
     const tenantId = req.user.tenantId;
-    return this.vehiclesService.update(+id, updateVehicleDto, tenantId);
+    return this.vehiclesService.update(prisma, +id, updateVehicleDto, tenantId);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string, @Req() req) {
+  async remove(@Param('id') id: string, @Req() req: Request) {
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
     const tenantId = req.user.tenantId;
-    return this.vehiclesService.remove(+id, tenantId);
+    return this.vehiclesService.remove(prisma, +id, tenantId);
   }
 }

@@ -1,9 +1,9 @@
 import { Payment, Delivery } from '../types';
-
-const API_URL = 'http://localhost:4000/payments';
-const DELIVERY_API_URL = 'http://localhost:4000/delivery';
+import { getApiUrl } from './utils/apiUtils';
 
 export const fetchPayments = async (token: string): Promise<Payment[]> => {
+  const API_URL = getApiUrl() + '/payments';
+
   const response = await fetch(API_URL, {
     method: 'GET',
     headers: {
@@ -19,6 +19,8 @@ export const fetchPayments = async (token: string): Promise<Payment[]> => {
 };
 
 export const updatePaymentStatus = async (token: string, id: number, status: string): Promise<void> => {
+  const API_URL = getApiUrl() + '/payments';
+
   const response = await fetch(`${API_URL}/${id}`, {
     method: 'PATCH',
     headers: {
@@ -35,6 +37,8 @@ export const updatePaymentStatus = async (token: string, id: number, status: str
 };
 
 export const fetchDeliveryDetails = async (token: string, deliveryId: number): Promise<Delivery> => {
+  const DELIVERY_API_URL = getApiUrl() + '/delivery';
+
   const response = await fetch(`${DELIVERY_API_URL}/${deliveryId}`, {
     method: 'GET',
     headers: {
@@ -50,6 +54,8 @@ export const fetchDeliveryDetails = async (token: string, deliveryId: number): P
 };
 
 export const groupPayments = async (token: string, paymentIds: number[]): Promise<Payment> => {
+  const API_URL = getApiUrl() + '/payments';
+
   const response = await fetch(`${API_URL}/group`, {
     method: 'POST',
     headers: {
@@ -68,6 +74,8 @@ export const groupPayments = async (token: string, paymentIds: number[]): Promis
 };
 
 export const ungroupPayments = async (token: string, paymentId: number): Promise<void> => {
+  const API_URL = getApiUrl() + '/payments';
+
   const response = await fetch(`${API_URL}/ungroup/${paymentId}`, {
     method: 'POST',
     headers: {

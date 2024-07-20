@@ -72,7 +72,7 @@ const DirectionsPage: React.FC = () => {
         valorDirecao: parseFloat(currentDirection.valorDirecao || '0'),
       };
 
-      if (!validateCepRange(currentDirection.rangeInicio!, currentDirection.rangeFim!)) {
+      if (!selectedDirection && !validateCepRange(currentDirection.rangeInicio!, currentDirection.rangeFim!)) {
         return;
       }
 

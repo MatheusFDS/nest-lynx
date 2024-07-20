@@ -1,7 +1,7 @@
-// services/userSettingsService.ts
 import axios from 'axios';
+import { getApiUrl } from './utils/apiUtils';
 
-const API_URL = 'http://localhost:4000/user-settings'; // Ajuste a URL conforme necessário
+const API_URL = `${getApiUrl()}/user-settings`;
 
 export const getUserSettings = async (token: string) => {
   const response = await axios.get(API_URL, {

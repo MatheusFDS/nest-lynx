@@ -4,7 +4,7 @@ import { CreateDirectionsDto } from './dto/create-directions.dto';
 import { UpdateDirectionsDto } from './dto/update-directions.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import { Request } from 'express';
 
 @Controller('directions')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -12,32 +12,37 @@ export class DirectionsController {
   constructor(private readonly directionsService: DirectionsService) {}
 
   @Post()
-  async create(@Body() createDirectionsDto: CreateDirectionsDto, @Req() req) {
+  async create(@Body() createDirectionsDto: CreateDirectionsDto, @Req() req: Request) {
     const tenantId = req.user.tenantId;
-    return this.directionsService.create(createDirectionsDto, tenantId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.directionsService.create(prisma, createDirectionsDto, tenantId);
   }
 
   @Get()
-  async findAll(@Req() req) {
+  async findAll(@Req() req: Request) {
     const tenantId = req.user.tenantId;
-    return this.directionsService.findAll(tenantId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.directionsService.findAll(prisma, tenantId);
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string, @Req() req) {
+  async findOne(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req.user.tenantId;
-    return this.directionsService.findOne(+id, tenantId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.directionsService.findOne(prisma, +id, tenantId);
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateDirectionsDto: UpdateDirectionsDto, @Req() req) {
+  async update(@Param('id') id: string, @Body() updateDirectionsDto: UpdateDirectionsDto, @Req() req: Request) {
     const tenantId = req.user.tenantId;
-    return this.directionsService.update(+id, updateDirectionsDto, tenantId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.directionsService.update(prisma, +id, updateDirectionsDto, tenantId);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string, @Req() req) {
+  async remove(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req.user.tenantId;
-    return this.directionsService.remove(+id, tenantId);
+    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
+    return this.directionsService.remove(prisma, +id, tenantId);
   }
 }

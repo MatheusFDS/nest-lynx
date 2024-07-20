@@ -1,5 +1,5 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaClient } from '@prisma/client';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 
@@ -7,9 +7,9 @@ import { UpdatePaymentDto } from './dto/update-payment.dto';
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor() {}
 
-  async create(createPaymentDto: CreatePaymentDto, tenantId: number) {
+  async create(prisma: PrismaClient, createPaymentDto: CreatePaymentDto, tenantId: number) {
     const { deliveryId, amount, status, motoristaId } = createPaymentDto;
 
     const paymentData: any = {
@@ -29,7 +29,7 @@ export class PaymentsService {
       };
     }
 
-    return this.prisma.accountsPayable.create({
+    return prisma.accountsPayable.create({
       data: paymentData,
       include: {
         Driver: true,
@@ -42,8 +42,8 @@ export class PaymentsService {
     });
   }
 
-  async findAll(tenantId: number) {
-    return this.prisma.accountsPayable.findMany({
+  async findAll(prisma: PrismaClient, tenantId: number) {
+    return prisma.accountsPayable.findMany({
       where: { tenantId },
       include: {
         Driver: true,
@@ -60,8 +60,8 @@ export class PaymentsService {
     });
   }
 
-  async findOne(id: number, tenantId: number) {
-    const payment = await this.prisma.accountsPayable.findUnique({
+  async findOne(prisma: PrismaClient, id: number, tenantId: number) {
+    const payment = await prisma.accountsPayable.findUnique({
       where: { id },
       include: {
         Driver: true,
@@ -84,8 +84,8 @@ export class PaymentsService {
     return payment;
   }
 
-  async update(id: number, updatePaymentDto: UpdatePaymentDto, tenantId: number) {
-    const payment = await this.prisma.accountsPayable.findUnique({
+  async update(prisma: PrismaClient, id: number, updatePaymentDto: UpdatePaymentDto, tenantId: number) {
+    const payment = await prisma.accountsPayable.findUnique({
       where: { id },
     });
 
@@ -103,7 +103,7 @@ export class PaymentsService {
       throw new BadRequestException('Não é possível atualizar um pagamento baixado para outro status além de "Pendente".');
     }
 
-    return this.prisma.accountsPayable.update({
+    return prisma.accountsPayable.update({
       where: { id },
       data: updatePaymentDto,
       include: {
@@ -121,8 +121,8 @@ export class PaymentsService {
     });
   }
 
-  async remove(id: number, tenantId: number) {
-    const payment = await this.prisma.accountsPayable.findUnique({
+  async remove(prisma: PrismaClient, id: number, tenantId: number) {
+    const payment = await prisma.accountsPayable.findUnique({
       where: { id },
     });
 
@@ -130,7 +130,7 @@ export class PaymentsService {
       throw new BadRequestException('Não é possível excluir um pagamento baixado, agrupado ou parte de um agrupamento.');
     }
 
-    return this.prisma.accountsPayable.delete({
+    return prisma.accountsPayable.delete({
       where: { id },
       include: {
         Driver: true,
@@ -147,9 +147,9 @@ export class PaymentsService {
     });
   }
 
-  async groupPayments(paymentIds: number[], tenantId: number) {
+  async groupPayments(prisma: PrismaClient, paymentIds: number[], tenantId: number) {
     try {
-      const payments = await this.prisma.accountsPayable.findMany({
+      const payments = await prisma.accountsPayable.findMany({
         where: {
           id: { in: paymentIds },
           tenantId,
@@ -187,7 +187,7 @@ export class PaymentsService {
       const totalAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
       const deliveryIds = payments.flatMap(payment => payment.paymentDeliveries.map(pd => pd.delivery.id));
 
-      const groupedPayment = await this.prisma.accountsPayable.create({
+      const groupedPayment = await prisma.accountsPayable.create({
         data: {
           amount: totalAmount,
           status: 'Pendente',
@@ -212,7 +212,7 @@ export class PaymentsService {
         },
       });
 
-      await this.prisma.accountsPayable.updateMany({
+      await prisma.accountsPayable.updateMany({
         where: {
           id: { in: paymentIds },
         },
@@ -229,9 +229,9 @@ export class PaymentsService {
     }
   }
 
-  async ungroupPayments(paymentId: number, tenantId: number) {
+  async ungroupPayments(prisma: PrismaClient, paymentId: number, tenantId: number) {
     try {
-      const payment = await this.prisma.accountsPayable.findUnique({
+      const payment = await prisma.accountsPayable.findUnique({
         where: { id: paymentId },
         include: {
           Driver: true,
@@ -256,12 +256,12 @@ export class PaymentsService {
         throw new BadRequestException('Não é possível desagrupar um pagamento baixado. Cancele a baixa primeiro.');
       }
 
-      await this.prisma.accountsPayable.updateMany({
+      await prisma.accountsPayable.updateMany({
         where: { groupedPaymentId: paymentId },
         data: { status: 'Pendente', groupedPaymentId: null },
       });
 
-      return this.prisma.accountsPayable.delete({
+      return prisma.accountsPayable.delete({
         where: { id: paymentId },
       });
     } catch (error) {

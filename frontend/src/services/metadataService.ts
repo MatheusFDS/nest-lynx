@@ -1,8 +1,10 @@
+// services/metadataService.ts
 import { Metadata } from '../types';
-
-const API_URL = 'http://localhost:4000/metadata';
+import { getApiUrl } from './utils/apiUtils';
 
 export const fetchMetadata = async (token: string): Promise<Metadata> => {
+  const API_URL = getApiUrl() + '/metadata';
+
   const response = await fetch(`${API_URL}`, {
     method: 'GET',
     headers: {
@@ -24,7 +26,9 @@ export const fetchFilteredData = async (
   columns: string[],
   filters: { [key: string]: string }
 ): Promise<any[]> => {
-  const response = await fetch(`${API_URL}/data`, {
+  const API_URL = getApiUrl() + '/metadata/data';
+
+  const response = await fetch(`${API_URL}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -1,10 +1,11 @@
 import axios from 'axios';
 import { Order } from '../types';
-
-const API_URL = 'http://localhost:4000';
+import { getApiUrl } from './utils/apiUtils';
 
 export const fetchOrders = async (token: string): Promise<Order[]> => {
-  const response = await axios.get(`${API_URL}/orders`, {
+  const API_URL = getApiUrl() + '/orders';
+
+  const response = await axios.get(API_URL, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -13,7 +14,9 @@ export const fetchOrders = async (token: string): Promise<Order[]> => {
 };
 
 export const uploadOrders = async (token: string, orders: Order[]): Promise<void> => {
-  await axios.post(`${API_URL}/orders/upload`, orders, {
+  const API_URL = getApiUrl() + '/orders/upload';
+
+  await axios.post(API_URL, orders, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -21,7 +24,9 @@ export const uploadOrders = async (token: string, orders: Order[]): Promise<void
 };
 
 export const fetchUserSettings = async (token: string): Promise<any> => {
-  const response = await axios.get(`${API_URL}/user-settings`, {
+  const API_URL = getApiUrl() + '/user-settings';
+
+  const response = await axios.get(API_URL, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -30,7 +35,9 @@ export const fetchUserSettings = async (token: string): Promise<any> => {
 };
 
 export const updateUserSettings = async (token: string, settings: any): Promise<void> => {
-  await axios.put(`${API_URL}/user-settings`, { settings }, {
+  const API_URL = getApiUrl() + '/user-settings';
+
+  await axios.put(API_URL, { settings }, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
