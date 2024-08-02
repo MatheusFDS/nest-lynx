@@ -6,13 +6,13 @@ import {
   Grid, 
   Box, 
   Paper, 
-  TextField, 
   Button 
 } from '@mui/material';
 import StatisticsPieChart from '../components/statistics/StatisticsPieChart';
 import StatisticsBarChart from '../components/statistics/StatisticsBarChart';
 import withAuth from '../hoc/withAuth';
 import { fetchStatistics } from '../../services/statisticsService';
+import DateFilter from '../components/statistics/DateFilter';
 
 interface Statistics {
   ordersInRoute: number;
@@ -143,35 +143,13 @@ const StatisticsPage: React.FC = () => {
 
   return (
     <Box sx={{ flexGrow: 1, padding: 2 }}>
-      <Typography variant="h4" gutterBottom>
-        Estatísticas
-      </Typography>
-      <TextField
-        label="Data de Início"
-        type="date"
-        value={startDate}
-        onChange={(e) => setStartDate(e.target.value)}
-        fullWidth
-        margin="normal"
-        InputLabelProps={{ shrink: true }}
+      <DateFilter
+        startDate={startDate}
+        endDate={endDate}
+        setStartDate={setStartDate}
+        setEndDate={setEndDate}
+        fetchStatistics={fetchAndSetStatistics}
       />
-      <TextField
-        label="Data de Fim"
-        type="date"
-        value={endDate}
-        onChange={(e) => setEndDate(e.target.value)}
-        fullWidth
-        margin="normal"
-        InputLabelProps={{ shrink: true }}
-      />
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={fetchAndSetStatistics}
-        style={{ marginTop: '16px', marginBottom: '16px' }}
-      >
-        Atualizar Estatísticas
-      </Button>
       <Grid container spacing={3} sx={{ marginTop: 2 }}>
         <Grid item xs={12} sm={6} md={6}>
           <Paper elevation={3} sx={{ padding: 2 }}>

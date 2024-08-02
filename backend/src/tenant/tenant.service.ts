@@ -13,9 +13,7 @@ export class TenantService {
   }
 
   async updateTenant(userId: string, tenantId: string, data: UpdateTenantDto) {
-    console.log('updateTenant - userId:', userId, 'tenantId:', tenantId); // Logging para depuração
-    console.log('updateTenant - data:', data); // Logging para depuração
-
+    
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { tenant: true, role: true },
@@ -36,9 +34,7 @@ export class TenantService {
   }
 
   async updateRestrictedTenant(userId: string, tenantId: string, data: UpdateRestrictedTenantDto) {
-    console.log('updateRestrictedTenant - userId:', userId, 'tenantId:', tenantId); // Logging para depuração
-    console.log('updateRestrictedTenant - data:', data); // Logging para depuração
-
+   
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { role: true },
