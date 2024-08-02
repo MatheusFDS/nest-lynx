@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconButton, Typography, Box } from '@mui/material';
+import { IconButton, Typography, Box, SelectChangeEvent } from '@mui/material';
 import { Check as CheckIcon, AutoFixHigh as AutoFixHighIcon, EditRoad as EditRoadIcon, Close as CloseIcon, SwapVert as SwapVertIcon } from '@mui/icons-material';
 import OrderDetailsDialog from '../OrderDetailsDialog';
 import { Order } from '../../../../types';
@@ -10,7 +10,7 @@ import RouteSummary from './RouteSummary';
 import { useMapboxComponent } from '../../../hooks/useMapboxComponent';
 
 interface MapboxComponentProps {
-  tenantId: number;
+  tenantId: string;
   orders: Order[];
   onClose: () => void;
   onGenerateRoute: (orderedOrders: Order[]) => void;
@@ -53,10 +53,34 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
     tenantAddress,
     calculateRoute,
     optimizeOrders,
-    setDistance, // adicionando essas linhas para passar como argumento para calculateRoute
+    setDistance,
     setDuration,
     setOrderedOrders
   } = useMapboxComponent(tenantId, orders, onClose, onGenerateRoute);
+
+  // Função de adaptação para o handleDriverChange
+  const handleDriverChangeWrapper = (event: SelectChangeEvent<string | number>) => {
+    const adaptedEvent = {
+      ...event,
+      target: {
+        ...event.target,
+        value: event.target.value.toString(),
+      },
+    } as SelectChangeEvent<string>;
+    handleDriverChange(adaptedEvent);
+  };
+
+  // Função de adaptação para o handleVehicleChange
+  const handleVehicleChangeWrapper = (event: SelectChangeEvent<string | number>) => {
+    const adaptedEvent = {
+      ...event,
+      target: {
+        ...event.target,
+        value: event.target.value.toString(),
+      },
+    } as SelectChangeEvent<string>;
+    handleVehicleChange(adaptedEvent);
+  };
 
   return (
     <Box display="flex" height="100%">
@@ -76,12 +100,12 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
             <DriverSelection
               drivers={drivers}
               selectedDriver={selectedDriver}
-              handleDriverChange={handleDriverChange}
+              handleDriverChange={handleDriverChangeWrapper}
             />
             <VehicleSelection
               vehicles={vehicles}
               selectedVehicle={selectedVehicle}
-              handleVehicleChange={handleVehicleChange}
+              handleVehicleChange={handleVehicleChangeWrapper}
             />
           </Box>
           <RouteSummary

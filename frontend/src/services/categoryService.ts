@@ -33,7 +33,7 @@ export const addCategory = async (token: string, data: { name: string; valor: nu
   }
 };
 
-export const updateCategory = async (token: string, id: number, data: { name: string; valor: number }): Promise<void> => {
+export const updateCategory = async (token: string, id: string, data: { name: string; valor: number }): Promise<void> => {
   const response = await fetch(`${API_URL}/${id}`, {
     method: 'PATCH',
     headers: {
@@ -48,7 +48,7 @@ export const updateCategory = async (token: string, id: number, data: { name: st
   }
 };
 
-export const deleteCategory = async (token: string, id: number): Promise<void> => {
+export const deleteCategory = async (token: string, id: string): Promise<void> => {
   const response = await fetch(`${API_URL}/${id}`, {
     method: 'DELETE',
     headers: {

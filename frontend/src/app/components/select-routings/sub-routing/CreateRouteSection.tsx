@@ -1,5 +1,3 @@
-// components/select-routings/sub-routing/CreateRouteSection.tsx
-
 import React, { useState, useEffect } from 'react';
 import { Table, TableHead, TableBody, TableRow, TableCell, Checkbox, Button, TextField, Grid, Paper, Typography, IconButton, TableContainer } from '@mui/material';
 import { Order, Direction } from '../../../../types';
@@ -46,37 +44,18 @@ const CreateRouteTable: React.FC<CreateRouteTableProps> = ({ orders, directions,
       );
     }
 
-    if (cepRange.start || cepRange.end) {
-      result = result.filter(order =>
-        (!cepRange.start || parseInt(order.cep) >= parseInt(cepRange.start)) &&
-        (!cepRange.end || parseInt(order.cep) <= parseInt(cepRange.end))
-      );
+    if (cepRange.start && cepRange.end) {
+      const startCep = parseInt(cepRange.start);
+      const endCep = parseInt(cepRange.end);
+      result = result.filter(order => {
+        const orderCep = parseInt(order.cep);
+        return orderCep >= startCep && orderCep <= endCep;
+      });
     }
 
     if (regionName) {
-      const regionIds = directions
-        .filter(direction => direction.regiao.toLowerCase().includes(regionName.toLowerCase()))
-        .map(direction => direction.id);
-
-      result = result.filter(order => {
-        const orderCep = parseInt(order.cep);
-        return directions.some(direction => 
-          regionIds.includes(direction.id) &&
-          orderCep >= parseInt(direction.rangeInicio) &&
-          orderCep <= parseInt(direction.rangeFim)
-        );
-      });
-    } else {
-      result = result.filter(order => {
-        const orderCep = parseInt(order.cep);
-        return directions.some(direction => 
-          orderCep >= parseInt(direction.rangeInicio) &&
-          orderCep <= parseInt(direction.rangeFim)
-        );
-      });
+      result = result.filter(order => getRegionByCep(order.cep).toLowerCase().includes(regionName.toLowerCase()));
     }
-
-    result.sort((a, b) => parseInt(a.cep) - parseInt(b.cep));
 
     setFilteredOrders(result);
   };
@@ -94,7 +73,7 @@ const CreateRouteTable: React.FC<CreateRouteTableProps> = ({ orders, directions,
     setSelectedOrders(newSelectedOrders);
   };
 
-  const handleRemoveOrder = (orderId: number) => {
+  const handleRemoveOrder = (orderId: string) => {
     setSelectedOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
   };
 

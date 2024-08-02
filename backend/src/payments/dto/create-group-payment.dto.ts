@@ -1,7 +1,7 @@
-import { IsArray, IsInt } from 'class-validator';
+import { IsArray, IsUUID } from 'class-validator';
 
 export class CreateGroupPaymentDto {
   @IsArray()
-  @IsInt({ each: true })
-  paymentIds: number[];
+  @IsUUID('4', { each: true })
+  paymentIds: string[];
 }

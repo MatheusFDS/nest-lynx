@@ -1,8 +1,8 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsUUID, IsString, IsOptional, IsNumber } from 'class-validator';
 
 export class OrderDto {
-  @IsNumber()
-  id: number;
+  @IsUUID()
+  id: string;
 
   @IsString()
   cliente: string;

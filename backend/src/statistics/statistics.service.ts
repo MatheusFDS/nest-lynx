@@ -1,119 +1,111 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class StatisticsService {
-  constructor() {}
+  constructor(private prisma: PrismaService) {}
 
-  async getStatistics(prisma: PrismaClient, tenantId: number, startDate: Date, endDate: Date) {
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      throw new Error('Invalid date format for startDate or endDate');
-    }
+  async getStatistics(tenantId: string, startDate: Date, endDate: Date) {
+    // Define a common date filter
+    const dateFilter = {
+      gte: startDate,
+      lte: endDate,
+    };
 
-    const ordersInRoute = await prisma.order.count({
+    const ordersInRoute = await this.prisma.order.count({
       where: {
-        tenantId: tenantId,
+        tenantId,
         status: 'Em Rota',
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
+        createdAt: dateFilter,
       },
     });
 
-    const ordersFinalized = await prisma.order.count({
+    const ordersFinalized = await this.prisma.order.count({
       where: {
-        tenantId: tenantId,
+        tenantId,
         status: 'Finalizado',
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
+        createdAt: dateFilter,
       },
     });
 
-    const ordersPending = await prisma.order.count({
+    const ordersPending = await this.prisma.order.count({
       where: {
-        tenantId: tenantId,
+        tenantId,
         status: 'Pendente',
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
+        createdAt: dateFilter,
       },
     });
 
-    const freightsToPay = await prisma.accountsPayable.count({
+    const freightsToPay = await this.prisma.accountsPayable.count({
       where: {
-        tenantId: tenantId,
+        tenantId,
         status: 'Pendente',
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
+        createdAt: dateFilter,
       },
     });
 
-    const freightsPaid = await prisma.accountsPayable.count({
+    const freightsPaid = await this.prisma.accountsPayable.count({
       where: {
-        tenantId: tenantId,
+        tenantId,
         status: 'Baixado',
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
+        createdAt: dateFilter,
       },
     });
 
-    const deliveriesByDriver = await prisma.delivery.groupBy({
+    const deliveriesByDriver = await this.prisma.delivery.groupBy({
       by: ['motoristaId'],
       where: {
-        tenantId: tenantId,
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
+        tenantId,
+        createdAt: dateFilter,
       },
       _count: {
         motoristaId: true,
       },
     });
 
-    const deliveriesInRoute = await prisma.delivery.count({
+    const deliveriesInRoute = await this.prisma.delivery.count({
       where: {
-        tenantId: tenantId,
-        status: 'Em rota',
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
+        tenantId,
+        status: 'Em Rota',
+        createdAt: dateFilter,
       },
     });
 
-    const deliveriesFinalized = await prisma.delivery.count({
+    const deliveriesFinalized = await this.prisma.delivery.count({
       where: {
-        tenantId: tenantId,
+        tenantId,
         status: 'Finalizado',
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
+        createdAt: dateFilter,
       },
     });
 
-    const notesByRegion = await prisma.order.groupBy({
-      by: ['cidade'],
-      where: {
-        tenantId: tenantId,
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-      _count: {
-        cidade: true,
+    const notesByRegion = await this.getNotesByRegion(tenantId, startDate, endDate);
+
+    // Fetch additional statistics
+    const drivers = await this.prisma.driver.findMany({
+      where: { tenantId },
+      select: {
+        id: true,
+        name: true,
       },
     });
+
+    const regions = await this.prisma.directions.findMany({
+      where: { tenantId },
+      select: {
+        id: true,
+        regiao: true,
+      },
+    });
+
+    // Calculate average orders per driver
+    const avgOrdersPerDriver = await this.calculateAvgOrdersPerDriver(tenantId, startDate, endDate);
+
+    // Calculate average value of notes per driver
+    const avgValueNotesPerDriver = await this.calculateAvgValueNotesPerDriver(tenantId, startDate, endDate);
+
+    // Calculate average weight per driver
+    const avgWeightPerDriver = await this.calculateAvgWeightPerDriver(tenantId, startDate, endDate);
 
     return {
       ordersInRoute,
@@ -125,6 +117,146 @@ export class StatisticsService {
       deliveriesInRoute,
       deliveriesFinalized,
       notesByRegion,
+      drivers,
+      regions,
+      avgOrdersPerDriver,
+      avgValueNotesPerDriver,
+      avgWeightPerDriver,
     };
+  }
+
+  private async calculateAvgOrdersPerDriver(tenantId: string, startDate: Date, endDate: Date) {
+    const deliveries = await this.prisma.delivery.findMany({
+      where: {
+        tenantId,
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        motoristaId: true,
+        orders: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    const driverOrders = deliveries.reduce((acc, delivery) => {
+      acc[delivery.motoristaId] = (acc[delivery.motoristaId] || 0) + delivery.orders.length;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const driverAverages = Object.keys(driverOrders).map(driverId => ({
+      driverId,
+      average: parseFloat((driverOrders[driverId] / deliveries.filter(d => d.motoristaId === driverId).length).toFixed(2)),
+    }));
+
+    return driverAverages;
+  }
+
+  private async calculateAvgValueNotesPerDriver(tenantId: string, startDate: Date, endDate: Date) {
+    const deliveries = await this.prisma.delivery.findMany({
+      where: {
+        tenantId,
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        motoristaId: true,
+        orders: {
+          select: {
+            valor: true,
+          },
+        },
+      },
+    });
+
+    const driverValues = deliveries.reduce((acc, delivery) => {
+      acc[delivery.motoristaId] = (acc[delivery.motoristaId] || 0) + delivery.orders.reduce((sum, order) => sum + order.valor, 0);
+      return acc;
+    }, {} as Record<string, number>);
+
+    const driverAverages = Object.keys(driverValues).map(driverId => ({
+      driverId,
+      average: parseFloat((driverValues[driverId] / deliveries.filter(d => d.motoristaId === driverId).length).toFixed(2)),
+    }));
+
+    return driverAverages;
+  }
+
+  private async calculateAvgWeightPerDriver(tenantId: string, startDate: Date, endDate: Date) {
+    const deliveries = await this.prisma.delivery.findMany({
+      where: {
+        tenantId,
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        motoristaId: true,
+        orders: {
+          select: {
+            peso: true,
+          },
+        },
+      },
+    });
+
+    const driverWeights = deliveries.reduce((acc, delivery) => {
+      acc[delivery.motoristaId] = (acc[delivery.motoristaId] || 0) + delivery.orders.reduce((sum, order) => sum + order.peso, 0);
+      return acc;
+    }, {} as Record<string, number>);
+
+    const driverAverages = Object.keys(driverWeights).map(driverId => ({
+      driverId,
+      average: parseFloat((driverWeights[driverId] / deliveries.filter(d => d.motoristaId === driverId).length).toFixed(2)),
+    }));
+
+    return driverAverages;
+  }
+
+  private async getNotesByRegion(tenantId: string, startDate: Date, endDate: Date) {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        tenantId,
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        cidade: true,
+        cep: true,
+      },
+    });
+
+    const directions = await this.prisma.directions.findMany({
+      where: {
+        tenantId,
+      },
+      select: {
+        rangeInicio: true,
+        rangeFim: true,
+        regiao: true,
+      },
+    });
+
+    const regionCounts = orders.reduce((acc, order) => {
+      const region = directions.find(direction => parseInt(order.cep) >= parseInt(direction.rangeInicio) && parseInt(order.cep) <= parseInt(direction.rangeFim));
+      const regionName = region ? region.regiao : 'Unknown';
+      acc[regionName] = (acc[regionName] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.keys(regionCounts).map(region => ({
+      region,
+      count: regionCounts[region],
+    }));
   }
 }

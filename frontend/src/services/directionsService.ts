@@ -19,7 +19,7 @@ export const fetchDirections = async (token: string): Promise<Direction[]> => {
   return response.json();
 };
 
-export const addDirection = async (token: string, newDirection: Partial<Direction>) => {
+export const addDirection = async (token: string, newDirection: Partial<Direction>): Promise<void> => {
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -34,7 +34,7 @@ export const addDirection = async (token: string, newDirection: Partial<Directio
   }
 };
 
-export const updateDirection = async (token: string, id: number, updatedDirection: Partial<Direction>) => {
+export const updateDirection = async (token: string, id: string, updatedDirection: Partial<Direction>): Promise<void> => {
   const response = await fetch(`${API_URL}/${id}`, {
     method: 'PATCH',
     headers: {
@@ -49,7 +49,7 @@ export const updateDirection = async (token: string, id: number, updatedDirectio
   }
 };
 
-export const deleteDirection = async (token: string, id: number) => {
+export const deleteDirection = async (token: string, id: string): Promise<void> => {
   const response = await fetch(`${API_URL}/${id}`, {
     method: 'DELETE',
     headers: {

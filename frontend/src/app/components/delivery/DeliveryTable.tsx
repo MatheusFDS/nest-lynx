@@ -9,7 +9,7 @@ import {
   Paper,
   IconButton,
 } from '@mui/material';
-import { Edit, Delete, Map, Print } from '@mui/icons-material';
+import { Edit, Delete, Print } from '@mui/icons-material';
 import { Delivery, Driver, Vehicle, Order } from '../../../types';
 import { generatePDF } from './DeliveryReport';
 
@@ -20,7 +20,7 @@ interface DeliveryTableProps {
   calculateTotalWeightAndValue: (orders: Order[]) => { totalWeight: number; totalValue: number };
   getRegionName: (delivery: Delivery) => string;
   handleEditDelivery: (delivery: Delivery) => void;
-  handleDeleteDelivery: (deliveryId: number) => void;
+  handleDeleteDelivery: (deliveryId: string) => void;
 }
 
 const DeliveryTable: React.FC<DeliveryTableProps> = ({
@@ -78,17 +78,16 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({
                 <TableCell style={{ whiteSpace: 'nowrap' }}>{delivery.liberador}</TableCell>
                 <TableCell style={{ whiteSpace: 'nowrap' }}>{delivery.dataLiberacao ? new Date(delivery.dataLiberacao).toLocaleString() : 'N/A'}</TableCell>
                 <TableCell style={{ whiteSpace: 'nowrap' }}>
-                {delivery.status !== 'A liberar' && delivery.status !== 'Negado' && (
-  <>
-    <IconButton onClick={() => handleEditDelivery(delivery)}>
-      <Edit />
-    </IconButton>
-    <IconButton onClick={() => handlePrintDelivery(delivery)}>
-      <Print />
-    </IconButton>
-  </>
-)}
-
+                  {delivery.status !== 'A liberar' && delivery.status !== 'Negado' && (
+                    <>
+                      <IconButton onClick={() => handleEditDelivery(delivery)}>
+                        <Edit />
+                      </IconButton>
+                      <IconButton onClick={() => handlePrintDelivery(delivery)}>
+                        <Print />
+                      </IconButton>
+                    </>
+                  )}
                   <IconButton onClick={() => handleDeleteDelivery(delivery.id)}>
                     <Delete />
                   </IconButton>

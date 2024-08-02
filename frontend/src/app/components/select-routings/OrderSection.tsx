@@ -5,9 +5,9 @@ import { Direction, Order } from '../../../types';
 
 interface OrderSectionProps {
   directions: Direction[];
-  selectedOrders: { [key: number]: Order[]; noRegion: Order[] };
-  handleShowMap: (directionId: number | null) => void;
-  handleExpandedOrdersDialogOpen: (directionId: number | null) => void;
+  selectedOrders: { [key: string]: Order[]; noRegion: Order[] };
+  handleShowMap: (directionId: string | null) => void;
+  handleExpandedOrdersDialogOpen: (directionId: string | null) => void;
   handleDetailsDialogOpen: (order: Order) => void;
 }
 
@@ -46,7 +46,7 @@ const OrderSection: React.FC<OrderSectionProps> = ({
             direction={direction}
             orders={ordersInDirection}
             handleGenerateDelivery={() => handleShowMap(direction.id)}
-            handleExpandedOrdersDialogOpen={handleExpandedOrdersDialogOpen}
+            handleExpandedOrdersDialogOpen={() => handleExpandedOrdersDialogOpen(direction.id)}
             handleDetailsDialogOpen={handleDetailsDialogOpen}
             calculateTotalWeightAndValue={calculateTotalWeightAndValue}
             handleShowMap={handleShowMap}

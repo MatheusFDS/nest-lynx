@@ -86,7 +86,7 @@ const VehiclesPage: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     try {
       await deleteVehicle(token, id);
       loadVehicles();
@@ -134,7 +134,7 @@ const VehiclesPage: React.FC = () => {
             <InputLabel>Driver</InputLabel>
             <Select
               value={newVehicle.driverId || ''}
-              onChange={(e) => setNewVehicle({ ...newVehicle, driverId: Number(e.target.value) })}
+              onChange={(e) => setNewVehicle({ ...newVehicle, driverId: e.target.value })}
             >
               {drivers.map((driver) => (
                 <MenuItem key={driver.id} value={driver.id}>
@@ -147,7 +147,7 @@ const VehiclesPage: React.FC = () => {
             <InputLabel>Category</InputLabel>
             <Select
               value={newVehicle.categoryId || ''}
-              onChange={(e) => setNewVehicle({ ...newVehicle, categoryId: Number(e.target.value) })}
+              onChange={(e) => setNewVehicle({ ...newVehicle, categoryId: e.target.value })}
             >
               {categories.map((category) => (
                 <MenuItem key={category.id} value={category.id}>
@@ -157,7 +157,7 @@ const VehiclesPage: React.FC = () => {
             </Select>
           </FormControl>
           <Button variant="contained" color="primary" onClick={handleAddVehicle}>
-            {selectedVehicle ? 'Update Vehicle' : 'Add Vehicle'}
+            {selectedVehicle ? 'Atualizar Veiculo' : 'Adicionar Veiculo'}
           </Button>
           <Button onClick={handleFormClose}>Cancel</Button>
         </Paper>

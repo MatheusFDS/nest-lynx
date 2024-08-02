@@ -1,4 +1,4 @@
-// src/api/api.ts
+// src/services/auxiliaryService.ts
 import { Tenant } from '../types';
 import { getApiUrl } from './utils/apiUtils';
 

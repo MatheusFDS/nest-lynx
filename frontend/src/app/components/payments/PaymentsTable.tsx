@@ -8,11 +8,11 @@ import generateDeliveryReport from './generateDeliveryReport';
 
 interface PaymentsTableProps {
   payments: Payment[];
-  selectedPayments: number[];
-  handlePaymentSelect: (paymentId: number) => void;
-  handleViewDetails: (deliveryIds: number[]) => void;
-  handlePaymentStatusChange: (paymentId: number, status: string) => void;
-  handleUngroupPayments: (paymentId: number) => void;
+  selectedPayments: string[];
+  handlePaymentSelect: (paymentId: string) => void;
+  handleViewDetails: (deliveryIds: string[]) => void;
+  handlePaymentStatusChange: (paymentId: string, status: string) => void;
+  handleUngroupPayments: (paymentId: string) => void;
 }
 
 const PaymentsTable: React.FC<PaymentsTableProps> = ({

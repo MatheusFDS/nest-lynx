@@ -1,29 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class UserSettingsService {
-  private readonly logger = new Logger(UserSettingsService.name);
+  constructor(private prisma: PrismaService) {}
 
-  constructor() {}
-
-  async getUserSettings(prisma: PrismaClient, userId: number) {
-    return prisma.userSettings.findUnique({
+  async getUserSettings(userId: string) {
+    return this.prisma.userSettings.findUnique({
       where: {
         userId: userId,
       },
     });
   }
 
-  async updateUserSettings(prisma: PrismaClient, userId: number, settings: any) {
-    if (!settings) {
-      this.logger.error('Settings argument is missing');
-      throw new Error('Settings argument is missing');
-    }
-
-    this.logger.log(`Updating settings for user ${userId}: ${JSON.stringify(settings)}`);
-
-    return prisma.userSettings.upsert({
+  async updateUserSettings(userId: string, settings: any) {
+    return this.prisma.userSettings.upsert({
       where: {
         userId: userId,
       },

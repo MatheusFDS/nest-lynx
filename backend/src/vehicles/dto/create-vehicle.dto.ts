@@ -1,6 +1,15 @@
+import { IsString, IsUUID } from 'class-validator';
+
 export class CreateVehicleDto {
+  @IsString()
   model: string;
+
+  @IsString()
   plate: string;
-  driverId: number;
-  categoryId: number;
+
+  @IsUUID()
+  driverId: string;
+
+  @IsUUID()
+  categoryId: string;
 }

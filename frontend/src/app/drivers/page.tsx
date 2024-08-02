@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
-import { Driver } from '../../types'; // Certifique-se de que Driver está corretamente importado
+import { Driver } from '../../types';
 import withAuth from '../hoc/withAuth';
 import { fetchDrivers, addDriver, updateDriver, deleteDriver } from '../../services/driverService';
 import { Delete, Edit } from '@mui/icons-material';
@@ -62,7 +62,7 @@ const DriversPage: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     try {
       await deleteDriver(token, id);
       loadDrivers();
@@ -114,7 +114,7 @@ const DriversPage: React.FC = () => {
             margin="normal"
           />
           <Button variant="contained" color="primary" onClick={handleAddDriver}>
-            {selectedDriver ? 'Update Driver' : 'Add Driver'}
+            {selectedDriver ? 'Atualizar Motorista' : 'Adicionar Motorista'}
           </Button>
           <Button onClick={handleFormClose}>Cancel</Button>
         </Paper>

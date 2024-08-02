@@ -18,7 +18,7 @@ export const fetchPayments = async (token: string): Promise<Payment[]> => {
   return response.json();
 };
 
-export const updatePaymentStatus = async (token: string, id: number, status: string): Promise<void> => {
+export const updatePaymentStatus = async (token: string, id: string, status: string): Promise<void> => {
   const API_URL = getApiUrl() + '/payments';
 
   const response = await fetch(`${API_URL}/${id}`, {
@@ -36,7 +36,7 @@ export const updatePaymentStatus = async (token: string, id: number, status: str
   }
 };
 
-export const fetchDeliveryDetails = async (token: string, deliveryId: number): Promise<Delivery> => {
+export const fetchDeliveryDetails = async (token: string, deliveryId: string): Promise<Delivery> => {
   const DELIVERY_API_URL = getApiUrl() + '/delivery';
 
   const response = await fetch(`${DELIVERY_API_URL}/${deliveryId}`, {
@@ -53,7 +53,7 @@ export const fetchDeliveryDetails = async (token: string, deliveryId: number): P
   return response.json();
 };
 
-export const groupPayments = async (token: string, paymentIds: number[]): Promise<Payment> => {
+export const groupPayments = async (token: string, paymentIds: string[]): Promise<Payment> => {
   const API_URL = getApiUrl() + '/payments';
 
   const response = await fetch(`${API_URL}/group`, {
@@ -73,7 +73,7 @@ export const groupPayments = async (token: string, paymentIds: number[]): Promis
   return response.json();
 };
 
-export const ungroupPayments = async (token: string, paymentId: number): Promise<void> => {
+export const ungroupPayments = async (token: string, paymentId: string): Promise<void> => {
   const API_URL = getApiUrl() + '/payments';
 
   const response = await fetch(`${API_URL}/ungroup/${paymentId}`, {

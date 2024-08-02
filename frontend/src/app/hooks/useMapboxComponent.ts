@@ -8,16 +8,16 @@ import { useTheme } from '../context/ThemeContext';
 import { geocodeAddress, calculateRoute as calculateRouteService } from '../../services/mapService';
 import { SelectChangeEvent } from '@mui/material';
 
-export const useMapboxComponent = (tenantId: number, orders: Order[], onClose: () => void, onGenerateRoute: (orderedOrders: Order[]) => void) => {
+export const useMapboxComponent = (tenantId: string, orders: Order[], onClose: () => void, onGenerateRoute: (orderedOrders: Order[]) => void) => {
   const [map, setMap] = useState<mapboxgl.Map | null>(null);
   const [distance, setDistance] = useState<string | null>(null);
   const [duration, setDuration] = useState<string | null>(null);
   const [tenantAddress, setTenantAddress] = useState<string | null>(null);
   const [orderedOrders, setOrderedOrders] = useState<Order[]>(orders);
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [selectedDriver, setSelectedDriver] = useState<number | string>('');
+  const [selectedDriver, setSelectedDriver] = useState<string>('');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [selectedVehicle, setSelectedVehicle] = useState<number | string>('');
+  const [selectedVehicle, setSelectedVehicle] = useState<string>('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [directions, setDirections] = useState<Direction[]>([]);
   const [freightValue, setFreightValue] = useState<number>(0);
@@ -235,8 +235,8 @@ export const useMapboxComponent = (tenantId: number, orders: Order[], onClose: (
     const { totalWeight, totalValue } = calculateTotalWeightAndValue(orderedOrders);
 
     const deliveryData = {
-      motoristaId: selectedDriver as number,
-      veiculoId: Number(selectedVehicle),
+      motoristaId: selectedDriver,
+      veiculoId: selectedVehicle,
       valorFrete: freightValue,
       totalPeso: totalWeight,
       totalValor: totalValue,
@@ -264,8 +264,8 @@ export const useMapboxComponent = (tenantId: number, orders: Order[], onClose: (
     }
   };
 
-  const handleDriverChange = (event: SelectChangeEvent<number | string>) => {
-    const driverId = event.target.value as number;
+  const handleDriverChange = (event: SelectChangeEvent<string>) => {
+    const driverId = event.target.value;
     setSelectedDriver(driverId);
 
     const driverVehicles = vehicles.filter(vehicle => vehicle.driverId === driverId);
@@ -276,8 +276,8 @@ export const useMapboxComponent = (tenantId: number, orders: Order[], onClose: (
     }
   };
 
-  const handleVehicleChange = (event: SelectChangeEvent<number | string>) => {
-    const vehicleId = event.target.value as number;
+  const handleVehicleChange = (event: SelectChangeEvent<string>) => {
+    const vehicleId = event.target.value;
     setSelectedVehicle(vehicleId);
 
     const vehicle = vehicles.find(vehicle => vehicle.id === vehicleId);
@@ -334,7 +334,7 @@ function calculateTotalWeightAndValue(ordersInDirection: Order[]): { totalWeight
   }, { totalWeight: 0, totalValue: 0 });
 }
 
-function calculateFreightValue(categoryId: number, categories: Category[], directions: Direction[]): number {
+function calculateFreightValue(categoryId: string, categories: Category[], directions: Direction[]): number {
   const category = categories.find(category => category.id === categoryId);
   const directionValue = directions.length > 0 ? parseFloat(directions[0].valorDirecao) : 0;
   return (category ? category.valor : 0) + directionValue;

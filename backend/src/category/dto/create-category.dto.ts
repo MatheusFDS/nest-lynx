@@ -1,5 +1,5 @@
 export class CreateCategoryDto {
   name: string;
   valor: number;
-  tenantId: number;
+  tenantId: string;  // Alterado para string
 }

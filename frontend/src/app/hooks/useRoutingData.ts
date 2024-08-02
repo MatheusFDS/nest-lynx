@@ -10,7 +10,7 @@ const useRoutingData = (token: string) => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tenantData, setTenantData] = useState<any>(null);
-  const [selectedOrders, setSelectedOrders] = useState<{ [key: number]: Order[] }>({});
+  const [selectedOrders, setSelectedOrders] = useState<{ [key: string]: Order[] }>({});
   const [error, setError] = useState<string>('');
 
   const loadInitialData = useCallback(async () => {
@@ -53,7 +53,7 @@ const useRoutingData = (token: string) => {
       setCategories(categoriesData);
       setTenantData(tenantData);
 
-      const initialOrders: { [key: number]: Order[] } = {};
+      const initialOrders: { [key: string]: Order[] } = {};
       directionsData.forEach((direction: Direction) => {
         initialOrders[direction.id] = geocodedOrders.filter((order: Order) => {
           return (

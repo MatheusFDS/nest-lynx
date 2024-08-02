@@ -6,7 +6,7 @@ import { Order } from '../../../types';
 interface MapSectionProps {
   showMap: boolean;
   ordersForMap: Order[];
-  tenantId: number;
+  tenantId: string;
   isDarkMode: boolean;
   handleGenerateRouteFromMap: (orderedOrders: Order[]) => void;
   handleCloseMap: () => void;

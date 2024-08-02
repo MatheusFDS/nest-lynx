@@ -8,6 +8,5 @@ import { AuthModule } from '../auth/auth.module'; // Importando o AuthModule
   imports: [AuthModule], // Adicionando o AuthModule aqui
   controllers: [TenantController],
   providers: [TenantService, PrismaService],
-  exports: [TenantService], // Exportando TenantService
 })
 export class TenantModule {}

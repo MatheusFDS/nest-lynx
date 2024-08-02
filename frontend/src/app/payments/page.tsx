@@ -32,7 +32,7 @@ const PaymentsPage = () => {
   const [grouped, setGrouped] = useState<boolean>(false);
   const [paid, setPaid] = useState<boolean>(false);
   const [pending, setPending] = useState<boolean>(true);
-  const [selectedPayments, setSelectedPayments] = useState<number[]>([]);
+  const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
   const [error, setError] = useState<string>('');
   const [detailsOpen, setDetailsOpen] = useState<boolean>(false);
   const [selectedDeliveries, setSelectedDeliveries] = useState<Delivery[]>([]);
@@ -120,7 +120,7 @@ const PaymentsPage = () => {
     setFilteredPayments(filtered);
   };
 
-  const handlePaymentSelect = (paymentId: number) => {
+  const handlePaymentSelect = (paymentId: string) => {
     setSelectedPayments(prevSelected =>
       prevSelected.includes(paymentId)
         ? prevSelected.filter(id => id !== paymentId)
@@ -143,7 +143,7 @@ const PaymentsPage = () => {
     }
   };
 
-  const handleUngroupPayments = async (paymentId: number) => {
+  const handleUngroupPayments = async (paymentId: string) => {
     try {
       await ungroupPayments(token, paymentId);
       loadPayments();
@@ -152,7 +152,7 @@ const PaymentsPage = () => {
     }
   };
 
-  const handlePaymentStatusChange = async (paymentId: number, status: string) => {
+  const handlePaymentStatusChange = async (paymentId: string, status: string) => {
     try {
       await updatePaymentStatus(token, paymentId, status);
       loadPayments();
@@ -161,7 +161,7 @@ const PaymentsPage = () => {
     }
   };
 
-  const handleViewDetails = async (deliveryIds: number[]) => {
+  const handleViewDetails = async (deliveryIds: string[]) => {
     try {
       const detailsPromises = deliveryIds.map(id => fetchDeliveryDetails(token, id));
       const details = await Promise.all(detailsPromises);
@@ -242,9 +242,7 @@ const PaymentsPage = () => {
           />
           <Badge badgeContent={filteredPayments.length} color="primary" showZero>
           </Badge>
-
         </Grid>
-
       </Grid>
       {filteredPayments.length > 0 ? (
         <>

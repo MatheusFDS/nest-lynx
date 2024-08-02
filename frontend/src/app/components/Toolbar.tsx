@@ -182,7 +182,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
                     sx={{ position: 'relative' }}
                   >
                     <Button color="inherit">
-                      Rotinas {openRotinas ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                      Rotinas Gerais {openRotinas ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                     </Button>
                     <Box
                       position="absolute"

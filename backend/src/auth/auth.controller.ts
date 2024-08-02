@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Req, UseGuards, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, Request, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -8,12 +8,8 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  async login(@Body() loginDto: LoginDto, @Req() req) {
-    const prisma = req.prisma;
-    if (!prisma) {
-      throw new UnauthorizedException('Prisma client not initialized');
-    }
-    return this.authService.login(loginDto, prisma);
+  async login(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto);
   }
 
   @Post('refresh-token')
@@ -23,7 +19,7 @@ export class AuthController {
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
-  async logout(@Req() req) {
+  async logout(@Request() req) {
     const token = req.headers.authorization.split(' ')[1];
     await this.authService.logout(token);
     return { message: 'Logged out successfully' };

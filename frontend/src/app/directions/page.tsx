@@ -67,19 +67,19 @@ const DirectionsPage: React.FC = () => {
 
   const handleAddOrEditDirection = async () => {
     try {
-      const directionToSave = {
+      const directionToSave: Direction = {
         ...currentDirection,
-        valorDirecao: parseFloat(currentDirection.valorDirecao || '0'),
-      };
+        valorDirecao: (currentDirection.valorDirecao || '0').toString(),
+      } as Direction;
 
       if (!selectedDirection && !validateCepRange(currentDirection.rangeInicio!, currentDirection.rangeFim!)) {
         return;
       }
 
       if (selectedDirection) {
-        await updateDirection(token, selectedDirection.id, directionToSave as unknown as Direction);
+        await updateDirection(token, selectedDirection.id, directionToSave);
       } else {
-        await addDirection(token, directionToSave as unknown as Direction);
+        await addDirection(token, directionToSave);
       }
 
       setCurrentDirection({
@@ -105,7 +105,7 @@ const DirectionsPage: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     try {
       await deleteDirection(token, id);
       loadDirections();

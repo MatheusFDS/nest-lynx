@@ -1,6 +1,4 @@
-// pages/routing.tsx
-
-'use client';
+'use client'
 
 import React, { useState, useEffect } from 'react';
 import { Container, Typography, Button } from '@mui/material';
@@ -15,25 +13,26 @@ import { useTheme } from '../context/ThemeContext';
 import { useUserSettings } from '../context/UserSettingsContext';
 import useRoutingData from '../hooks/useRoutingData';
 import OrderDetailsDialog from '../components/select-routings/OrderDetailsDialog';
-import CreateRouteTable from '../components/select-routings/sub-routing/CreateRouteSection'; // Importar o novo componente
+import CreateRouteTable from '../components/select-routings/sub-routing/CreateRouteSection';
+import { fetchTenantData } from '../../services/auxiliaryService'; // Importar a função de serviço
 
 interface SelectedOrders {
-  [key: number]: Order[];
+  [key: string]: Order[];
   noRegion: Order[];
 }
 
 const RoutingPage: React.FC = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [expandedOrdersDialogOpen, setExpandedOrdersDialogOpen] = useState(false);
-  const [currentDirectionId, setCurrentDirectionId] = useState<number | null>(null);
+  const [currentDirectionId, setCurrentDirectionId] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [ordersForMap, setOrdersForMap] = useState<Order[]>([]);
-  const [tenantId, setTenantId] = useState<number>(1);
+  const [tenantId, setTenantId] = useState<string>('');
   const [useTableLayout, setUseTableLayout] = useState(() => {
     const savedLayout = localStorage.getItem('useTableLayout');
     return savedLayout ? JSON.parse(savedLayout) : false;
-  }); // Estado para alternar entre layouts
+  });
 
   const { isDarkMode } = useTheme();
   const { settings } = useUserSettings();
@@ -44,6 +43,18 @@ const RoutingPage: React.FC = () => {
   useEffect(() => {
     Modal.setAppElement('#__next');
   }, []);
+
+  useEffect(() => {
+    const fetchTenant = async () => {
+      if (token) {
+        const tenants = await fetchTenantData(token);
+        if (tenants && tenants.length > 0) {
+          setTenantId(tenants[0].id);
+        }
+      }
+    };
+    fetchTenant();
+  }, [token]);
 
   useEffect(() => {
     const ordersByDirection: SelectedOrders = directions.reduce((acc, direction) => {
@@ -64,7 +75,7 @@ const RoutingPage: React.FC = () => {
     setSelectedOrders(ordersByDirection);
   }, [orders, directions]);
 
-  const handleOrderTransfer = (orderId: number, fromDirectionId: number | 'noRegion', toDirectionId: number | 'noRegion') => {
+  const handleOrderTransfer = (orderId: string, fromDirectionId: string | 'noRegion', toDirectionId: string | 'noRegion') => {
     setSelectedOrders(prevState => {
       const fromOrders = prevState[fromDirectionId].filter(order => order.id !== orderId);
       const toOrders = [...prevState[toDirectionId], orders.find(order => order.id === orderId)!];
@@ -82,7 +93,7 @@ const RoutingPage: React.FC = () => {
     setSelectedOrder(null);
   };
 
-  const handleExpandedOrdersDialogOpen = (directionId: number | null) => {
+  const handleExpandedOrdersDialogOpen = (directionId: string | null) => {
     setCurrentDirectionId(directionId);
     setExpandedOrdersDialogOpen(true);
   };
@@ -98,9 +109,9 @@ const RoutingPage: React.FC = () => {
 
     if (source.droppableId !== destination.droppableId) {
       handleOrderTransfer(
-        parseInt(result.draggableId),
-        source.droppableId === 'no-region' ? 'noRegion' : parseInt(source.droppableId),
-        destination.droppableId === 'no-region' ? 'noRegion' : parseInt(destination.droppableId)
+        result.draggableId,
+        source.droppableId === 'no-region' ? 'noRegion' : source.droppableId,
+        destination.droppableId === 'no-region' ? 'noRegion' : destination.droppableId
       );
     }
   };
@@ -111,7 +122,7 @@ const RoutingPage: React.FC = () => {
     setShowMap(true);
   };
 
-  const handleShowMapFromSection = (directionId: number | null) => {
+  const handleShowMapFromSection = (directionId: string | null) => {
     if (directionId !== null) {
       const validOrders = selectedOrders[directionId].filter(order => order.lat !== undefined && order.lng !== undefined);
       setOrdersForMap(validOrders);
@@ -123,14 +134,14 @@ const RoutingPage: React.FC = () => {
   const handleGenerateRouteFromMap = (orderedOrders: Order[]) => {
     setSelectedOrders({ ...selectedOrders, [currentDirectionId!]: orderedOrders });
     setShowMap(false);
-    updateOrdersState(); // Atualizar o estado dos pedidos quando uma rota é gerada
-    handleClearCart(); // Limpar o carrinho
+    updateOrdersState();
+    handleClearCart();
   };
 
   const handleCloseMap = () => {
     setShowMap(false);
-    updateOrdersState(); // Atualizar o estado dos pedidos quando o mapa é fechado
-    handleClearCart(); // Limpar o carrinho
+    updateOrdersState();
+    handleClearCart();
   };
 
   const handleClearCart = () => {

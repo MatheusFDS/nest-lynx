@@ -1,15 +1,15 @@
-import { IsNumber, IsArray, ValidateNested, IsNotEmpty } from 'class-validator';
+import { IsString, IsNumber, IsArray, ValidateNested, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderDto } from '../../orders/dto/order.dto';
 
 export class CreateDeliveryDto {
   @IsNotEmpty()
-  @IsNumber()
-  motoristaId: number;
+  @IsString()
+  motoristaId: string;
 
   @IsNotEmpty()
-  @IsNumber()
-  veiculoId: number;
+  @IsString()
+  veiculoId: string;
 
   @IsNotEmpty()
   @IsNumber()
@@ -24,8 +24,8 @@ export class CreateDeliveryDto {
   totalValor: number;
 
   @IsNotEmpty()
-  @IsNumber()
-  tenantId: number;
+  @IsString()
+  tenantId: string;
 
   @IsArray()
   @ValidateNested({ each: true })

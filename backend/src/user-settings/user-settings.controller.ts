@@ -9,22 +9,12 @@ export class UserSettingsController {
   constructor(private readonly userSettingsService: UserSettingsService) {}
 
   @Get()
-  async getUserSettings(@Req() req: Request) {
-    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
-    const userId = req.user.userId;
-    return this.userSettingsService.getUserSettings(prisma, userId);
+  getUserSettings(@Req() req: Request) {
+    return this.userSettingsService.getUserSettings(req.user.userId);
   }
 
   @Put()
-  async updateUserSettings(@Req() req: Request, @Body() body: any) {
-    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
-    const userId = req.user.userId;
-    const settings = body.settings;
-
-    if (!settings) {
-      throw new Error('Settings are missing in the request body');
-    }
-
-    return this.userSettingsService.updateUserSettings(prisma, userId, settings);
+  updateUserSettings(@Req() req: Request, @Body() body: any) {
+    return this.userSettingsService.updateUserSettings(req.user.userId, body.settings);
   }
 }

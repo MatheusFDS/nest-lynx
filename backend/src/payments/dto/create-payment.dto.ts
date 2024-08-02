@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, IsOptional } from 'class-validator';
+import { IsUUID, IsNotEmpty, IsNumber, IsString, IsOptional } from 'class-validator';
 
 export class CreatePaymentDto {
   @IsNumber()
@@ -9,15 +9,15 @@ export class CreatePaymentDto {
   @IsNotEmpty()
   status: string;
 
-  @IsNumber()
+  @IsUUID()
   @IsNotEmpty()
-  tenantId: number;
+  tenantId: string;
 
-  @IsNumber()
+  @IsUUID()
   @IsNotEmpty()
-  motoristaId: number;
+  motoristaId: string;
 
-  @IsNumber()
+  @IsUUID()
   @IsOptional()
-  deliveryId?: number;
+  deliveryId?: string;
 }

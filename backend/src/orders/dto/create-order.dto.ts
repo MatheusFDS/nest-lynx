@@ -1,4 +1,4 @@
-import { IsNumber, IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsUUID, IsString, IsNotEmpty, IsOptional, IsNumber, IsDateString } from 'class-validator';
 
 export class CreateOrderDto {
   @IsNotEmpty()
@@ -6,6 +6,7 @@ export class CreateOrderDto {
   numero: string;
 
   @IsNotEmpty()
+  @IsDateString()
   data: Date;
 
   @IsNotEmpty()
@@ -81,8 +82,8 @@ export class CreateOrderDto {
   status?: string;
 
   @IsOptional()
-  @IsNumber()
-  deliveryId?: number;
+  @IsUUID()
+  deliveryId?: string;
 
   @IsOptional()
   @IsNumber()

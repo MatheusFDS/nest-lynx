@@ -1,247 +1,242 @@
-  datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
-  }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 
-  generator client {
-    provider = "prisma-client-js"
-  }
+generator client {
+  provider = "prisma-client-js"
+}
 
-  model User {
-    id        Int           @id @default(autoincrement())
-    email     String        @unique
-    password  String
-    name      String
-    role      Role          @relation(fields: [roleId], references: [id])
-    roleId    Int
-    tenant    Tenant        @relation(fields: [tenantId], references: [id])
-    tenantId  Int
-    settings  UserSettings?
-    createdAt DateTime      @default(now())
-    updatedAt DateTime      @updatedAt
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @relation(fields: [roleId], references: [id])
+  roleId    String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId  String
+  settings  UserSettings?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-    Approval Approval[]
-  }
+  Approval  Approval[]
+}
 
-  model UserSettings {
-    id        Int      @id @default(autoincrement())
-    userId    Int      @unique
-    user      User     @relation(fields: [userId], references: [id])
-    settings  Json
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now())
-  }
+model Role {
+  id    String @id @default(uuid())
+  name  String @unique
+  users User[]
+}
 
-  model Role {
-    id    Int    @id @default(autoincrement())
-    name  String @unique
-    users User[]
-  }
+model Tenant {
+  id                   String            @id @default(uuid())
+  name                 String            @unique
+  minDeliveryPercentage Float?           // Alterado para porcentagem
+  address              String?           // Endereço do tenant
+  minValue             Float?
+  minOrders            Float?
+  minPeso              Float?
+  users                User[]
+  drivers              Driver[]
+  vehicles             Vehicle[]
+  orders               Order[]
+  directions           Directions[]
+  deliveries           Delivery[]
+  categories           Category[]
+  accountsPayable      AccountsPayable[]
+  paymentDeliveries    PaymentDelivery[]
+  deliveryProofs       DeliveryProof[]
+  payments             Payment[]
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @default(now())
 
-  model Tenant {
-    id                     Int              @id @default(autoincrement())
-    name               String           @unique
-    minDeliveryPercentage Float?
-    address            String?
-    domain             String?
-    dbType     String? // Campo para a senha do banco de dados
-    dbSchema     String? // Campo para a senha do banco de dados
-    dbName     String? // Campo para a senha do banco de dados
-    dbPort               Int? // Campo para a senha do banco de dados
-    dbHost        String? // Campo para a senha do banco de dados
-    dbUser             String?          // Campo para o usuário do banco de dados
-    dbPassword         String?          // Campo para a senha do banco de dados
-    users              User[]
-    drivers            Driver[]
-    vehicles           Vehicle[]
-    orders             Order[]
-    directions         Directions[]
-    deliveries         Delivery[]
-    categories         Category[]
-    accountsPayable    AccountsPayable[]
-    paymentDeliveries  PaymentDelivery[]
-    deliveryProofs     DeliveryProof[]
-    payments           Payment[]
-    createdAt          DateTime         @default(now())
-    updatedAt          DateTime         @default(now())
+  Approval Approval[]
+}
 
-    Approval Approval[]
-  }
+model UserSettings {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  settings  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+}
 
-  model Driver {
-    id            Int       @id @default(autoincrement())
-    name          String
-    license       String
-    cpf           String
-    tenantId      Int
-    Tenant        Tenant    @relation(fields: [tenantId], references: [id])
-    vehicles      Vehicle[]
-    deliveries    Delivery[]
-    orders        Order[]
-    accountsPayable AccountsPayable[]
-    deliveryProofs DeliveryProof[]
-    payments      Payment[]
-    createdAt     DateTime  @default(now())
-    updatedAt     DateTime  @default(now())
+model Driver {
+  id            String   @id @default(uuid())
+  name          String
+  license       String
+  cpf           String
+  tenantId      String
+  Tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  vehicles      Vehicle[]
+  deliveries    Delivery[]
+  orders        Order[]
+  accountsPayable AccountsPayable[]
+  deliveryProofs DeliveryProof[]
+  payments      Payment[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now())
 
-    @@unique([cpf, tenantId])
-  }
+  @@unique([cpf, tenantId])
+}
 
-  model Vehicle {
-    id         Int        @id @default(autoincrement())
-    model      String
-    plate      String
-    driverId   Int
-    tenantId   Int
-    categoryId Int
-    Driver     Driver     @relation(fields: [driverId], references: [id])
-    Tenant     Tenant     @relation(fields: [tenantId], references: [id])
-    Category   Category   @relation(fields: [categoryId], references: [id])
-    deliveries Delivery[]
-    createdAt  DateTime   @default(now())
-    updatedAt  DateTime   @default(now())
+model Vehicle {
+  id         String   @id @default(uuid())
+  model      String
+  plate      String
+  driverId   String
+  tenantId   String
+  categoryId String
+  Driver     Driver   @relation(fields: [driverId], references: [id])
+  Tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  Category   Category @relation(fields: [categoryId], references: [id])
+  deliveries Delivery[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now())
 
-    @@unique([plate, tenantId])
-  }
+  @@unique([plate, tenantId])
+}
 
-  model Order {
-    id                Int       @id @default(autoincrement())
-    numero            String
-    data              DateTime
-    idCliente         String
-    cliente           String
-    endereco          String
-    cidade            String
-    uf                String
-    peso              Float
-    volume            Int
-    prazo             String?
-    prioridade        String
-    telefone          String
-    email             String
-    bairro            String
-    valor             Float
-    instrucoesEntrega String?
-    nomeContato       String
-    cpfCnpj           String
-    cep               String
-    status            String
-    deliveryId        Int?
-    tenantId          Int
-    driverId          Int?
-    Tenant            Tenant    @relation(fields: [tenantId], references: [id])
-    Delivery          Delivery? @relation(fields: [deliveryId], references: [id])
-    Driver            Driver?   @relation(fields: [driverId], references: [id])
-    sorting           Int?
-    startedAt         DateTime?
-    completedAt       DateTime?
-    createdAt         DateTime  @default(now())
-    updatedAt         DateTime  @updatedAt
-    deliveryProofs    DeliveryProof[]
-  }
+model Order {
+  id                String   @id @default(uuid())
+  numero            String
+  data              DateTime
+  idCliente         String
+  cliente           String
+  endereco          String
+  cidade            String
+  uf                String
+  peso              Float
+  volume            Int
+  prazo             String?
+  prioridade        String
+  telefone          String
+  email             String
+  bairro            String
+  valor             Float
+  instrucoesEntrega String?
+  nomeContato       String
+  cpfCnpj           String
+  cep               String
+  status            String
+  deliveryId        String?
+  tenantId          String
+  driverId          String?
+  Tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  Delivery          Delivery? @relation(fields: [deliveryId], references: [id])
+  Driver            Driver?   @relation(fields: [driverId], references: [id])
+  sorting           Int?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deliveryProofs    DeliveryProof[]
+}
 
-  model Directions {
-    id            Int      @id @default(autoincrement())
-    rangeInicio   String
-    rangeFim      String
-    valorDirecao  Int
-    regiao        String
-    tenantId      Int
-    Tenant        Tenant   @relation(fields: [tenantId], references: [id])
-    createdAt     DateTime @default(now())
-    updatedAt     DateTime @default(now())
-  }
+model Directions {
+  id            String   @id @default(uuid())
+  rangeInicio   String
+  rangeFim      String
+  valorDirecao  Int
+  regiao        String
+  tenantId      String
+  Tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now())
+}
 
-  model Delivery {
-    id                      Int               @id @default(autoincrement())
-    motoristaId             Int
-    veiculoId               Int
-    valorFrete              Float
-    totalPeso               Float
-    totalValor              Float
-    dataInicio              DateTime          @default(now())
-    dataFim                 DateTime?
-    status                  String
-    tenantId                Int
-    liberacoes              Approval[]
-    dataLiberacao           DateTime?
-    createdAt               DateTime          @default(now())
-    updatedAt               DateTime          @default(now())
-    Tenant                  Tenant            @relation(fields: [tenantId], references: [id])
-    orders                  Order[]
-    Driver                  Driver            @relation(fields: [motoristaId], references: [id])
-    Vehicle                 Vehicle           @relation(fields: [veiculoId], references: [id])
-    paymentDeliveries       PaymentDelivery[] @relation("DeliveryToPaymentDeliveries")
-  }
+model Delivery {
+  id                      String           @id @default(uuid())
+  motoristaId             String
+  veiculoId               String
+  valorFrete              Float
+  totalPeso               Float
+  totalValor              Float
+  dataInicio              DateTime        @default(now())
+  dataFim                 DateTime?
+  status                  String
+  tenantId                String
+  liberacoes              Approval[]
+  dataLiberacao           DateTime?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @default(now())
+  Tenant                  Tenant        @relation(fields: [tenantId], references: [id])
+  orders                  Order[]
+  Driver                  Driver        @relation(fields: [motoristaId], references: [id])
+  Vehicle                 Vehicle       @relation(fields: [veiculoId], references: [id])
+  paymentDeliveries       PaymentDelivery[] @relation("DeliveryToPaymentDeliveries")
+}
 
-  model Approval {
-    id             Int      @id @default(autoincrement())
-    deliveryId     Int
-    tenantId       Int
-    action         String
-    motivo         String?
-    userId         Int
-    createdAt      DateTime @default(now())
-    Delivery       Delivery @relation(fields: [deliveryId], references: [id])
-    Tenant         Tenant   @relation(fields: [tenantId], references: [id])
-    User           User     @relation(fields: [userId], references: [id])
-  }
+model Approval {
+  id             String   @id @default(uuid())
+  deliveryId     String
+  tenantId       String
+  action         String
+  motivo         String?
+  userId         String
+  createdAt      DateTime @default(now())
+  Delivery       Delivery @relation(fields: [deliveryId], references: [id])
+  Tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  User           User     @relation(fields: [userId], references: [id])
+}
 
-  model Category {
-    id        Int      @id @default(autoincrement())
-    name      String
-    valor     Float
-    tenantId  Int
-    Tenant    Tenant   @relation(fields: [tenantId], references: [id])
-    vehicles  Vehicle[]
-  }
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  valor     Float
+  tenantId  String
+  Tenant    Tenant  @relation(fields: [tenantId], references: [id])
+  vehicles  Vehicle[]
+}
 
-  model AccountsPayable {
-    id                Int               @id @default(autoincrement())
-    amount            Float
-    status            String
-    tenantId          Int
-    motoristaId       Int
-    createdAt         DateTime          @default(now())
-    updatedAt         DateTime          @default(now())
-    groupedPaymentId  Int?
-    isGroup           Boolean           @default(false)
+model AccountsPayable {
+  id                String   @id @default(uuid())
+  amount            Float
+  status            String
+  tenantId          String
+  motoristaId       String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @default(now())
+  groupedPaymentId  String? // Alterado para UUID
+  isGroup           Boolean  @default(false)
 
-    Tenant            Tenant            @relation(fields: [tenantId], references: [id])
-    Driver            Driver            @relation(fields: [motoristaId], references: [id])
-    paymentDeliveries PaymentDelivery[] @relation("PaymentToPaymentDeliveries")
-  }
+  Tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  Driver            Driver   @relation(fields: [motoristaId], references: [id])
+  paymentDeliveries PaymentDelivery[] @relation("PaymentToPaymentDeliveries")
+}
 
-  model PaymentDelivery {
-    paymentId         Int
-    deliveryId        Int
-    tenantId          Int
-    Tenant            Tenant            @relation(fields: [tenantId], references: [id])
-    accountsPayable   AccountsPayable   @relation(fields: [paymentId], references: [id], onDelete: Cascade, name: "PaymentToPaymentDeliveries")
-    delivery          Delivery          @relation(fields: [deliveryId], references: [id], onDelete: Cascade, name: "DeliveryToPaymentDeliveries")
+model PaymentDelivery {
+  paymentId         String
+  deliveryId        String
+  tenantId          String
+  Tenant            Tenant           @relation(fields: [tenantId], references: [id])
+  accountsPayable   AccountsPayable  @relation(fields: [paymentId], references: [id], onDelete: Cascade, name: "PaymentToPaymentDeliveries")
+  delivery          Delivery         @relation(fields: [deliveryId], references: [id], onDelete: Cascade, name: "DeliveryToPaymentDeliveries")
 
-    @@id([paymentId, deliveryId])
-  }
+  @@id([paymentId, deliveryId])
+}
 
-  model Payment {
-    id        Int      @id @default(autoincrement())
-    amount    Float
-    driverId  Int
-    Driver    Driver   @relation(fields: [driverId], references: [id])
-    tenantId  Int
-    Tenant    Tenant   @relation(fields: [tenantId], references: [id])
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-  }
+model Payment {
+  id        String   @id @default(uuid())
+  amount    Float
+  driverId  String
+  Driver    Driver   @relation(fields: [driverId], references: [id])
+  tenantId  String
+  Tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
-  model DeliveryProof {
-    id        Int      @id @default(autoincrement())
-    orderId   Int
-    Order     Order    @relation(fields: [orderId], references: [id])
-    driverId  Int
-    Driver    Driver   @relation(fields: [driverId], references: [id])
-    tenantId  Int
-    Tenant    Tenant   @relation(fields: [tenantId], references: [id])
-    proofUrl  String
-    createdAt DateTime @default(now())
-  }
+model DeliveryProof {
+  id        String   @id @default(uuid())
+  orderId   String
+  Order     Order    @relation(fields: [orderId], references: [id])
+  driverId  String
+  Driver    Driver   @relation(fields: [driverId], references: [id])
+  tenantId  String
+  Tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  proofUrl  String
+  createdAt DateTime @default(now())
+}

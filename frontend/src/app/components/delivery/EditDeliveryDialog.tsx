@@ -28,18 +28,18 @@ interface EditDeliveryDialogProps {
   currentDelivery: Delivery | null;
   setCurrentDelivery: React.Dispatch<React.SetStateAction<Delivery | null>>;
   drivers: Driver[];
-  selectedDriver: number | string;
-  handleDriverChange: (e: SelectChangeEvent<number | string>) => void;
+  selectedDriver: string;
+  handleDriverChange: (e: SelectChangeEvent<string>) => void;
   vehicles: Vehicle[];
-  selectedVehicle: number | string;
-  handleVehicleChange: (e: SelectChangeEvent<number | string>) => void;
+  selectedVehicle: string;
+  handleVehicleChange: (e: SelectChangeEvent<string>) => void;
   tollValue: number;
   setTollValue: React.Dispatch<React.SetStateAction<number>>;
   handleConfirmDelivery: () => void;
   tabIndex: number;
   setTabIndex: React.Dispatch<React.SetStateAction<number>>;
   calculateTotalWeightAndValue: (orders: Order[]) => { totalWeight: number; totalValue: number };
-  handleRemoveOrderFromDelivery: (deliveryId: number, orderId: number) => void;
+  handleRemoveOrderFromDelivery: (deliveryId: string, orderId: string) => void;
 }
 
 const EditDeliveryDialog: React.FC<EditDeliveryDialogProps> = ({
@@ -61,7 +61,7 @@ const EditDeliveryDialog: React.FC<EditDeliveryDialogProps> = ({
   calculateTotalWeightAndValue,
   handleRemoveOrderFromDelivery,
 }) => {
-  const handleRemoveOrder = (deliveryId: number, orderId: number) => {
+  const handleRemoveOrder = (deliveryId: string, orderId: string) => {
     handleRemoveOrderFromDelivery(deliveryId, orderId);
     if (currentDelivery) {
       setCurrentDelivery({

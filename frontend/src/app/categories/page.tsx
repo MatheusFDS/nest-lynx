@@ -62,7 +62,7 @@ const CategoriesPage: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     try {
       await deleteCategory(token, id);
       loadCategories();
@@ -108,7 +108,7 @@ const CategoriesPage: React.FC = () => {
             margin="normal"
           />
           <Button variant="contained" color="primary" onClick={handleAddCategory}>
-            {selectedCategory ? 'Update Category' : 'Add Category'}
+            {selectedCategory ? 'Atualizar Categoria' : 'Adicionar Categoria'}
           </Button>
           <Button onClick={handleFormClose}>Cancel</Button>
         </Paper>

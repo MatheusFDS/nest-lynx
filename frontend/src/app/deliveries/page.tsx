@@ -39,8 +39,8 @@ const DeliveriesPage: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [directions, setDirections] = useState<Direction[]>([]);
-  const [selectedDriver, setSelectedDriver] = useState<number | string>('');
-  const [selectedVehicle, setSelectedVehicle] = useState<number | string>('');
+  const [selectedDriver, setSelectedDriver] = useState<string>('');
+  const [selectedVehicle, setSelectedVehicle] = useState<string>('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [error, setError] = useState<string>('');
@@ -122,8 +122,8 @@ const DeliveriesPage: React.FC = () => {
     return { totalWeight, totalValue };
   };
 
-  const handleDriverChange = (e: SelectChangeEvent<number | string>) => {
-    const driverId = e.target.value as number;
+  const handleDriverChange = (e: SelectChangeEvent<string>) => {
+    const driverId = e.target.value;
     setSelectedDriver(driverId);
     const driver = drivers.find(driver => driver.id === driverId);
     if (driver) {
@@ -136,12 +136,12 @@ const DeliveriesPage: React.FC = () => {
     }
   };
 
-  const handleVehicleChange = (e: SelectChangeEvent<number | string>) => {
-    const vehicleId = e.target.value as number;
+  const handleVehicleChange = (e: SelectChangeEvent<string>) => {
+    const vehicleId = e.target.value;
     setSelectedVehicle(vehicleId);
   };
 
-  const getVehicleValue = (vehicleId: number | string) => {
+  const getVehicleValue = (vehicleId: string) => {
     const vehicle = vehicles.find(vehicle => vehicle.id === vehicleId);
     if (vehicle) {
       const category = categories.find(c => c.id === vehicle.categoryId);
@@ -158,8 +158,8 @@ const DeliveriesPage: React.FC = () => {
     const { totalWeight, totalValue } = calculateTotalWeightAndValue(ordersInDelivery);
 
     const deliveryData = {
-      motoristaId: selectedDriver as number,
-      veiculoId: Number(selectedVehicle),
+      motoristaId: selectedDriver,
+      veiculoId: selectedVehicle,
       valorFrete: getVehicleValue(selectedVehicle) + tollValue,
       totalPeso: totalWeight,
       totalValor: totalValue,
@@ -197,7 +197,7 @@ const DeliveriesPage: React.FC = () => {
     setDateRange(prevState => ({ ...prevState, [name]: value }));
   };
 
-  const handleDeleteDelivery = async (deliveryId: number) => {
+  const handleDeleteDelivery = async (deliveryId: string) => {
     setConfirmDialogAction(() => async () => {
       try {
         await deleteDelivery(token, deliveryId);
@@ -227,7 +227,7 @@ const DeliveriesPage: React.FC = () => {
     }
   };
 
-  const handleRemoveOrderFromDelivery = async (deliveryId: number, orderId: number) => {
+  const handleRemoveOrderFromDelivery = async (deliveryId: string, orderId: string) => {
     setConfirmDialogAction(() => async () => {
       try {
         await removeOrderFromDelivery(token, deliveryId, orderId);

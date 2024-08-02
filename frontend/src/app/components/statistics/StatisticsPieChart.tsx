@@ -2,12 +2,12 @@ import React from 'react';
 import { Typography, useTheme, Box } from '@mui/material';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-interface StatisticsChartProps {
+interface StatisticsPieChartProps {
   title: string;
   data: { name: string; value: number }[];
 }
 
-const StatisticsChart: React.FC<StatisticsChartProps> = ({ title, data }) => {
+const StatisticsPieChart: React.FC<StatisticsPieChartProps> = ({ title, data }) => {
   const theme = useTheme();
   const COLORS = [theme.palette.primary.main, theme.palette.success.main, theme.palette.warning.main, theme.palette.error.main];
 
@@ -33,7 +33,7 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ title, data }) => {
               ))}
             </Pie>
             <Tooltip />
-            <Legend verticalAlign="bottom" height={36} />
+            <Legend verticalAlign="middle" align="right" layout="vertical" />
           </PieChart>
         </ResponsiveContainer>
       </Box>
@@ -41,4 +41,4 @@ const StatisticsChart: React.FC<StatisticsChartProps> = ({ title, data }) => {
   );
 };
 
-export default StatisticsChart;
+export default StatisticsPieChart;

@@ -15,22 +15,24 @@ export const fetchDrivers = async (token: string) => {
 export const addDriver = async (token: string, driver: { name: string, license: string, cpf: string }) => {
   const response = await axios.post(`${API_URL}/drivers`, driver, {
     headers: {
+      'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
   });
   return response.data;
 };
 
-export const updateDriver = async (token: string, id: number, driver: { name: string, license: string, cpf: string }) => {
+export const updateDriver = async (token: string, id: string, driver: { name: string, license: string, cpf: string }) => {
   const response = await axios.patch(`${API_URL}/drivers/${id}`, driver, {
     headers: {
+      'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
   });
   return response.data;
 };
 
-export const deleteDriver = async (token: string, id: number) => {
+export const deleteDriver = async (token: string, id: string) => {
   const response = await axios.delete(`${API_URL}/drivers/${id}`, {
     headers: {
       Authorization: `Bearer ${token}`,

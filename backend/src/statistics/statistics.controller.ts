@@ -1,28 +1,31 @@
-import { Controller, Get, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Request, BadRequestException } from '@nestjs/common';
 import { StatisticsService } from './statistics.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
-import { Request } from 'express';
 
 @Controller('statistics')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard)
 export class StatisticsController {
   constructor(private readonly statisticsService: StatisticsService) {}
 
   @Get()
-  @Roles('admin')
-  async getStatistics(@Query('start') start: string, @Query('end') end: string, @Req() req: Request) {
+  async getStatistics(
+    @Request() req,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
     const tenantId = req.user.tenantId;
-    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
-
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      throw new Error('Invalid date format for startDate or endDate');
+    
+    if (!startDate || !endDate) {
+      throw new BadRequestException('Start date and end date must be provided');
     }
 
-    return this.statisticsService.getStatistics(prisma, tenantId, startDate, endDate);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new BadRequestException('Invalid date format');
+    }
+
+    return this.statisticsService.getStatistics(tenantId, start, end);
   }
 }

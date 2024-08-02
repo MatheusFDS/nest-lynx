@@ -2,10 +2,10 @@ import { ReactNode } from "react";
 
 export interface Category {
   precoPorKM: any;
-  id: number;
+  id: string;
   name: string;
   valor: number;
-  tenantId: number;
+  tenantId: string;
 }
 
 export interface Delivery {
@@ -15,13 +15,13 @@ export interface Delivery {
   Driver: Driver;
   dataFim: string | number | Date;
   dataInicio: string | number | Date;
-  id: number;
-  motoristaId: number;
-  veiculoId: number;
+  id: string;
+  motoristaId: string;
+  veiculoId: string;
   valorFrete: number;
   totalPeso: number;
   totalValor: number;
-  tenantId: number;
+  tenantId: string;
   orders: Order[];
   status?: string;
   createdAt?: Date;
@@ -33,22 +33,22 @@ export interface Delivery {
 }
 
 export interface Direction {
-  id: number;
+  id: string;
   rangeInicio: string;
   rangeFim: string;
   valorDirecao: string;
   regiao: string;
-  tenantId: number;
+  tenantId: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface Driver {
-  id: number;
+  id: string;
   name: string;
   license: string;
   cpf: string;
-  tenantId: number;
+  tenantId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,7 +63,7 @@ export interface Metadata {
 }
 
 export interface Order {
-  directionId: any;
+  directionId: string;
   sorting: number;
   address: any;
   lat: number;
@@ -72,7 +72,7 @@ export interface Order {
   logradouro: any;
   motorista: ReactNode;
   dataFinalizacao: string | number | Date;
-  id: number;
+  id: string;
   numero: string;
   data: string;
   idCliente: string;
@@ -93,8 +93,8 @@ export interface Order {
   cpfCnpj: string;
   cep: string;
   status: string;
-  deliveryId: number | null;
-  tenantId: number;
+  deliveryId: string | null;
+  tenantId: string;
   createdAt: string;
   updatedAt: string;
   Delivery?: {
@@ -106,26 +106,26 @@ export interface Order {
 }
 
 export interface Approval {
-  id: number;
-  deliveryId: number;
-  tenantId: number;
+  id: string;
+  deliveryId: string;
+  tenantId: string;
   action: string; // 'approved' ou 'rejected'
   motivo?: string; // Campo opcional para motivo de rejeição
-  userId: number;
+  userId: string;
   createdAt: string;
   userName?: string; // Adicionado para exibir o nome do usuário
 }
 
 export interface Payment {
-  id: number;
+  id: string;
   amount: number;
   status: string;
-  tenantId: number;
-  motoristaId: number;
+  tenantId: string;
+  motoristaId: string;
   createdAt: string;
   updatedAt: string;
   isGroup: boolean;
-  groupedPaymentId: number | null;
+  groupedPaymentId: string | null;
   Driver: Driver;
   paymentDeliveries: {
     delivery: Delivery;
@@ -133,11 +133,11 @@ export interface Payment {
 }
 
 export interface User {
-  id: number;
+  id: string;
   email: string;
   role: string;
   name: string;
-  tenantId: number;
+  tenantId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -146,7 +146,7 @@ export interface Tenant {
   password: string;
   user: string;
   minDeliveryPercentage: number;
-  id: number;
+  id: string;
   name: string;
   minDeliveryValue: number;
   address?: string;
@@ -157,12 +157,12 @@ export interface Tenant {
 }
 
 export interface Vehicle {
-  id: number;
+  id: string;
   model: string;
   plate: string;
-  driverId: number;
-  tenantId: number;
-  categoryId: number;
+  driverId: string;
+  tenantId: string;
+  categoryId: string;
   createdAt: string;
   updatedAt: string;
   valor: number; // Adicionado o valor do veículo

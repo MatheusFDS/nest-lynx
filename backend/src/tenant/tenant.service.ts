@@ -1,22 +1,22 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import { UpdateTenantDto, UpdateRestrictedTenantDto } from './dto/update-tenant.dto';
 
 @Injectable()
 export class TenantService {
-  constructor() {}
+  constructor(private prisma: PrismaService) {}
 
-  async getTenants(prisma: PrismaClient, tenantId: number) {
-    return prisma.tenant.findMany({
+  async getTenants(tenantId: string) {
+    return this.prisma.tenant.findMany({
       where: { id: tenantId },
     });
   }
 
-  async updateTenant(prisma: PrismaClient, userId: number, tenantId: number, data: UpdateTenantDto) {
+  async updateTenant(userId: string, tenantId: string, data: UpdateTenantDto) {
     console.log('updateTenant - userId:', userId, 'tenantId:', tenantId); // Logging para depuração
     console.log('updateTenant - data:', data); // Logging para depuração
 
-    const user = await prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { tenant: true, role: true },
     });
@@ -29,17 +29,17 @@ export class TenantService {
       throw new ForbiddenException('You can only update your own tenant.');
     }
 
-    return prisma.tenant.update({
+    return this.prisma.tenant.update({
       where: { id: tenantId },
       data,
     });
   }
 
-  async updateRestrictedTenant(prisma: PrismaClient, userId: number, tenantId: number, data: UpdateRestrictedTenantDto) {
+  async updateRestrictedTenant(userId: string, tenantId: string, data: UpdateRestrictedTenantDto) {
     console.log('updateRestrictedTenant - userId:', userId, 'tenantId:', tenantId); // Logging para depuração
     console.log('updateRestrictedTenant - data:', data); // Logging para depuração
 
-    const user = await prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { role: true },
     });
@@ -52,7 +52,7 @@ export class TenantService {
       throw new ForbiddenException('Only admins can update restricted fields.');
     }
 
-    return prisma.tenant.update({
+    return this.prisma.tenant.update({
       where: { id: tenantId },
       data,
     });

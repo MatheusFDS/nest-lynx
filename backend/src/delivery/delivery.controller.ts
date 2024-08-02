@@ -6,7 +6,6 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RejectDeliveryDto } from './dto/reject-delivery.dto';
-import { Request } from 'express';
 
 @Controller('delivery')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -16,60 +15,53 @@ export class DeliveryController {
   constructor(private readonly deliveryService: DeliveryService) {}
 
   @Post()
-  async create(@Body() createDeliveryDto: CreateDeliveryDto, @Req() req: Request) {
+  async create(@Body() createDeliveryDto: CreateDeliveryDto, @Req() req) {
     const tenantId = req.user.tenantId;
-    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
-    this.logger.log(`Creating delivery with data: ${JSON.stringify(createDeliveryDto)} for tenant: ${tenantId}`);
-    return this.deliveryService.create(prisma, createDeliveryDto, tenantId);
+    //this.logger.log(`Creating delivery with data: ${JSON.stringify(createDeliveryDto)} for tenant: ${tenantId}`);
+    return this.deliveryService.create(createDeliveryDto, tenantId);
   }
 
   @Get()
-  async findAll(@Req() req: Request) {
+  async findAll(@Req() req) {
     const tenantId = req.user.tenantId;
-    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
-    return this.deliveryService.findAll(prisma, tenantId);
+    return this.deliveryService.findAll(tenantId);
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string, @Req() req: Request) {
+  async findOne(@Param('id') id: string, @Req() req) {
     const tenantId = req.user.tenantId;
-    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
-    return this.deliveryService.findOne(prisma, +id, tenantId);
+    return this.deliveryService.findOne(id, tenantId);
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateDeliveryDto: UpdateDeliveryDto, @Req() req: Request) {
+  async update(@Param('id') id: string, @Body() updateDeliveryDto: UpdateDeliveryDto, @Req() req) {
     const tenantId = req.user.tenantId;
-    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
-    return this.deliveryService.update(prisma, +id, updateDeliveryDto, tenantId);
+    return this.deliveryService.update(id, updateDeliveryDto, tenantId);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string, @Req() req: Request) {
+  async remove(@Param('id') id: string, @Req() req) {
     const tenantId = req.user.tenantId;
-    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
-    return this.deliveryService.remove(prisma, +id, tenantId);
+    return this.deliveryService.remove(id, tenantId);
   }
 
   @Patch(':id/remove-order/:orderId')
-  async removeOrderFromDelivery(@Param('id') id: string, @Param('orderId') orderId: string, @Req() req: Request) {
+  async removeOrderFromDelivery(@Param('id') id: string, @Param('orderId') orderId: string, @Req() req) {
     const tenantId = req.user.tenantId;
-    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
-    return this.deliveryService.removeOrderFromDelivery(prisma, +id, +orderId, tenantId);
+    return this.deliveryService.removeOrderFromDelivery(id, orderId, tenantId);
   }
 
   @Patch(':id/release')
   @Roles('admin')
-  async releaseDelivery(@Param('id') id: string, @Req() req: Request) {
+  async releaseDelivery(@Param('id') id: string, @Req() req) {
     const tenantId = req.user.tenantId;
     const userId = req.user.userId;
-    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
     if (!userId) {
-      this.logger.error('User ID is missing');
+    //  this.logger.error('User ID is missing');
       throw new BadRequestException('User ID is missing');
     }
-    this.logger.log(`Releasing delivery ID: ${id} for tenant: ${tenantId} by user: ${userId}`);
-    return this.deliveryService.release(prisma, +id, tenantId, userId);
+   // this.logger.log(`Releasing delivery ID: ${id} for tenant: ${tenantId} by user: ${userId}`);
+    return this.deliveryService.release(id, tenantId, userId);
   }
 
   @Patch(':id/reject')
@@ -77,16 +69,15 @@ export class DeliveryController {
   async rejectRelease(
     @Param('id') id: string,
     @Body() rejectDeliveryDto: RejectDeliveryDto,
-    @Req() req: Request
+    @Req() req
   ) {
     const tenantId = req.user.tenantId;
     const userId = req.user.userId;
-    const prisma = req.prisma; // Obtendo o PrismaClient configurado dinamicamente
     if (!userId) {
-      this.logger.error('User ID is missing');
+    //  this.logger.error('User ID is missing');
       throw new BadRequestException('User ID is missing');
     }
     this.logger.log(`Rejecting release of delivery ID: ${id} for tenant: ${tenantId} by user: ${userId} with reason: ${rejectDeliveryDto.motivo}`);
-    return this.deliveryService.rejectRelease(prisma, +id, tenantId, userId, rejectDeliveryDto.motivo);
+    return this.deliveryService.rejectRelease(id, tenantId, userId, rejectDeliveryDto.motivo);
   }
 }

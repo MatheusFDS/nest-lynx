@@ -1,4 +1,3 @@
-// src/api/deliveryApi.ts
 import { getApiUrl } from './utils/apiUtils';
 import { Delivery } from '../types';
 
@@ -81,7 +80,7 @@ export const addDelivery = async (token: string, data: any): Promise<any> => {
   return await response.json();
 };
 
-export const updateDelivery = async (token: string, id: number, data: any): Promise<void> => {
+export const updateDelivery = async (token: string, id: string, data: any): Promise<void> => {
   const response = await fetch(`${API_URL}/${id}`, {
     method: 'PATCH',
     headers: {
@@ -98,7 +97,7 @@ export const updateDelivery = async (token: string, id: number, data: any): Prom
   }
 };
 
-export const deleteDelivery = async (token: string, id: number): Promise<void> => {
+export const deleteDelivery = async (token: string, id: string): Promise<void> => {
   const response = await fetch(`${API_URL}/${id}`, {
     method: 'DELETE',
     headers: {
@@ -113,7 +112,7 @@ export const deleteDelivery = async (token: string, id: number): Promise<void> =
   }
 };
 
-export const removeOrderFromDelivery = async (token: string, deliveryId: number, orderId: number): Promise<void> => {
+export const removeOrderFromDelivery = async (token: string, deliveryId: string, orderId: string): Promise<void> => {
   const response = await fetch(`${API_URL}/${deliveryId}/remove-order/${orderId}`, {
     method: 'PATCH',
     headers: {
@@ -129,7 +128,7 @@ export const removeOrderFromDelivery = async (token: string, deliveryId: number,
   }
 };
 
-export const releaseDelivery = async (token: string, id: number): Promise<void> => {
+export const releaseDelivery = async (token: string, id: string): Promise<void> => {
   const response = await fetch(`${API_URL}/${id}/release`, {
     method: 'PATCH',
     headers: {
@@ -147,7 +146,7 @@ export const releaseDelivery = async (token: string, id: number): Promise<void> 
   return await response.json();
 };
 
-export const rejectRelease = async (token: string, id: number, motivo: string): Promise<void> => {
+export const rejectRelease = async (token: string, id: string, motivo: string): Promise<void> => {
   const response = await fetch(`${API_URL}/${id}/reject`, {
     method: 'PATCH',
     headers: {

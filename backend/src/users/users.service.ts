@@ -1,19 +1,19 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
-  constructor() {}
+  constructor(private prisma: PrismaService) {}
 
-  async create(prisma: PrismaClient, data: CreateUserDto, tenantId: number) {
+  async create(data: CreateUserDto, tenantId: string) {
     // Hash the password
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     // Create the user with the hashed password and tenantId
-    return prisma.user.create({
+    return this.prisma.user.create({
       data: {
         ...data,
         password: hashedPassword,
@@ -22,38 +22,38 @@ export class UsersService {
     });
   }
 
-  async findAll(prisma: PrismaClient, tenantId: number) {
-    return prisma.user.findMany({ where: { tenantId } });
+  async findAll(tenantId: string) {
+    return this.prisma.user.findMany({ where: { tenantId } });
   }
 
-  async findOne(prisma: PrismaClient, id: number, tenantId: number) {
-    return prisma.user.findFirst({ where: { id, tenantId } });
+  async findOne(id: string, tenantId: string) {
+    return this.prisma.user.findFirst({ where: { id, tenantId } });
   }
 
-  async update(prisma: PrismaClient, id: number, data: UpdateUserDto, tenantId: number) {
+  async update(id: string, data: UpdateUserDto, tenantId: string) {
     if (data.password) {
       // Hash the new password if it is being updated
       data.password = await bcrypt.hash(data.password, 10);
     }
 
-    const user = await prisma.user.findFirst({ where: { id, tenantId } });
+    const user = await this.prisma.user.findFirst({ where: { id, tenantId } });
     if (!user) {
       throw new BadRequestException('User not found or does not belong to this tenant');
     }
 
-    return prisma.user.update({
+    return this.prisma.user.update({
       where: { id },
       data,
     });
   }
 
-  async remove(prisma: PrismaClient, id: number, tenantId: number) {
-    const user = await prisma.user.findFirst({ where: { id, tenantId } });
+  async remove(id: string, tenantId: string) {
+    const user = await this.prisma.user.findFirst({ where: { id, tenantId } });
     if (!user) {
       throw new BadRequestException('User not found or does not belong to this tenant');
     }
 
-    return prisma.user.delete({
+    return this.prisma.user.delete({
       where: { id },
     });
   }

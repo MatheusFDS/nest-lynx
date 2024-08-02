@@ -1,6 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateDeliveryDto } from './create-delivery.dto';
-import { IsOptional, IsString, IsArray, ValidateNested, IsNumber } from 'class-validator';
+import { IsOptional, IsString, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderDto } from '../../orders/dto/order.dto';
 

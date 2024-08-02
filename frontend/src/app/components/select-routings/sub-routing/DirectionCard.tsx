@@ -7,11 +7,11 @@ import { Order, Direction } from '../../../../types';
 interface DirectionCardProps {
   direction: Direction | null;
   orders: Order[];
-  handleGenerateDelivery: (directionId: number | null) => void;
-  handleExpandedOrdersDialogOpen: (directionId: number | null) => void;
+  handleGenerateDelivery: (directionId: string | null) => void;
+  handleExpandedOrdersDialogOpen: (directionId: string | null) => void;
   handleDetailsDialogOpen: (order: Order) => void;
   calculateTotalWeightAndValue: (orders: Order[]) => { totalWeight: number; totalValue: number };
-  handleShowMap: (directionId: number | null) => void;
+  handleShowMap: (directionId: string | null) => void;
 }
 
 const DirectionCard: React.FC<DirectionCardProps> = ({
