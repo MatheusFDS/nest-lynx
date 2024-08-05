@@ -12,18 +12,16 @@ export class UpdateTenantDto {
   @IsOptional()
   @IsNumber()
   minDeliveryPercentage?: number;  // Certifique-se de que isso está validado como número
-}
-
-export class UpdateRestrictedTenantDto {
-  @IsOptional()
-  @IsString()
-  databaseUrl?: string;
-
-  @IsOptional()
-  @IsString()
-  schema?: string;
 
   @IsOptional()
   @IsNumber()
-  port?: number;
+  minValue?: number;
+
+  @IsOptional()
+  @IsNumber()
+  minOrders?: number;
+
+  @IsOptional()
+  @IsNumber()
+  minPeso?: number;
 }

@@ -4,7 +4,7 @@ const futuristicPalette = {
   primary: '#1F5090',
   secondary: '#14FFEC',
   background: '#040714',
-  surface: '#040714',
+  surface: '#040714CC',
   textPrimary: '#E1E1E1',
   textSecondary: '#A1A1A1',
 };

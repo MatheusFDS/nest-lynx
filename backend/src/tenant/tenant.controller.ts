@@ -1,6 +1,6 @@
-import { Controller, Get, Put, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Put, Body, Param, UseGuards, Req, BadRequestException } from '@nestjs/common';
 import { TenantService } from './tenant.service';
-import { UpdateTenantDto, UpdateRestrictedTenantDto } from './dto/update-tenant.dto';
+import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -13,23 +13,19 @@ export class TenantController {
 
   @Get()
   async getTenants(@Req() req: Request) {
-   // console.log('getTenants - req.user:', req.user); // Log para verificar req.user
     const tenantId = req.user.tenantId;
     return this.tenantService.getTenants(tenantId);
   }
 
   @Put(':tenantId')
-  async updateTenant(@Req() req: Request, @Param('tenantId') tenantId: string, @Body() updateTenantDto: UpdateTenantDto) {
-   // console.log('updateTenant - req.user:', req.user); // Log para verificar req.user
-//console.log('updateTenant - updateTenantDto:', updateTenantDto); // Log para verificar os dados recebidos
-    const userId = req.user.userId;
-    return this.tenantService.updateTenant(userId, tenantId, updateTenantDto);
-  }
-
-  @Put('restricted/:tenantId')
   @Roles('admin')
-  async updateRestrictedTenant(@Req() req: Request, @Param('tenantId') tenantId: string, @Body() updateRestrictedTenantDto: UpdateRestrictedTenantDto) {
+  async updateTenant(@Req() req: Request, @Param('tenantId') tenantId: string, @Body() updateTenantDto: UpdateTenantDto) {
     const userId = req.user.userId;
-    return this.tenantService.updateRestrictedTenant(userId, tenantId, updateRestrictedTenantDto);
+    try {
+      return this.tenantService.updateTenant(userId, tenantId, updateTenantDto);
+    } catch (error) {
+      console.error('Error updating tenant:', error);
+      throw new BadRequestException('Error updating tenant');
+    }
   }
 }

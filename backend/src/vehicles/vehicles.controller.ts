@@ -12,7 +12,6 @@ export class VehiclesController {
   constructor(private readonly vehiclesService: VehiclesService) {}
 
   @Post()
-  @Roles('admin')
   async create(@Body() createVehicleDto: CreateVehicleDto, @Req() req) {
     const tenantId = req.user.tenantId;
     return this.vehiclesService.create(createVehicleDto, tenantId);

@@ -1,6 +1,6 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UpdateTenantDto, UpdateRestrictedTenantDto } from './dto/update-tenant.dto';
+import { UpdateTenantDto } from './dto/update-tenant.dto';
 
 @Injectable()
 export class TenantService {
@@ -13,10 +13,9 @@ export class TenantService {
   }
 
   async updateTenant(userId: string, tenantId: string, data: UpdateTenantDto) {
-    
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { tenant: true, role: true },
+      include: { tenant: true },
     });
 
     if (!user) {
@@ -27,30 +26,14 @@ export class TenantService {
       throw new ForbiddenException('You can only update your own tenant.');
     }
 
-    return this.prisma.tenant.update({
-      where: { id: tenantId },
-      data,
-    });
-  }
-
-  async updateRestrictedTenant(userId: string, tenantId: string, data: UpdateRestrictedTenantDto) {
-   
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: { role: true },
-    });
-
-    if (!user) {
-      throw new ForbiddenException('User not found.');
+    try {
+      return this.prisma.tenant.update({
+        where: { id: tenantId },
+        data,
+      });
+    } catch (error) {
+      console.error('Error updating tenant in database:', error);
+      throw new BadRequestException('Error updating tenant in database');
     }
-
-    if (user.role.name !== 'admin') {
-      throw new ForbiddenException('Only admins can update restricted fields.');
-    }
-
-    return this.prisma.tenant.update({
-      where: { id: tenantId },
-      data,
-    });
   }
 }

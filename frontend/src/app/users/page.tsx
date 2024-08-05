@@ -148,7 +148,7 @@ const UsersPage: React.FC = () => {
         margin="normal"
       />
       <Button variant="contained" color="primary" onClick={() => setShowForm(true)}>
-        Add User
+        Adicionar Usuário
       </Button>
       {showForm && (
         <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
@@ -160,7 +160,7 @@ const UsersPage: React.FC = () => {
             margin="normal"
           />
           <TextField
-            label="Password"
+            label="Senha"
             value={newUser.password || ''}
             onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
             type="password"
@@ -168,14 +168,14 @@ const UsersPage: React.FC = () => {
             margin="normal"
           />
           <TextField
-            label="Name"
+            label="Nome"
             value={newUser.name || ''}
             onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
             fullWidth
             margin="normal"
           />
           <FormControl fullWidth margin="normal">
-            <InputLabel>Role</InputLabel>
+            <InputLabel>Tipo</InputLabel>
             <Select
               value={newUser.roleId || ''}
               onChange={(e) => setNewUser({ ...newUser, roleId: e.target.value })}
@@ -188,9 +188,9 @@ const UsersPage: React.FC = () => {
             </Select>
           </FormControl>
           <Button variant="contained" color="primary" onClick={handleAddOrUpdateUser}>
-            {selectedUser ? 'Update User' : 'Add User'}
+            {selectedUser ? 'Atualizar Usuário' : 'Adicionar Usuário'}
           </Button>
-          <Button onClick={handleFormClose}>Cancel</Button>
+          <Button onClick={handleFormClose}>Cancelar</Button>
         </Paper>
       )}
       <TableContainer component={Paper} style={{ marginTop: '16px' }}>
@@ -201,14 +201,16 @@ const UsersPage: React.FC = () => {
             <TableHead>
               <TableRow>
                 <TableCell>Email</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell>Tipo</TableCell>
+                <TableCell>Tipo</TableCell>
+                <TableCell>Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filteredUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.name}</TableCell>
                   <TableCell>{roles.find(role => role.id === user.roleId)?.name || 'No Role'}</TableCell>
                   <TableCell>
                     <IconButton onClick={() => handleEdit(user)}>

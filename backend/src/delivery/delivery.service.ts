@@ -66,7 +66,22 @@ export class DeliveryService {
     }
 
     const percentualFrete = (valorFrete / totalValor) * 100;
-    const status = percentualFrete > (tenant?.minDeliveryPercentage || 100) ? 'A liberar' : 'Em Rota';
+
+    const reasons = [];
+    if (percentualFrete > (tenant.minDeliveryPercentage || 100)) {
+      reasons.push('Percentual de frete acima do máximo permitido');
+    }
+    if (totalValor < (tenant.minValue || 0)) {
+      reasons.push('Valor total abaixo do mínimo exigido');
+    }
+    if (totalPeso < (tenant.minPeso || 0)) {
+      reasons.push('Peso total abaixo do mínimo exigido');
+    }
+    if (orders.length < (tenant.minOrders || 0)) {
+      reasons.push('Quantidade de documentos abaixo do mínimo exigido');
+    }
+
+    const status = reasons.length > 0 ? 'A liberar' : 'Em Rota';
 
     const delivery = await this.prisma.delivery.create({
       data: {
@@ -96,8 +111,17 @@ export class DeliveryService {
       });
     }
 
-    return delivery;
+    const response = {
+      delivery,
+      status: delivery.status,
+      message: status === 'A liberar' ? 
+        'A entrega foi enviada para liberação pelos seguintes motivos: ' + reasons.join(', ') :
+        'Roteiro criado com sucesso!'
+    };
+    return response;
   }
+
+
 
   async release(id: string, tenantId: string, userId: string) {
     const delivery = await this.prisma.delivery.findFirst({
@@ -152,12 +176,10 @@ export class DeliveryService {
     });
   
     if (!delivery) {
-     // console.error(`Delivery not found for ID: ${id}`);
       throw new NotFoundException('Delivery not found');
     }
   
     if (delivery.tenantId !== tenantId) {
-   //   console.error(`Delivery ID: ${id} not found for tenant ID: ${tenantId}`);
       throw new NotFoundException('Delivery not found for the tenant');
     }
   
@@ -182,8 +204,6 @@ export class DeliveryService {
         status: 'Negado',
       },
     });
-  
-    //console.log(`Delivery ID: ${id} rejected for tenant ID: ${tenantId} by user ID: ${userId}`);
   }
 
   async update(id: string, updateDeliveryDto: UpdateDeliveryDto, tenantId: string) {

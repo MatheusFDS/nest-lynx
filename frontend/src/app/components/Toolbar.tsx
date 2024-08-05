@@ -164,8 +164,8 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
                   <Collapse in={openRotinas} timeout="auto" unmountOnExit>
                     <List component="div" disablePadding>
                       <MenuItem onClick={() => handleNavigation('/deliveries')}>Entregas</MenuItem>
-                      <MenuItem onClick={() => handleNavigation('/routing')}>Gerar Rota</MenuItem>
-                      <MenuItem onClick={() => handleNavigation('/orders')}>Ordens</MenuItem>
+                      <MenuItem onClick={() => handleNavigation('/routing')}>Triagem</MenuItem>
+                      <MenuItem onClick={() => handleNavigation('/orders')}>Documentos</MenuItem>
                       <MenuItem onClick={() => handleNavigation('/payments')}>Pagamentos</MenuItem>
                     </List>
                   </Collapse>
@@ -203,13 +203,13 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
                         Triagem
                       </Button>
                       <Button color="inherit" onClick={() => handleNavigation('/deliveries')}>
-                        Expedição
+                        Entregas
                       </Button>
                       <Button color="inherit" onClick={() => handleNavigation('/orders')}>
                         Documentos
                       </Button>
                       <Button color="inherit" onClick={() => handleNavigation('/payments')}>
-                        Financeiro
+                        Pagamentos
                       </Button>
                       {userRole === 'admin' && (
                         <Button color="inherit" onClick={() => handleNavigation('/releases')}>

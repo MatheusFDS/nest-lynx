@@ -277,9 +277,6 @@ export const useMapboxComponent = (tenantId: string, orders: Order[], onClose: (
     calculateRouteService(tenantAddress, combinedOptimizedOrders, true, map, setDistance, setDuration, setOrderedOrders);
   };
   
-  
-  
-  
 
   const handleGenerateRoute = async () => {
     const token = localStorage.getItem('token')!;
@@ -290,7 +287,7 @@ export const useMapboxComponent = (tenantId: string, orders: Order[], onClose: (
       sorting: index + 1, // Adiciona a ordem dos pedidos
     }));
     const { totalWeight, totalValue } = calculateTotalWeightAndValue(orderedOrders);
-
+  
     const deliveryData = {
       motoristaId: selectedDriver,
       veiculoId: selectedVehicle,
@@ -300,10 +297,11 @@ export const useMapboxComponent = (tenantId: string, orders: Order[], onClose: (
       tenantId: tenantId,
       orders: ordersInDirection,
     };
-
+  
     try {
       const createdDelivery = await addDelivery(token, deliveryData);
-      if (createdDelivery.status === 'A liberar') {
+      alert(createdDelivery.message); // Mostre a mensagem retornada pelo backend
+      if (createdDelivery.delivery.status === 'A liberar') {
         alert('O roteiro foi enviado para liberação do gestor. Caso deseje adicionar mais pedidos posteriormente, exclua o roteiro.');
       } else {
         alert('Roteiro gerado com sucesso!');
@@ -312,10 +310,10 @@ export const useMapboxComponent = (tenantId: string, orders: Order[], onClose: (
       onClose();
     } catch (error: unknown) {
       if (error instanceof Error) {
-      //  console.error('Failed to create delivery:', error.message);
+        console.error('Failed to create delivery:', error.message);
         alert(`Erro: ${error.message}`);
       } else {
-      //  console.error('Failed to create delivery:', error);
+        console.error('Failed to create delivery:', error);
         alert('Erro: Falha ao criar roteiro.');
       }
     }

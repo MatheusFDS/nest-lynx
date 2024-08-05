@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { 
   Typography, 
   Container, 
-  Grid, 
   Paper, 
   TextField, 
   Button, 
@@ -61,7 +60,7 @@ const TenantPage: React.FC = () => {
       const { name, value } = e.target;
       setEditTenant({
         ...editTenant,
-        [name]: name === 'Pocentagem Mínima' || name === 'Valor Mínimo' || name === 'Documentos Qtd Mínima' || name === 'minPeso' ? parseFloat(value) : value,
+        [name]: value,
       });
     }
   };
@@ -74,7 +73,15 @@ const TenantPage: React.FC = () => {
 
     setLoading(true);
     try {
-      await updateTenant(token, editTenant.id, editTenant);
+      const tenantToSave = {
+        ...editTenant,
+        minDeliveryPercentage: Number(editTenant.minDeliveryPercentage),
+        minValue: Number(editTenant.minValue),
+        minOrders: Number(editTenant.minOrders),
+        minPeso: Number(editTenant.minPeso)
+      };
+
+      await updateTenant(token, editTenant.id, tenantToSave);
       loadTenants();
       setEditTenant(null);
     } catch (error) {
@@ -100,8 +107,11 @@ const TenantPage: React.FC = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>Nome</TableCell>
-                  <TableCell>Porcentagem</TableCell>
                   <TableCell>Endereço</TableCell>
+                  <TableCell>Porcentagem %</TableCell>
+                  <TableCell>Qtd Docs Min</TableCell>
+                  <TableCell>Vlr Min</TableCell>
+                  <TableCell>Peso Min</TableCell>
                   <TableCell>Ações</TableCell>
                 </TableRow>
               </TableHead>
@@ -109,8 +119,11 @@ const TenantPage: React.FC = () => {
                 {tenants.map((tenant) => (
                   <TableRow key={tenant.id}>
                     <TableCell>{tenant.name}</TableCell>
-                    <TableCell>{tenant.minDeliveryPercentage}</TableCell>
                     <TableCell>{tenant.address}</TableCell>
+                    <TableCell>{tenant.minDeliveryPercentage} %</TableCell>
+                    <TableCell>{tenant.minOrders}</TableCell>
+                    <TableCell>{tenant.minValue}</TableCell>
+                    <TableCell>{tenant.minPeso}</TableCell>
                     <TableCell>
                       <IconButton onClick={() => handleEdit(tenant)}>
                         <Edit />
@@ -161,7 +174,7 @@ const TenantPage: React.FC = () => {
                   label="Valor Min"
                   name="minValue"
                   type="number"
-                  value={editTenant.minValue || ''}
+                  value={editTenant.minValue}
                   onChange={handleChange}
                   fullWidth
                   margin="normal"
@@ -170,7 +183,7 @@ const TenantPage: React.FC = () => {
                   label="Qtd Documentos Min"
                   name="minOrders"
                   type="number"
-                  value={editTenant.minOrders || ''}
+                  value={editTenant.minOrders}
                   onChange={handleChange}
                   fullWidth
                   margin="normal"
@@ -179,17 +192,17 @@ const TenantPage: React.FC = () => {
                   label="Peso Min"
                   name="minPeso"
                   type="number"
-                  value={editTenant.minPeso || ''}
+                  value={editTenant.minPeso}
                   onChange={handleChange}
                   fullWidth
                   margin="normal"
                 />
               </Box>
               <Button variant="contained" color="primary" onClick={handleSave} style={{ marginTop: '16px' }}>
-                Save
+                Salvar
               </Button>
               <Button variant="contained" color="secondary" onClick={() => setEditTenant(null)} style={{ marginTop: '16px', marginLeft: '8px' }}>
-                Cancel
+                Cancelar
               </Button>
             </Paper>
           )}
