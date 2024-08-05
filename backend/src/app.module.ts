@@ -13,6 +13,7 @@ import { StatisticsModule } from './statistics/statistics.module';
 import { UserSettingsModule } from './user-settings/user-settings.module';
 import { TenantModule } from './tenant/tenant.module';
 import { MetadataModule } from './meta/metadata.module';
+import { RolesModule } from './roles/roles.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { MetadataModule } from './meta/metadata.module';
     DeliveryModule,
     UserSettingsModule,
     MetadataModule,
+    RolesModule,
   ],
 })
 export class AppModule {}

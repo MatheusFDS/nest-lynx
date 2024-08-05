@@ -4,6 +4,14 @@
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  getStoredToken,
+  getStoredRefreshToken,
+  decodeToken,
+  refreshAccessToken,
+  storeTokens,
+  clearTokens
+} from '../../services/authService';
 
 interface AuthContextProps {
   isLoggedIn: boolean;
@@ -22,16 +30,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const refreshToken = localStorage.getItem('refreshToken');
+    const storedToken = getStoredToken();
+    const refreshToken = getStoredRefreshToken();
     if (storedToken) {
       setToken(storedToken);
       setIsLoggedIn(true);
-      setUserRole(JSON.parse(atob(storedToken.split('.')[1])).role);
-      const tokenExp = JSON.parse(atob(storedToken.split('.')[1])).exp;
+      setUserRole(decodeToken(storedToken).role);
+      const tokenExp = decodeToken(storedToken).exp;
       const currentTime = Math.floor(Date.now() / 1000);
       if (tokenExp - currentTime < 300 && refreshToken) { // Ajuste o tempo para renovar o token antes de expirar
-        refreshAccessToken(refreshToken);
+        handleRefreshToken(refreshToken);
       }
     } else {
       setIsLoggedIn(false);
@@ -39,42 +47,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const refreshAccessToken = async (refreshToken: string) => {
+  const handleRefreshToken = async (refreshToken: string) => {
     try {
-      const response = await fetch('http://localhost:4000/auth/refresh-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to refresh token');
-      }
-
-      const data = await response.json();
-      const newToken = data.access_token;
-      localStorage.setItem('token', newToken);
+      const newToken = await refreshAccessToken(refreshToken);
       setToken(newToken);
-      setUserRole(JSON.parse(atob(newToken.split('.')[1])).role);
+      setUserRole(decodeToken(newToken).role);
     } catch (error) {
       console.error('Failed to refresh token:', error);
     }
   };
 
   const login = (token: string, refreshToken: string) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('refreshToken', refreshToken);
+    storeTokens(token, refreshToken);
     setToken(token);
     setIsLoggedIn(true);
-    setUserRole(JSON.parse(atob(token.split('.')[1])).role);
+    setUserRole(decodeToken(token).role);
     router.push('/statistics');
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
+    clearTokens();
     setToken(null);
     setIsLoggedIn(false);
     setUserRole(null);

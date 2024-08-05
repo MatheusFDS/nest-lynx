@@ -7,10 +7,11 @@ import { Payment, Delivery, Direction } from '../../types';
 import withAuth from '../hoc/withAuth';
 import { fetchPayments, updatePaymentStatus, groupPayments, ungroupPayments, fetchDeliveryDetails } from '../../services/paymentService';
 import { fetchDirections } from '../../services/auxiliaryService';
-import SearchFilters from '../components/payments/SearchFilters';
 import PaymentsTable from '../components/payments/PaymentsTable';
 import PaymentDetailsDialog from '../components/payments/PaymentDetailsDialog';
 import generateSummaryReport from '../components/payments/generateSummaryReport';
+import SkeletonLoader from '../components/SkeletonLoader';
+import { useLoading } from '../context/LoadingContext';
 
 const StyledButton = styled(Button)({
   margin: '8px 0',
@@ -22,7 +23,8 @@ const StyledButton = styled(Button)({
   },
 });
 
-const PaymentsPage = () => {
+const PaymentsPage: React.FC = () => {
+  const { setLoading, isLoading } = useLoading();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
   const [directions, setDirections] = useState<Direction[]>([]);
@@ -41,6 +43,7 @@ const PaymentsPage = () => {
 
   const loadPayments = useCallback(async () => {
     try {
+      setLoading(true);
       const [paymentsData, directionsData] = await Promise.all([
         fetchPayments(token),
         fetchDirections(token),
@@ -50,6 +53,8 @@ const PaymentsPage = () => {
       setDirections(directionsData);
     } catch (error) {
       handleError('Failed to fetch payments.');
+    } finally {
+      setLoading(false);
     }
   }, [token, searchTerm, startDate, endDate, grouped, paid, pending]);
 
@@ -240,11 +245,12 @@ const PaymentsPage = () => {
             control={<Checkbox checked={pending} onChange={handleStatusFilterChange} name="pending" />}
             label="Pendentes"
           />
-          <Badge badgeContent={filteredPayments.length} color="primary" showZero>
-          </Badge>
+          <Badge badgeContent={filteredPayments.length} color="primary" showZero />
         </Grid>
       </Grid>
-      {filteredPayments.length > 0 ? (
+      {isLoading ? (
+        <SkeletonLoader />
+      ) : filteredPayments.length > 0 ? (
         <>
           <Grid container spacing={2} style={{ marginBottom: '16px' }}>
             <Grid item xs={12} sm={6}>

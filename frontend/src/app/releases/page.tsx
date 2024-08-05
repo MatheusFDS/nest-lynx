@@ -1,17 +1,20 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, Grid, TextField, Button } from '@mui/material';
+import { Container, Typography } from '@mui/material';
 import { fetchDeliveries, releaseDelivery, rejectRelease } from '../../services/deliveryService';
-import { Delivery, Order } from '../../types';
+import { Delivery } from '../../types';
 import withAuth from '../hoc/withAuth';
 import RealeseTable from '../components/realese/RealeseTable';
 import ReleaseDialog from '../components/realese/ReleaseDialog';
 import RejectDialog from '../components/realese/RejectDialog';
 import DetailsDialog from '../components/realese/DetailsDialog';
 import FilterBar from '../components/realese/FilterBar';
+import SkeletonLoader from '../components/SkeletonLoader';
+import { useLoading } from '../context/LoadingContext';
 
 const ReleasePage: React.FC = () => {
+  const { setLoading, isLoading } = useLoading();
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -27,10 +30,13 @@ const ReleasePage: React.FC = () => {
 
   const loadDeliveries = async () => {
     try {
+      setLoading(true);
       const deliveriesData = await fetchDeliveries(token);
       setDeliveries(deliveriesData.filter((delivery: Delivery) => delivery.status === statusFilter));
     } catch (error: unknown) {
       setError('Failed to load deliveries.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,11 +70,14 @@ const ReleasePage: React.FC = () => {
     if (!selectedDelivery) return;
 
     try {
+      setLoading(true);
       await releaseDelivery(token, selectedDelivery.id);
       setReleaseDialogOpen(false);
       loadDeliveries();
     } catch (error: unknown) {
       setError('Failed to release delivery.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -76,11 +85,14 @@ const ReleasePage: React.FC = () => {
     if (!selectedDelivery || !rejectReason) return;
 
     try {
+      setLoading(true);
       await rejectRelease(token, selectedDelivery.id, rejectReason);
       setRejectDialogOpen(false);
       loadDeliveries();
     } catch (error: unknown) {
       setError('Failed to reject delivery.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -118,41 +130,47 @@ const ReleasePage: React.FC = () => {
 
   return (
     <Container style={{ marginTop: '24px' }}>
-      {error && <Typography color="error">{error}</Typography>}
-      <FilterBar
-        searchTerm={searchTerm}
-        handleSearch={handleSearch}
-        dateRange={dateRange}
-        handleDateFilter={handleDateFilter}
-        setStatusFilter={setStatusFilter}
-      />
-      <RealeseTable
-        deliveries={filteredDeliveries}
-        handleDetailsDialogOpen={handleDetailsDialogOpen}
-        handleReleaseDialogOpen={handleReleaseDialogOpen}
-        handleRejectDialogOpen={handleRejectDialogOpen}
-      />
-      {selectedDelivery && (
+      {isLoading ? (
+        <SkeletonLoader />
+      ) : (
         <>
-          <ReleaseDialog
-            open={releaseDialogOpen}
-            onClose={handleDialogClose}
-            delivery={selectedDelivery}
-            onRelease={handleRelease}
+          {error && <Typography color="error">{error}</Typography>}
+          <FilterBar
+            searchTerm={searchTerm}
+            handleSearch={handleSearch}
+            dateRange={dateRange}
+            handleDateFilter={handleDateFilter}
+            setStatusFilter={setStatusFilter}
           />
-          <RejectDialog
-            open={rejectDialogOpen}
-            onClose={handleDialogClose}
-            delivery={selectedDelivery}
-            rejectReason={rejectReason}
-            setRejectReason={setRejectReason}
-            onReject={handleReject}
+          <RealeseTable
+            deliveries={filteredDeliveries}
+            handleDetailsDialogOpen={handleDetailsDialogOpen}
+            handleReleaseDialogOpen={handleReleaseDialogOpen}
+            handleRejectDialogOpen={handleRejectDialogOpen}
           />
-          <DetailsDialog
-            open={detailsDialogOpen}
-            onClose={handleDialogClose}
-            delivery={selectedDelivery}
-          />
+          {selectedDelivery && (
+            <>
+              <ReleaseDialog
+                open={releaseDialogOpen}
+                onClose={handleDialogClose}
+                delivery={selectedDelivery}
+                onRelease={handleRelease}
+              />
+              <RejectDialog
+                open={rejectDialogOpen}
+                onClose={handleDialogClose}
+                delivery={selectedDelivery}
+                rejectReason={rejectReason}
+                setRejectReason={setRejectReason}
+                onReject={handleReject}
+              />
+              <DetailsDialog
+                open={detailsDialogOpen}
+                onClose={handleDialogClose}
+                delivery={selectedDelivery}
+              />
+            </>
+          )}
         </>
       )}
     </Container>

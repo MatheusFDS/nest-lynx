@@ -41,7 +41,9 @@ import 'jspdf-autotable';
 import withAuth from '../hoc/withAuth';
 import { fetchOrders, uploadOrders, fetchUserSettings, updateUserSettings } from '../../services/orderService';
 import { Order } from '../../types';
-import { useTheme } from '../context/ThemeContext'; // Importar o contexto de tema
+import { useTheme } from '../context/ThemeContext';
+import SkeletonLoader from '../components/SkeletonLoader'; // Importar o SkeletonLoader
+import { useLoading } from '../context/LoadingContext'; // Importar o LoadingContext
 
 enum Field {
   Id = 'id',
@@ -116,6 +118,7 @@ const StyledButton = styled(Button)({
 });
 
 const OrdersPage: React.FC = () => {
+  const { setLoading, isLoading } = useLoading();
   const [file, setFile] = useState<File | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
@@ -152,9 +155,13 @@ const OrdersPage: React.FC = () => {
 
   const loadOrders = async () => {
     try {
+      setLoading(true);
       const data = await fetchOrders(token);
       setOrders(data);
+      setFilteredOrders(data);
+      setLoading(false);
     } catch (error) {
+      setLoading(false);
       setError('Failed to fetch orders.');
     }
   };
@@ -283,7 +290,7 @@ const OrdersPage: React.FC = () => {
       return value;
     },
   }));
-  
+
   const onGridReady = (params: any) => {
     setGridApi(params.api);
   };
@@ -324,11 +331,11 @@ const OrdersPage: React.FC = () => {
     if (!gridApi) return;
     const rowData: any[] = [];
     gridApi.forEachNodeAfterFilterAndSort((node: any) => rowData.push(node.data));
-    
+
     const worksheet = utils.json_to_sheet(rowData);
     const workbook = utils.book_new();
     utils.book_append_sheet(workbook, worksheet, 'Orders');
-    
+
     writeFile(workbook, 'orders.xlsx');
   };
 
@@ -349,7 +356,7 @@ const OrdersPage: React.FC = () => {
 
       doc.text(`Order ${index + 1}`, margin, yPosition);
       yPosition += lineSpacing;
-      
+
       Object.entries(row).forEach(([key, value]) => {
         if (key in Field) {
           const displayValue = (key === 'Data' || key === 'DataFinalizacao') ? formatDateTimeBR(value as string) : value;
@@ -427,10 +434,9 @@ const OrdersPage: React.FC = () => {
             control={<Checkbox checked={statusFilters.Finalizado} onChange={() => handleStatusFilterChange('Finalizado')} />}
             label="Finalizado"
           />
-                  <Badge badgeContent={filteredOrders.length} color="primary" showZero>
-                  </Badge>
+          <Badge badgeContent={filteredOrders.length} color="primary" showZero>
+          </Badge>
         </Grid>
-
       </Grid>
       <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" mt={2} mb={2}>
         <Box display="flex" gap={2} alignItems="center">
@@ -494,7 +500,9 @@ const OrdersPage: React.FC = () => {
           </Menu>
         </Box>
       </Box>
-      {filteredOrders.length > 0 ? (
+      {isLoading ? (
+        <SkeletonLoader />
+      ) : filteredOrders.length > 0 ? (
         <Paper elevation={3}>
           <div className={isDarkMode ? "ag-theme-balham-dark" : "ag-theme-balham"} style={{ height: 800, width: '100%', marginTop: '16px', overflowY: 'auto' }}>
             <AgGridReact

@@ -20,8 +20,10 @@ import { Order, Driver, Vehicle, Category, Delivery, Direction } from '../../typ
 import withAuth from '../hoc/withAuth';
 import DeliveryTable from '../components/delivery/DeliveryTable';
 import EditDeliveryDialog from '../components/delivery/EditDeliveryDialog';
-import ConsultOrder from '../components/delivery/ConsultOrder'; // Alterado para ConsultOrder
+import ConsultOrder from '../components/delivery/ConsultOrder';
 import ConfirmDialog from '../components/delivery/ConfirmDialog';
+import SkeletonLoader from '../components/SkeletonLoader';
+import { useLoading } from '../context/LoadingContext'; // Importar o LoadingContext
 
 const StyledButton = styled(Button)({
   margin: '8px',
@@ -54,10 +56,12 @@ const DeliveriesPage: React.FC = () => {
   const [showToRelease, setShowToRelease] = useState<boolean>(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState<boolean>(false);
   const [confirmDialogAction, setConfirmDialogAction] = useState<() => void>(() => {});
+  const { isLoading, setLoading } = useLoading(); // Usar o contexto de carregamento
 
   const token = localStorage.getItem('token') || '';
 
   const loadInitialData = async () => {
+    setLoading(true);
     try {
       const [deliveriesData, driversData, vehiclesData, categoriesData, directionsData] = await Promise.all([
         fetchDeliveries(token),
@@ -74,6 +78,8 @@ const DeliveriesPage: React.FC = () => {
       setDirections(directionsData);
     } catch (error: unknown) {
       setError('Failed to load initial data.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -342,7 +348,9 @@ const DeliveriesPage: React.FC = () => {
         </Grid>
       </Grid>
       <Paper elevation={3}>
-        {filteredDeliveries.length > 0 ? (
+        {isLoading ? (
+          <SkeletonLoader />
+        ) : filteredDeliveries.length > 0 ? (
           <DeliveryTable
             deliveries={filteredDeliveries}
             drivers={drivers}
@@ -351,7 +359,7 @@ const DeliveriesPage: React.FC = () => {
             getRegionName={getRegionName}
             handleEditDelivery={handleEditDelivery}
             handleDeleteDelivery={handleDeleteDelivery}
-            handleViewOrders={handleDetailsDialogOpen} // Alterado para handleDetailsDialogOpen
+            handleViewOrders={handleDetailsDialogOpen}
           />
         ) : (
           <Typography align="center" style={{ padding: '16px' }}>
@@ -378,7 +386,7 @@ const DeliveriesPage: React.FC = () => {
         calculateTotalWeightAndValue={calculateTotalWeightAndValue}
         handleRemoveOrderFromDelivery={handleRemoveOrderFromDelivery}
       />
-      <ConsultOrder // Alterado para ConsultOrder
+      <ConsultOrder
         detailsDialogOpen={detailsDialogOpen}
         handleDetailsDialogClose={handleDetailsDialogClose}
         orders={currentDelivery ? currentDelivery.orders : []}

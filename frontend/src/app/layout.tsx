@@ -1,4 +1,3 @@
-// src/layout/Layout.tsx
 'use client';
 
 import React, { ReactNode, useEffect, useState } from 'react';
@@ -12,6 +11,8 @@ import { ThemeProvider } from './context/ThemeContext'; // Importe seu ThemeProv
 import { UserSettingsProvider, useUserSettings } from './context/UserSettingsContext'; // Importe o UserSettingsProvider
 import { darkTheme, lightTheme } from './theme/theme';
 import loginTheme from './theme/loginTheme';
+import { LoadingProvider, useLoading } from './context/LoadingContext'; // Importe o LoadingProvider
+import LinearDeterminate from './components/LinearDeterminate'; // Importe o componente LinearDeterminate
 
 interface LayoutProps {
   children: ReactNode;
@@ -19,10 +20,12 @@ interface LayoutProps {
 
 const LayoutContent = ({ children }: LayoutProps) => {
   const { isLoggedIn } = useAuth();
+  const { isLoading } = useLoading(); // Use the loading context
 
   return (
     <>
       {isLoggedIn && <Toolbar title="MATHEX FLOW" />}
+      {isLoading && <LinearDeterminate />} {/* Display the progress bar when loading */}
       <div id="__next" style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
         {children}
       </div>
@@ -41,9 +44,11 @@ const Layout = ({ children }: LayoutProps) => {
       <body style={{ margin: 0, height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column' }}>
         <AuthProvider>
           <UserSettingsProvider>
-            <ThemeProvider>
-              <AppContent>{children}</AppContent>
-            </ThemeProvider>
+            <LoadingProvider>
+              <ThemeProvider>
+                <AppContent>{children}</AppContent>
+              </ThemeProvider>
+            </LoadingProvider>
           </UserSettingsProvider>
         </AuthProvider>
       </body>
@@ -54,7 +59,14 @@ const Layout = ({ children }: LayoutProps) => {
 const AppContent = ({ children }: LayoutProps) => {
   const pathname = usePathname();
   const { settings } = useUserSettings();
+  const { setLoading } = useLoading();
   const [currentTheme, setCurrentTheme] = useState(lightTheme);
+
+  useEffect(() => {
+    setLoading(true);
+    const timeout = setTimeout(() => setLoading(false), 500); // Simulate loading time
+    return () => clearTimeout(timeout);
+  }, [pathname, setLoading]);
 
   useEffect(() => {
     const isLoginPage = pathname === '/login';

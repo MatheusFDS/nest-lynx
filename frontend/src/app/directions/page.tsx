@@ -9,6 +9,8 @@ import { Direction } from '../../types';
 import withAuth from '../hoc/withAuth';
 import { fetchDirections, addDirection, updateDirection, deleteDirection } from '../../services/directionsService';
 import { Delete, Edit } from '@mui/icons-material';
+import SkeletonLoader from '../components/SkeletonLoader';
+import { useLoading } from '../context/LoadingContext'; // Importar o LoadingContext
 
 const DirectionsPage: React.FC = () => {
   const [directions, setDirections] = useState<Direction[]>([]);
@@ -25,10 +27,12 @@ const DirectionsPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
   const [dialogContent, setDialogContent] = useState<string>('');
+  const { isLoading, setLoading } = useLoading(); // Usar o contexto de carregamento
 
   const token = localStorage.getItem('token') || '';
 
   const loadDirections = async () => {
+    setLoading(true);
     try {
       const data = await fetchDirections(token);
       data.sort((a, b) => a.rangeInicio.localeCompare(b.rangeInicio));
@@ -36,6 +40,8 @@ const DirectionsPage: React.FC = () => {
       setFilteredDirections(data);
     } catch (error) {
       handleError('Falha ao buscar direções.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -76,21 +82,17 @@ const DirectionsPage: React.FC = () => {
         valorDirecao: currentDirection.valorDirecao!,
         regiao: currentDirection.regiao!,
       };
-  
+
       if (!selectedDirection && !validateCepRange(currentDirection.rangeInicio!, currentDirection.rangeFim!)) {
         return;
       }
-  
-      console.log("Direction to Save:", directionToSave);
-  
+
       if (selectedDirection) {
-        console.log("Updating Direction with ID:", selectedDirection.id);
         await updateDirection(token, selectedDirection.id, directionToSave);
       } else {
-        console.log("Adding New Direction");
         await addDirection(token, directionToSave);
       }
-  
+
       setCurrentDirection({
         rangeInicio: '',
         rangeFim: '',
@@ -102,7 +104,6 @@ const DirectionsPage: React.FC = () => {
       loadDirections();
     } catch (error) {
       handleError('Falha ao enviar direção.');
-      console.error("Error while adding/updating direction:", error);
     }
   };
 
@@ -194,37 +195,41 @@ const DirectionsPage: React.FC = () => {
           <Button onClick={handleFormClose}>Cancelar</Button>
         </Paper>
       )}
-      <TableContainer component={Paper} style={{ marginTop: '16px' }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Range Início</TableCell>
-              <TableCell>Range Fim</TableCell>
-              <TableCell>Valor Direção</TableCell>
-              <TableCell>Região</TableCell>
-              <TableCell>Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredDirections.map((direction) => (
-              <TableRow key={direction.id}>
-                <TableCell>{direction.rangeInicio}</TableCell>
-                <TableCell>{direction.rangeFim}</TableCell>
-                <TableCell>{direction.valorDirecao}</TableCell>
-                <TableCell>{direction.regiao}</TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleEdit(direction)}>
-                    <Edit />
-                  </IconButton>
-                  <IconButton onClick={() => handleDelete(direction.id)}>
-                    <Delete />
-                  </IconButton>
-                </TableCell>
+      {isLoading ? (
+        <SkeletonLoader />
+      ) : (
+        <TableContainer component={Paper} style={{ marginTop: '16px' }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Range Início</TableCell>
+                <TableCell>Range Fim</TableCell>
+                <TableCell>Valor Direção</TableCell>
+                <TableCell>Região</TableCell>
+                <TableCell>Ações</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {filteredDirections.map((direction) => (
+                <TableRow key={direction.id}>
+                  <TableCell>{direction.rangeInicio}</TableCell>
+                  <TableCell>{direction.rangeFim}</TableCell>
+                  <TableCell>{direction.valorDirecao}</TableCell>
+                  <TableCell>{direction.regiao}</TableCell>
+                  <TableCell>
+                    <IconButton onClick={() => handleEdit(direction)}>
+                      <Edit />
+                    </IconButton>
+                    <IconButton onClick={() => handleDelete(direction.id)}>
+                      <Delete />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
       <Dialog
         open={dialogOpen}
         onClose={handleCloseDialog}

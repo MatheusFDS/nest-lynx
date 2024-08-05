@@ -15,6 +15,8 @@ import useRoutingData from '../hooks/useRoutingData';
 import OrderDetailsDialog from '../components/select-routings/OrderDetailsDialog';
 import CreateRouteTable from '../components/select-routings/sub-routing/CreateRouteSection';
 import { fetchTenantData } from '../../services/auxiliaryService'; // Importar a função de serviço
+import SkeletonLoader from '../components/SkeletonLoader'; // Importar o SkeletonLoader
+import { useLoading } from '../context/LoadingContext';
 
 interface SelectedOrders {
   [key: string]: Order[];
@@ -22,6 +24,7 @@ interface SelectedOrders {
 }
 
 const RoutingPage: React.FC = () => {
+  const { setLoading, isLoading } = useLoading();
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [expandedOrdersDialogOpen, setExpandedOrdersDialogOpen] = useState(false);
   const [currentDirectionId, setCurrentDirectionId] = useState<string | null>(null);
@@ -47,14 +50,21 @@ const RoutingPage: React.FC = () => {
   useEffect(() => {
     const fetchTenant = async () => {
       if (token) {
-        const tenants = await fetchTenantData(token);
-        if (tenants && tenants.length > 0) {
-          setTenantId(tenants[0].id);
+        setLoading(true);
+        try {
+          const tenants = await fetchTenantData(token);
+          if (tenants && tenants.length > 0) {
+            setTenantId(tenants[0].id);
+          }
+        } catch (error) {
+          console.error('Failed to fetch tenant data:', error);
+        } finally {
+          setLoading(false);
         }
       }
     };
     fetchTenant();
-  }, [token]);
+  }, [token, setLoading]);
 
   useEffect(() => {
     const ordersByDirection: SelectedOrders = directions.reduce((acc, direction) => {
@@ -158,57 +168,63 @@ const RoutingPage: React.FC = () => {
 
   return (
     <Container style={{ marginTop: '24px' }}>
-      <Typography style={{ marginTop: '10px', marginBottom: '10px' }}>
-        {error && <Typography color="error">{error}</Typography>}
-      </Typography>
-
-      <Button
-        variant="outlined"
-        onClick={toggleLayout}
-        style={{ marginBottom: '16px' }}
-      >
-        {useTableLayout ? 'Usar Layout de Arrastar e Soltar' : 'Usar Layout de Tabela'}
-      </Button>
-
-      {useTableLayout ? (
-        <CreateRouteTable orders={orders} directions={directions} handleShowMap={handleShowMapFromTable} />
+      {isLoading ? (
+        <SkeletonLoader />
       ) : (
         <>
-          <DragDropContext onDragEnd={onDragEnd}>
-            <OrderSection
-              directions={directions}
-              selectedOrders={selectedOrders}
-              handleShowMap={handleShowMapFromSection}
-              handleExpandedOrdersDialogOpen={handleExpandedOrdersDialogOpen}
-              handleDetailsDialogOpen={handleDetailsDialogOpen}
-            />
-          </DragDropContext>
+          <Typography style={{ marginTop: '10px', marginBottom: '10px' }}>
+            {error && <Typography color="error">{error}</Typography>}
+          </Typography>
 
-          <DirectionsSection
-            open={expandedOrdersDialogOpen}
-            onClose={handleExpandedOrdersDialogClose}
-            orders={selectedOrders[currentDirectionId!] || []}
-            handleDetailsDialogOpen={handleDetailsDialogOpen}
+          <Button
+            variant="outlined"
+            onClick={toggleLayout}
+            style={{ marginBottom: '16px' }}
+          >
+            {useTableLayout ? 'Usar Layout de Arrastar e Soltar' : 'Usar Layout de Tabela'}
+          </Button>
+
+          {useTableLayout ? (
+            <CreateRouteTable orders={orders} directions={directions} handleShowMap={handleShowMapFromTable} />
+          ) : (
+            <>
+              <DragDropContext onDragEnd={onDragEnd}>
+                <OrderSection
+                  directions={directions}
+                  selectedOrders={selectedOrders}
+                  handleShowMap={handleShowMapFromSection}
+                  handleExpandedOrdersDialogOpen={handleExpandedOrdersDialogOpen}
+                  handleDetailsDialogOpen={handleDetailsDialogOpen}
+                />
+              </DragDropContext>
+
+              <DirectionsSection
+                open={expandedOrdersDialogOpen}
+                onClose={handleExpandedOrdersDialogClose}
+                orders={selectedOrders[currentDirectionId!] || []}
+                handleDetailsDialogOpen={handleDetailsDialogOpen}
+              />
+            </>
+          )}
+
+          {showMap && (
+            <MapSection
+              showMap={showMap}
+              ordersForMap={ordersForMap}
+              tenantId={tenantId}
+              isDarkMode={isDarkMode}
+              handleGenerateRouteFromMap={handleGenerateRouteFromMap}
+              handleCloseMap={handleCloseMap}
+            />
+          )}
+
+          <OrderDetailsDialog
+            open={detailsDialogOpen}
+            onClose={handleDetailsDialogClose}
+            order={selectedOrder}
           />
         </>
       )}
-
-      {showMap && (
-        <MapSection
-          showMap={showMap}
-          ordersForMap={ordersForMap}
-          tenantId={tenantId}
-          isDarkMode={isDarkMode}
-          handleGenerateRouteFromMap={handleGenerateRouteFromMap}
-          handleCloseMap={handleCloseMap}
-        />
-      )}
-
-      <OrderDetailsDialog
-        open={detailsDialogOpen}
-        onClose={handleDetailsDialogClose}
-        order={selectedOrder}
-      />
     </Container>
   );
 };

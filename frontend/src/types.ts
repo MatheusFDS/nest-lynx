@@ -116,6 +116,8 @@ export interface Approval {
   userName?: string; // Adicionado para exibir o nome do usuário
 }
 
+
+
 export interface Payment {
   id: string;
   amount: number;
@@ -135,11 +137,17 @@ export interface Payment {
 export interface User {
   id: string;
   email: string;
-  role: string;
+  roleId: string;
   name: string;
+  password: string;
   tenantId: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Role {
+  id: string;
+  name: string;
 }
 
 export interface Tenant {

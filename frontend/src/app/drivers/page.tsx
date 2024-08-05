@@ -6,6 +6,8 @@ import { Driver } from '../../types';
 import withAuth from '../hoc/withAuth';
 import { fetchDrivers, addDriver, updateDriver, deleteDriver } from '../../services/driverService';
 import { Delete, Edit } from '@mui/icons-material';
+import SkeletonLoader from '../components/SkeletonLoader';
+import { useLoading } from '../context/LoadingContext'; // Importar o LoadingContext
 
 const DriversPage: React.FC = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -15,16 +17,20 @@ const DriversPage: React.FC = () => {
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const { isLoading, setLoading } = useLoading(); // Usar o contexto de carregamento
 
   const token = localStorage.getItem('token') || '';
 
   const loadDrivers = async () => {
+    setLoading(true);
     try {
       const data = await fetchDrivers(token);
       setDrivers(data);
       setFilteredDrivers(data);
     } catch (error) {
       setError('Failed to fetch drivers.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -41,6 +47,7 @@ const DriversPage: React.FC = () => {
   };
 
   const handleAddDriver = async () => {
+    setLoading(true);
     try {
       if (selectedDriver) {
         await updateDriver(token, selectedDriver.id, newDriver as Driver);
@@ -50,9 +57,11 @@ const DriversPage: React.FC = () => {
       setNewDriver({});
       setSelectedDriver(null);
       setShowForm(false);
-      loadDrivers();
+      await loadDrivers();
     } catch (error) {
       setError('Failed to submit driver.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -63,11 +72,14 @@ const DriversPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    setLoading(true);
     try {
       await deleteDriver(token, id);
       loadDrivers();
     } catch (error) {
       setError('Failed to delete driver.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -81,7 +93,7 @@ const DriversPage: React.FC = () => {
     <Container>
       {error && <Typography color="error">{error}</Typography>}
       <TextField
-        label="Search Drivers"
+        label="Buscar"
         value={searchTerm}
         onChange={handleSearch}
         fullWidth
@@ -93,14 +105,14 @@ const DriversPage: React.FC = () => {
       {showForm && (
         <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
           <TextField
-            label="Driver Name"
+            label="Nome do Motorista"
             value={newDriver.name || ''}
             onChange={(e) => setNewDriver({ ...newDriver, name: e.target.value })}
             fullWidth
             margin="normal"
           />
           <TextField
-            label="License"
+            label="CNH"
             value={newDriver.license || ''}
             onChange={(e) => setNewDriver({ ...newDriver, license: e.target.value })}
             fullWidth
@@ -116,38 +128,42 @@ const DriversPage: React.FC = () => {
           <Button variant="contained" color="primary" onClick={handleAddDriver}>
             {selectedDriver ? 'Atualizar Motorista' : 'Adicionar Motorista'}
           </Button>
-          <Button onClick={handleFormClose}>Cancel</Button>
+          <Button onClick={handleFormClose}>Cancelar</Button>
         </Paper>
       )}
-      <TableContainer component={Paper} style={{ marginTop: '16px' }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>License</TableCell>
-              <TableCell>CPF</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredDrivers.map((driver) => (
-              <TableRow key={driver.id}>
-                <TableCell>{driver.name}</TableCell>
-                <TableCell>{driver.license}</TableCell>
-                <TableCell>{driver.cpf}</TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleEdit(driver)}>
-                    <Edit />
-                  </IconButton>
-                  <IconButton onClick={() => handleDelete(driver.id)}>
-                    <Delete />
-                  </IconButton>
-                </TableCell>
+      {isLoading ? (
+        <SkeletonLoader />
+      ) : (
+        <TableContainer component={Paper} style={{ marginTop: '16px' }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Nome</TableCell>
+                <TableCell>CNH</TableCell>
+                <TableCell>CPF</TableCell>
+                <TableCell>Ações</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {filteredDrivers.map((driver) => (
+                <TableRow key={driver.id}>
+                  <TableCell>{driver.name}</TableCell>
+                  <TableCell>{driver.license}</TableCell>
+                  <TableCell>{driver.cpf}</TableCell>
+                  <TableCell>
+                    <IconButton onClick={() => handleEdit(driver)}>
+                      <Edit />
+                    </IconButton>
+                    <IconButton onClick={() => handleDelete(driver.id)}>
+                      <Delete />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
     </Container>
   );
 };

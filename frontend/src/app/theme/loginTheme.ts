@@ -1,10 +1,10 @@
 import { createTheme } from '@mui/material/styles';
 
 const futuristicPalette = {
-  primary: '#0D7377',
+  primary: '#1F5090',
   secondary: '#14FFEC',
-  background: '#323232',
-  surface: '#212121',
+  background: '#040714',
+  surface: '#040714',
   textPrimary: '#E1E1E1',
   textSecondary: '#A1A1A1',
 };

@@ -1,11 +1,16 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import {
+  Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow
+} from '@mui/material';
 import { Category } from '../../types';
 import withAuth from '../hoc/withAuth';
 import { fetchCategories, addCategory, updateCategory, deleteCategory } from '../../services/categoryService';
 import { Delete, Edit } from '@mui/icons-material';
+import SkeletonLoader from '../components/SkeletonLoader';
+import { useLoading } from '../context/LoadingContext'; // Importar o LoadingContext
 
 const CategoriesPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -15,16 +20,20 @@ const CategoriesPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const { isLoading, setLoading } = useLoading(); // Usar o contexto de carregamento
 
   const token = localStorage.getItem('token') || '';
 
   const loadCategories = async () => {
+    setLoading(true);
     try {
       const data = await fetchCategories(token);
       setCategories(data);
       setFilteredCategories(data);
     } catch (error) {
       setError('Failed to fetch categories.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -81,7 +90,7 @@ const CategoriesPage: React.FC = () => {
     <Container>
       {error && <Typography color="error">{error}</Typography>}
       <TextField
-        label="Search Categories"
+        label="Buscar"
         value={searchTerm}
         onChange={handleSearch}
         fullWidth
@@ -93,14 +102,14 @@ const CategoriesPage: React.FC = () => {
       {showForm && (
         <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
           <TextField
-            label="Category Name"
+            label="Nome da Categoria"
             value={newCategory.name || ''}
             onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
             fullWidth
             margin="normal"
           />
           <TextField
-            label="Value"
+            label="Valor"
             value={newCategory.valor !== undefined ? newCategory.valor : ''}
             onChange={(e) => setNewCategory({ ...newCategory, valor: parseFloat(e.target.value) })}
             type="number"
@@ -110,36 +119,40 @@ const CategoriesPage: React.FC = () => {
           <Button variant="contained" color="primary" onClick={handleAddCategory}>
             {selectedCategory ? 'Atualizar Categoria' : 'Adicionar Categoria'}
           </Button>
-          <Button onClick={handleFormClose}>Cancel</Button>
+          <Button onClick={handleFormClose}>Cancelar</Button>
         </Paper>
       )}
-      <TableContainer component={Paper} style={{ marginTop: '16px' }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Value</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredCategories.map((category) => (
-              <TableRow key={category.id}>
-                <TableCell>{category.name}</TableCell>
-                <TableCell>{category.valor}</TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleEdit(category)}>
-                    <Edit />
-                  </IconButton>
-                  <IconButton onClick={() => handleDelete(category.id)}>
-                    <Delete />
-                  </IconButton>
-                </TableCell>
+      {isLoading ? (
+        <SkeletonLoader />
+      ) : (
+        <TableContainer component={Paper} style={{ marginTop: '16px' }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Nome</TableCell>
+                <TableCell>Valor</TableCell>
+                <TableCell>Ações</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {filteredCategories.map((category) => (
+                <TableRow key={category.id}>
+                  <TableCell>{category.name}</TableCell>
+                  <TableCell>{category.valor}</TableCell>
+                  <TableCell>
+                    <IconButton onClick={() => handleEdit(category)}>
+                      <Edit />
+                    </IconButton>
+                    <IconButton onClick={() => handleDelete(category.id)}>
+                      <Delete />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
     </Container>
   );
 };

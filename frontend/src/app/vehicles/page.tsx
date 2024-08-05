@@ -1,15 +1,18 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
-import { Vehicle, Driver, Category } from '../../types'; // Importando os tipos
+import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Select, MenuItem, InputLabel, FormControl, Box } from '@mui/material';
+import { Vehicle, Driver, Category } from '../../types';
 import withAuth from '../hoc/withAuth';
 import { fetchVehicles, addVehicle, updateVehicle, deleteVehicle } from '../../services/vehicleService';
-import { fetchDrivers } from '../../services/driverService'; // Certifique-se de que estas funções existem
-import { fetchCategories } from '../../services/categoryService'; // Certifique-se de que estas funções existem
+import { fetchDrivers } from '../../services/driverService';
+import { fetchCategories } from '../../services/categoryService';
 import { Delete, Edit } from '@mui/icons-material';
+import { useLoading } from '../context/LoadingContext';
+import SkeletonLoader from '../components/SkeletonLoader';
 
 const VehiclesPage: React.FC = () => {
+  const { setLoading, isLoading } = useLoading();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -23,30 +26,39 @@ const VehiclesPage: React.FC = () => {
   const token = localStorage.getItem('token') || '';
 
   const loadVehicles = async () => {
+    setLoading(true);
     try {
       const data = await fetchVehicles(token);
       setVehicles(data);
       setFilteredVehicles(data);
     } catch (error) {
       setError('Failed to fetch vehicles.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const loadDrivers = async () => {
+    setLoading(true);
     try {
       const data = await fetchDrivers(token);
       setDrivers(data);
     } catch (error) {
       setError('Failed to fetch drivers.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const loadCategories = async () => {
+    setLoading(true);
     try {
       const data = await fetchCategories(token);
       setCategories(data);
     } catch (error) {
       setError('Failed to fetch categories.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -105,7 +117,7 @@ const VehiclesPage: React.FC = () => {
     <Container>
       {error && <Typography color="error">{error}</Typography>}
       <TextField
-        label="Search Vehicles"
+        label="Buscar"
         value={searchTerm}
         onChange={handleSearch}
         fullWidth
@@ -117,21 +129,21 @@ const VehiclesPage: React.FC = () => {
       {showForm && (
         <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
           <TextField
-            label="Vehicle Model"
+            label="Veiculo Modelo"
             value={newVehicle.model || ''}
             onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
             fullWidth
             margin="normal"
           />
           <TextField
-            label="Plate"
+            label="Placa"
             value={newVehicle.plate || ''}
             onChange={(e) => setNewVehicle({ ...newVehicle, plate: e.target.value })}
             fullWidth
             margin="normal"
           />
           <FormControl fullWidth margin="normal">
-            <InputLabel>Driver</InputLabel>
+            <InputLabel>Motorista</InputLabel>
             <Select
               value={newVehicle.driverId || ''}
               onChange={(e) => setNewVehicle({ ...newVehicle, driverId: e.target.value })}
@@ -144,7 +156,7 @@ const VehiclesPage: React.FC = () => {
             </Select>
           </FormControl>
           <FormControl fullWidth margin="normal">
-            <InputLabel>Category</InputLabel>
+            <InputLabel>Categoria</InputLabel>
             <Select
               value={newVehicle.categoryId || ''}
               onChange={(e) => setNewVehicle({ ...newVehicle, categoryId: e.target.value })}
@@ -159,40 +171,44 @@ const VehiclesPage: React.FC = () => {
           <Button variant="contained" color="primary" onClick={handleAddVehicle}>
             {selectedVehicle ? 'Atualizar Veiculo' : 'Adicionar Veiculo'}
           </Button>
-          <Button onClick={handleFormClose}>Cancel</Button>
+          <Button onClick={handleFormClose}>Cancelar</Button>
         </Paper>
       )}
-      <TableContainer component={Paper} style={{ marginTop: '16px' }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Model</TableCell>
-              <TableCell>Plate</TableCell>
-              <TableCell>Driver</TableCell>
-              <TableCell>Category</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredVehicles.map((vehicle) => (
-              <TableRow key={vehicle.id}>
-                <TableCell>{vehicle.model}</TableCell>
-                <TableCell>{vehicle.plate}</TableCell>
-                <TableCell>{drivers.find(driver => driver.id === vehicle.driverId)?.name}</TableCell>
-                <TableCell>{categories.find(category => category.id === vehicle.categoryId)?.name}</TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleEdit(vehicle)}>
-                    <Edit />
-                  </IconButton>
-                  <IconButton onClick={() => handleDelete(vehicle.id)}>
-                    <Delete />
-                  </IconButton>
-                </TableCell>
+      {isLoading ? (
+        <SkeletonLoader />
+      ) : (
+        <TableContainer component={Paper} style={{ marginTop: '16px' }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Modelo</TableCell>
+                <TableCell>Placa</TableCell>
+                <TableCell>Motorista</TableCell>
+                <TableCell>Categoria</TableCell>
+                <TableCell>Ações</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {filteredVehicles.map((vehicle) => (
+                <TableRow key={vehicle.id}>
+                  <TableCell>{vehicle.model}</TableCell>
+                  <TableCell>{vehicle.plate}</TableCell>
+                  <TableCell>{drivers.find(driver => driver.id === vehicle.driverId)?.name}</TableCell>
+                  <TableCell>{categories.find(category => category.id === vehicle.categoryId)?.name}</TableCell>
+                  <TableCell>
+                    <IconButton onClick={() => handleEdit(vehicle)}>
+                      <Edit />
+                    </IconButton>
+                    <IconButton onClick={() => handleDelete(vehicle.id)}>
+                      <Delete />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
     </Container>
   );
 };

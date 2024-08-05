@@ -27,7 +27,7 @@ const commonComponents = {
   MuiButton: {
     styleOverrides: {
       root: {
-        borderRadius: 8, // Ajustando para ser menos arredondado
+        borderRadius: 8,
         boxShadow: 'none',
         padding: '8px 16px',
         '&:hover': {
@@ -39,37 +39,36 @@ const commonComponents = {
   MuiPaper: {
     styleOverrides: {
       root: {
-        borderRadius: 8, // Ajustando para ser menos arredondado
+        borderRadius: 8,
       },
     },
   },
 };
 
-const futuristicPalette = {
-  primary: '#0D7377',
-  secondary: '#14FFEC',
-  background: '#323232',
-  surface: '#212121',
-  textPrimary: '#E1E1E1',
-  textSecondary: '#A1A1A1',
+const themeColors = {
+  primary: '#1F5090', // Azul Claro
+  backgroundDark: '#040714', // Azul Escuro
+  backgroundLight: '#E5E7EB', // Cinza Claro
+  textPrimary: '#FFFFFF', // Branco
+  textSecondary: '#A0AEC0', // Cinza Médio
 };
 
 const lightTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: futuristicPalette.primary,
+      main: themeColors.primary,
     },
     secondary: {
-      main: futuristicPalette.secondary,
+      main: themeColors.backgroundDark,
     },
     background: {
-      default: '#F5F5F5', // Claro, para melhor contraste com os elementos futurísticos
+      default: themeColors.backgroundLight,
       paper: '#FFFFFF',
     },
     text: {
-      primary: '#0A3D62',
-      secondary: '#0A3D62',
+      primary: themeColors.backgroundDark,
+      secondary: themeColors.textSecondary,
     },
   },
   typography: commonTypography,
@@ -83,18 +82,18 @@ const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: futuristicPalette.primary,
+      main: themeColors.primary,
     },
     secondary: {
-      main: futuristicPalette.secondary,
+      main: themeColors.backgroundLight,
     },
     background: {
-      default: futuristicPalette.background,
-      paper: futuristicPalette.surface,
+      default: themeColors.backgroundDark,
+      paper: '#060718',
     },
     text: {
-      primary: futuristicPalette.textPrimary,
-      secondary: futuristicPalette.textSecondary,
+      primary: themeColors.textPrimary,
+      secondary: themeColors.textSecondary,
     },
   },
   typography: commonTypography,

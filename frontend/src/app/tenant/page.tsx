@@ -10,44 +10,46 @@ import {
   Button, 
   Tabs, 
   Tab, 
-  Box 
+  Box, 
+  TableContainer, 
+  Table, 
+  TableHead, 
+  TableRow, 
+  TableCell, 
+  TableBody, 
+  IconButton 
 } from '@mui/material';
+import { Edit } from '@mui/icons-material';
 import withAuth from '../hoc/withAuth';
 import { Tenant } from '../../types';
+import SkeletonLoader from '../components/SkeletonLoader';
+import { useLoading } from '../context/LoadingContext';
+import { fetchTenants, updateTenant } from '../../services/tenantService';
 
-const TenantPage = () => {
+const TenantPage: React.FC = () => {
+  const { setLoading, isLoading } = useLoading();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [error, setError] = useState<string>('');
   const [editTenant, setEditTenant] = useState<Tenant | null>(null);
   const [activeTab, setActiveTab] = useState<number>(0);
 
-  const fetchTenants = async () => {
+  const loadTenants = async () => {
     const token = localStorage.getItem('token');
-    if (!token) {
-      return;
-    }
+    if (!token) return;
 
+    setLoading(true);
     try {
-      const response = await fetch('http://localhost:4000/tenant', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch tenants');
-      }
-
-      const data = await response.json();
-      setTenants(data);
+      const tenants = await fetchTenants(token);
+      setTenants(tenants);
     } catch (error) {
       setError('Failed to fetch tenants.');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTenants();
+    loadTenants();
   }, []);
 
   const handleEdit = (tenant: Tenant) => {
@@ -59,7 +61,7 @@ const TenantPage = () => {
       const { name, value } = e.target;
       setEditTenant({
         ...editTenant,
-        [name]: name === 'minDeliveryPercentage' || name === 'port' ? parseFloat(value) : value,
+        [name]: name === 'Pocentagem Mínima' || name === 'Valor Mínimo' || name === 'Documentos Qtd Mínima' || name === 'minPeso' ? parseFloat(value) : value,
       });
     }
   };
@@ -68,29 +70,17 @@ const TenantPage = () => {
     if (!editTenant) return;
 
     const token = localStorage.getItem('token');
-    if (!token) {
-      return;
-    }
+    if (!token) return;
 
-
+    setLoading(true);
     try {
-      const response = await fetch(`http://localhost:4000/tenant/${editTenant.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(editTenant),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update tenant');
-      }
-
-      fetchTenants();
+      await updateTenant(token, editTenant.id, editTenant);
+      loadTenants();
       setEditTenant(null);
     } catch (error) {
       setError('Failed to update tenant.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -101,103 +91,109 @@ const TenantPage = () => {
   return (
     <Container>
       {error && <Typography color="error">{error}</Typography>}
-      <Grid container spacing={3} style={{ marginTop: '16px' }}>
-        {tenants.map((tenant) => (
-          <Grid item xs={12} sm={6} md={4} key={tenant.id}>
-            <Paper elevation={3} style={{ padding: '16px' }}>
-              <Typography variant="h6">{tenant.name}</Typography>
-              <Typography variant="body1">Min Delivery Percentage: {tenant.minDeliveryPercentage}</Typography>
-              <Typography variant="body1">Address: {tenant.address}</Typography>
-              <Button variant="contained" color="primary" onClick={() => handleEdit(tenant)} style={{ marginTop: '8px' }}>
-                Edit
+      {isLoading ? (
+        <SkeletonLoader />
+      ) : (
+        <>
+          <TableContainer component={Paper} style={{ marginTop: '16px' }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Nome</TableCell>
+                  <TableCell>Porcentagem</TableCell>
+                  <TableCell>Endereço</TableCell>
+                  <TableCell>Ações</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {tenants.map((tenant) => (
+                  <TableRow key={tenant.id}>
+                    <TableCell>{tenant.name}</TableCell>
+                    <TableCell>{tenant.minDeliveryPercentage}</TableCell>
+                    <TableCell>{tenant.address}</TableCell>
+                    <TableCell>
+                      <IconButton onClick={() => handleEdit(tenant)}>
+                        <Edit />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {editTenant && (
+            <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
+              <Typography variant="h6">Editar</Typography>
+              <Tabs value={activeTab} onChange={handleTabChange}>
+                <Tab label="Geral" />
+                <Tab label="Parâmetros" />
+              </Tabs>
+              <Box role="tabpanel" hidden={activeTab !== 0} style={{ padding: '16px' }}>
+                <TextField
+                  label="Nome"
+                  name="name"
+                  value={editTenant.name}
+                  onChange={handleChange}
+                  fullWidth
+                  margin="normal"
+                />
+                <TextField
+                  label="Endereço"
+                  name="address"
+                  value={editTenant.address}
+                  onChange={handleChange}
+                  fullWidth
+                  margin="normal"
+                />
+              </Box>
+              <Box role="tabpanel" hidden={activeTab !== 1} style={{ padding: '16px' }}>
+                <TextField
+                  label="Porcentagem Min"
+                  name="minDeliveryPercentage"
+                  type="number"
+                  value={editTenant.minDeliveryPercentage}
+                  onChange={handleChange}
+                  fullWidth
+                  margin="normal"
+                />
+                <TextField
+                  label="Valor Min"
+                  name="minValue"
+                  type="number"
+                  value={editTenant.minValue || ''}
+                  onChange={handleChange}
+                  fullWidth
+                  margin="normal"
+                />
+                <TextField
+                  label="Qtd Documentos Min"
+                  name="minOrders"
+                  type="number"
+                  value={editTenant.minOrders || ''}
+                  onChange={handleChange}
+                  fullWidth
+                  margin="normal"
+                />
+                <TextField
+                  label="Peso Min"
+                  name="minPeso"
+                  type="number"
+                  value={editTenant.minPeso || ''}
+                  onChange={handleChange}
+                  fullWidth
+                  margin="normal"
+                />
+              </Box>
+              <Button variant="contained" color="primary" onClick={handleSave} style={{ marginTop: '16px' }}>
+                Save
+              </Button>
+              <Button variant="contained" color="secondary" onClick={() => setEditTenant(null)} style={{ marginTop: '16px', marginLeft: '8px' }}>
+                Cancel
               </Button>
             </Paper>
-          </Grid>
-        ))}
-      </Grid>
-
-      {editTenant && (
-        <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
-          <Typography variant="h6">Edit Tenant</Typography>
-          <Tabs value={activeTab} onChange={handleTabChange}>
-            <Tab label="General" />
-            <Tab label="Parameters" />
-          </Tabs>
-          <Box role="tabpanel" hidden={activeTab !== 0} style={{ padding: '16px' }}>
-            <TextField
-              label="Name"
-              name="name"
-              value={editTenant.name}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-          
-            <TextField
-              label="Address"
-              name="address"
-              value={editTenant.address}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-          </Box>
-          <Box role="tabpanel" hidden={activeTab !== 1} style={{ padding: '16px' }}>
-
-          <TextField
-              label="Min Delivery Percentage"
-              name="minDeliveryPercentage"
-              type="number"
-              value={editTenant.minDeliveryPercentage}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-            
-          <TextField
-              label="Minímo de Valor"
-              name="valor"
-              value={editTenant.minValue || ''}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              label="Mínimo de Documentos"
-              name="doccumentos"
-              value={editTenant.minOrders || ''}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              label="Mínimo de Peso"
-              name="peso"
-              value={editTenant.minPeso || ''}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-          </Box>
-          <Box role="tabpanel" hidden={activeTab !== 2} style={{ padding: '16px' }}>
-            {/* Adicione aqui os campos de parâmetros gerais, conforme necessário */}
-            {/* Exemplo:
-            <TextField
-              label="Example Parameter"
-              name="exampleParameter"
-              value={editTenant.exampleParameter || ''}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            /> */}
-          </Box>
-          <Button variant="contained" color="primary" onClick={handleSave} style={{ marginTop: '16px' }}>
-            Save
-          </Button>
-          <Button variant="contained" color="secondary" onClick={() => setEditTenant(null)} style={{ marginTop: '16px', marginLeft: '8px' }}>
-            Cancel
-          </Button>
-        </Paper>
+          )}
+        </>
       )}
     </Container>
   );
