@@ -89,7 +89,7 @@ const darkTheme = createTheme({
     },
     background: {
       default: themeColors.backgroundDark,
-      paper: '#060718',
+      paper: '#1A202C',
     },
     text: {
       primary: themeColors.textPrimary,
