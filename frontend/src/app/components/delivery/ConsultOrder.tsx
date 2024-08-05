@@ -30,7 +30,7 @@ const ConsultOrder: React.FC<ConsultOrderProps> = ({
           {orders.map(order => (
             <ListItem key={order.id}>
               <ListItemText
-                primary={`Pedido: ${order.id}`}
+                primary={`Documento: ${order.numero}`}
                 secondary={`Cliente: ${order.cliente} - Valor: R$${order.valor.toFixed(2)}`}
               />
             </ListItem>

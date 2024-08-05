@@ -13,9 +13,9 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, onClose, 
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Detalhes do Pedido</DialogTitle>
+      <DialogTitle>Detalhes do Documento</DialogTitle>
       <DialogContent>
-        <Typography variant="body2"><strong>Pedido Número:</strong> {order.numero}</Typography>
+        <Typography variant="body2"><strong>Número Documento:</strong> {order.numero}</Typography>
         <Typography variant="body2"><strong>Data:</strong> {order.data}</Typography>
         <Typography variant="body2"><strong>ID Cliente:</strong> {order.idCliente}</Typography>
         <Typography variant="body2"><strong>Cliente:</strong> {order.cliente}</Typography>

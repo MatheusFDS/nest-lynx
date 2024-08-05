@@ -18,7 +18,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders, handleDetailsDialogOpen }
             <ListItem ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
               <Paper style={{ padding: '4px', marginBottom: '4px', width: '100%' }}>
                 <ListItemText
-                  primary={<Typography variant="body2">{`Pedido ${order.numero} - Cliente: ${order.cliente}`}</Typography>}
+                  primary={<Typography variant="body2">{`Documento ${order.numero} - Cliente: ${order.cliente}`}</Typography>}
                   secondary={<Typography variant="caption">{`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}</Typography>}
                 />
                 <IconButton

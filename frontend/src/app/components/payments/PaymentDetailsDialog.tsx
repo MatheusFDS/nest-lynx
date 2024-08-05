@@ -47,11 +47,11 @@ const PaymentDetailsDialog: React.FC<PaymentDetailsDialogProps> = ({ open, deliv
               </Grid>
             </Grid>
 
-            <Typography variant="h6" style={{ marginTop: '16px' }}>Pedidos</Typography>
+            <Typography variant="h6" style={{ marginTop: '16px' }}>Documentos</Typography>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>ID Pedido</TableCell>
+                  <TableCell>Documento</TableCell>
                   <TableCell>Cliente</TableCell>
                   <TableCell>Endereço</TableCell>
                   <TableCell>Cidade</TableCell>
@@ -68,7 +68,7 @@ const PaymentDetailsDialog: React.FC<PaymentDetailsDialogProps> = ({ open, deliv
               <TableBody>
                 {delivery.orders.map(order => (
                   <TableRow key={order.id}>
-                    <TableCell>{order.id}</TableCell>
+                    <TableCell>{order.numero}</TableCell>
                     <TableCell>{order.cliente}</TableCell>
                     <TableCell>{order.endereco}</TableCell>
                     <TableCell>{order.cidade}</TableCell>

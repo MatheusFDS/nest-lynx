@@ -21,7 +21,7 @@ interface DeliveryTableProps {
   getRegionName: (delivery: Delivery) => string;
   handleEditDelivery: (delivery: Delivery) => void;
   handleDeleteDelivery: (deliveryId: string) => void;
-  handleViewOrders: (delivery: Delivery) => void; // Adiciona a função de visualização de ordens
+  handleViewOrders: (delivery: Delivery) => void;
 }
 
 const DeliveryTable: React.FC<DeliveryTableProps> = ({
@@ -32,7 +32,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({
   getRegionName,
   handleEditDelivery,
   handleDeleteDelivery,
-  handleViewOrders, // Adiciona a função de visualização de ordens
+  handleViewOrders,
 }) => {
   const handlePrintDelivery = (delivery: Delivery) => {
     const driver = drivers.find(driver => driver.id === delivery.motoristaId);
@@ -56,6 +56,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({
             <TableCell style={{ whiteSpace: 'nowrap' }}>Status</TableCell>
             <TableCell style={{ whiteSpace: 'nowrap' }}>Liberador</TableCell>
             <TableCell style={{ whiteSpace: 'nowrap' }}>Data de Liberação</TableCell>
+            <TableCell style={{ whiteSpace: 'nowrap' }}>Total de Docs</TableCell>
             <TableCell style={{ whiteSpace: 'nowrap' }}>Ações</TableCell>
           </TableRow>
         </TableHead>
@@ -65,6 +66,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({
             const vehicle = vehicles.find(vehicle => vehicle.id === delivery.veiculoId);
             const { totalWeight, totalValue } = calculateTotalWeightAndValue(delivery.orders as Order[]);
             const regionName = getRegionName(delivery);
+            const totalNotes = delivery.orders?.length || 0;
 
             return (
               <TableRow key={delivery.id}>
@@ -79,6 +81,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({
                 <TableCell style={{ whiteSpace: 'nowrap' }}>{delivery.status}</TableCell>
                 <TableCell style={{ whiteSpace: 'nowrap' }}>{delivery.liberador}</TableCell>
                 <TableCell style={{ whiteSpace: 'nowrap' }}>{delivery.dataLiberacao ? new Date(delivery.dataLiberacao).toLocaleString() : 'N/A'}</TableCell>
+                <TableCell style={{ whiteSpace: 'nowrap' }}>{totalNotes}</TableCell>
                 <TableCell style={{ whiteSpace: 'nowrap' }}>
                   <IconButton onClick={() => handleViewOrders(delivery)}>
                     <Info />

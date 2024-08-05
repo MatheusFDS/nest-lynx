@@ -19,7 +19,7 @@ const listContainerStyle = {
 
 const OrderList: React.FC<OrderListProps> = ({ orders, moveOrder, removeOrder, openOrderDetails }) => (
   <Paper elevation={3} style={{ padding: '5px', marginBottom: '5px', flexGrow: 1 }}>
-    <Typography variant="h6" style={{ fontSize: '0.85em' }}>Pedidos</Typography>
+    <Typography variant="h6" style={{ fontSize: '0.85em' }}>Documentos</Typography>
     <Box style={listContainerStyle}>
       <DndProvider backend={HTML5Backend}>
         {orders.map((order, index) => (

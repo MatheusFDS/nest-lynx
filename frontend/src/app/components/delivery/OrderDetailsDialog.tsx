@@ -21,11 +21,11 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
   selectedOrder,
 }) => (
   <Dialog open={detailsDialogOpen} onClose={handleDetailsDialogClose} fullWidth maxWidth="sm">
-    <DialogTitle>Detalhes do Pedido</DialogTitle>
+    <DialogTitle>Detalhes do Documento</DialogTitle>
     <DialogContent>
       {selectedOrder ? (
         <>
-          <Typography variant="body1"><strong>Pedido Número:</strong> {selectedOrder.numero}</Typography>
+          <Typography variant="body1"><strong>Número Documento:</strong> {selectedOrder.numero}</Typography>
           <Typography variant="body1"><strong>Data:</strong> {new Date(selectedOrder.data).toLocaleString()}</Typography>
           <Typography variant="body1"><strong>ID Cliente:</strong> {selectedOrder.idCliente}</Typography>
           <Typography variant="body1"><strong>Cliente:</strong> {selectedOrder.cliente}</Typography>
@@ -57,7 +57,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
           )}
         </>
       ) : (
-        <Typography variant="body1">Selecione um pedido para ver os detalhes</Typography>
+        <Typography variant="body1">Selecione um documento para ver os detalhes</Typography>
       )}
     </DialogContent>
     <DialogActions>

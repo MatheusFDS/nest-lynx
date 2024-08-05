@@ -47,7 +47,7 @@ const generateDeliveryReport = (delivery: Delivery) => {
 
   // Dados dos Pedidos
   doc.setFontSize(10);
-  doc.text('Pedidos', 10, y);
+  doc.text('Documento', 10, y);
   y += 10;
 
   delivery.orders.forEach(order => {

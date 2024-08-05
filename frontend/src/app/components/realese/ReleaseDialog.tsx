@@ -43,7 +43,7 @@ const ReleaseDialog: React.FC<ReleaseDialogProps> = ({ open, onClose, delivery, 
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Número do Pedido</TableCell>
+                <TableCell>Número do Documento</TableCell>
                 <TableCell>Cliente</TableCell>
                 <TableCell>CEP</TableCell>
                 <TableCell>Valor</TableCell>

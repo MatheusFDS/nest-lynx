@@ -20,7 +20,7 @@ interface DeliveryTableProps {
   handleRejectDialogOpen: (delivery: Delivery) => void;
 }
 
-const RealeseTable: React.FC<DeliveryTableProps> = ({
+const ReleaseTable: React.FC<DeliveryTableProps> = ({
   deliveries,
   handleDetailsDialogOpen,
   handleReleaseDialogOpen,
@@ -36,6 +36,7 @@ const RealeseTable: React.FC<DeliveryTableProps> = ({
             <TableCell>Veículo</TableCell>
             <TableCell>Total Peso</TableCell>
             <TableCell>Total Valor</TableCell>
+            <TableCell>Total de Docs</TableCell>
             <TableCell>Ações</TableCell>
           </TableRow>
         </TableHead>
@@ -47,6 +48,7 @@ const RealeseTable: React.FC<DeliveryTableProps> = ({
               <TableCell>{delivery.Vehicle.model}</TableCell>
               <TableCell>{delivery.totalPeso?.toFixed(2)} kg</TableCell>
               <TableCell>R$ {delivery.totalValor?.toFixed(2)}</TableCell>
+              <TableCell>{delivery.orders?.length || 0}</TableCell>
               <TableCell>
                 <IconButton onClick={() => handleDetailsDialogOpen(delivery)}>
                   <Info />
@@ -77,4 +79,4 @@ const RealeseTable: React.FC<DeliveryTableProps> = ({
   );
 };
 
-export default RealeseTable;
+export default ReleaseTable;

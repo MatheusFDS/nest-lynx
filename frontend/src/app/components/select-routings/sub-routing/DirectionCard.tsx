@@ -38,7 +38,7 @@ const DirectionCard: React.FC<DirectionCardProps> = ({
         )}
         <Typography variant="body2">Total Valor: R$ {totalValue.toFixed(2)}</Typography>
         <Typography variant="body2">Total Peso: {totalWeight.toFixed(2)} kg</Typography>
-        <Typography variant="body2">Total de Pedidos: {orders.length}</Typography>
+        <Typography variant="body2">Total de Documentos: {orders.length}</Typography>
         <Button
           variant="contained"
           color="primary"
@@ -64,7 +64,7 @@ const DirectionCard: React.FC<DirectionCardProps> = ({
                   {(provided) => (
                     <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
                       <Paper style={{ padding: '4px', marginBottom: '4px', width: '100%' }}>
-                        <Typography variant="body2">{`Pedido ${order.numero} - Cliente: ${order.cliente}`}</Typography>
+                        <Typography variant="body2">{`Documento ${order.numero} - Cliente: ${order.cliente}`}</Typography>
                         <Typography variant="caption">{`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}</Typography>
                         <IconButton
                           edge="end"

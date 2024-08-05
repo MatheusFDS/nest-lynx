@@ -13,13 +13,13 @@ interface ExpandedOrdersDialogProps {
 const ExpandedOrdersDialog: React.FC<ExpandedOrdersDialogProps> = ({ open, onClose, orders, handleDetailsDialogOpen }) => {
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>Todos os Pedidos</DialogTitle>
+      <DialogTitle>Todos os Documentos</DialogTitle>
       <DialogContent>
         <Grid container spacing={3}>
           {orders.map(order => (
             <Grid item xs={12} key={order.id}>
               <Paper style={{ padding: '8px', marginBottom: '8px' }}>
-                <Typography variant="body2">{`Pedido ${order.numero} - Cliente: ${order.cliente}`}</Typography>
+                <Typography variant="body2">{`Documento ${order.numero} - Cliente: ${order.cliente}`}</Typography>
                 <Typography variant="caption">{`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}</Typography>
                 <IconButton
                   edge="end"

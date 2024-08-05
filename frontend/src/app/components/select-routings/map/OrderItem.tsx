@@ -51,7 +51,7 @@ const OrderItem: React.FC<OrderItemProps> = ({ order, index, moveOrder, removeOr
       <Paper style={{ padding: '2px', marginBottom: '2px', width: '100%' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <ListItemText
-            primary={`Pedido ${index + 1} - Nº ${order.numero} - ${order.cliente}`}
+            primary={`Documento ${index + 1} - Nº ${order.numero} - ${order.cliente}`}
             secondary={`CEP: ${order.cep}`}
             primaryTypographyProps={{ variant: 'body2', style: { fontSize: '0.7em' } }}
             secondaryTypographyProps={{ variant: 'caption', style: { fontSize: '0.6em' } }}

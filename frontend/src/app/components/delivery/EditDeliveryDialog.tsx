@@ -76,8 +76,8 @@ const EditDeliveryDialog: React.FC<EditDeliveryDialogProps> = ({
       <DialogTitle>Editar Roteiro</DialogTitle>
       <DialogContent>
         <Tabs value={tabIndex} onChange={(e, newValue) => setTabIndex(newValue)}>
-          <Tab label="DADOS" />
-          <Tab label="NOTAS" />
+          <Tab label="Dados" />
+          <Tab label="Documentos" />
         </Tabs>
         {tabIndex === 0 && currentDelivery && (
           <div>
@@ -151,7 +151,7 @@ const EditDeliveryDialog: React.FC<EditDeliveryDialogProps> = ({
               {currentDelivery?.orders.map(order => (
                 <ListItem key={order.id}>
                   <ListItemText
-                    primary={`Pedido ${order.numero} - Cliente: ${order.cliente}`}
+                    primary={`Documento ${order.numero} - Cliente: ${order.cliente}`}
                     secondary={`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}, Ordem: ${order.sorting}`}
                   />
                   <IconButton

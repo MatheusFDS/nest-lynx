@@ -63,7 +63,7 @@ export const generatePDF = (
 
   // Dados dos Pedidos
   doc.setFontSize(10);
-  doc.text('DADOS DOS PEDIDOS', 10, y);
+  doc.text('DADOS DOS DOCUMENTOS', 10, y);
   y += 5;
 
   doc.setFontSize(8);
