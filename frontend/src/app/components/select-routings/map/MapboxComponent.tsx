@@ -1,6 +1,12 @@
 import React from 'react';
 import { IconButton, Typography, Box, SelectChangeEvent } from '@mui/material';
-import { Check as CheckIcon, AutoFixHigh as AutoFixHighIcon, EditRoad as EditRoadIcon, Close as CloseIcon, SwapVert as SwapVertIcon } from '@mui/icons-material';
+import {
+  Check as CheckIcon,
+  AutoFixHigh as AutoFixHighIcon,
+  EditRoad as EditRoadIcon,
+  Close as CloseIcon,
+  SwapVert as SwapVertIcon
+} from '@mui/icons-material';
 import OrderDetailsDialog from '../OrderDetailsDialog';
 import { Order } from '../../../../types';
 import OrderList from './OrderList';
@@ -19,6 +25,7 @@ interface MapboxComponentProps {
 const containerStyle = {
   width: '100%',
   height: '100%',
+  opacity: 1,
 };
 
 const panelStyle = {
@@ -32,7 +39,7 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
     mapContainer,
     map,
     distance,
-    duration,
+    duration, // Certifique-se de que duration seja um número
     orderedOrders,
     drivers,
     selectedDriver,
@@ -113,6 +120,7 @@ const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onC
             totalValue={orderedOrders.reduce((acc, order) => acc + order.valor, 0)}
             freightValue={freightValue}
             distance={distance}
+            duration={duration} // Passando a duração para o RouteSummary
           />
           <Box display="flex" justifyContent="flex-end" alignItems="center" gap={1}>
             <IconButton aria-label="optimize" color="primary" onClick={optimizeOrders} size="small">

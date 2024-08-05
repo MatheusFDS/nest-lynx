@@ -26,14 +26,13 @@ const StatisticsPieChart: React.FC<StatisticsPieChartProps> = ({ title, data }) 
               outerRadius={80}
               fill={theme.palette.primary.main}
               dataKey="value"
-              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
             >
-              {data.map((entry, index) => (
+              {data.map((_entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
             <Tooltip />
-            <Legend verticalAlign="middle" align="right" layout="vertical" />
+            <Legend verticalAlign="bottom" align="center" layout="horizontal" />
           </PieChart>
         </ResponsiveContainer>
       </Box>

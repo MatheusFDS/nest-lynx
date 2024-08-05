@@ -36,7 +36,7 @@ export interface Direction {
   id: string;
   rangeInicio: string;
   rangeFim: string;
-  valorDirecao: string;
+  valorDirecao: number;
   regiao: string;
   tenantId: string;
   createdAt: string;
@@ -148,12 +148,10 @@ export interface Tenant {
   minDeliveryPercentage: number;
   id: string;
   name: string;
-  minDeliveryValue: number;
   address?: string;
-  domain?: string;
-  databaseSchema?: string;
-  port?: number;
-  databaseUrl?: string;
+  minValue:             number;
+  minOrders:            number;
+  minPeso:             number;
 }
 
 export interface Vehicle {

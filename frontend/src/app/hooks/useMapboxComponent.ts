@@ -36,7 +36,7 @@ export const useMapboxComponent = (tenantId: string, orders: Order[], onClose: (
       }
       return null;
     } catch (error) {
-      console.error('Error fetching tenant address:', error);
+     // console.error('Error fetching tenant address:', error);
       return null;
     }
   };
@@ -48,7 +48,7 @@ export const useMapboxComponent = (tenantId: string, orders: Order[], onClose: (
       if (address) {
         setTenantAddress(address);
       } else {
-        console.error('Tenant address is null or undefined');
+      //  console.error('Tenant address is null or undefined');
       }
 
       const driversData = await fetchDrivers(token);
@@ -177,52 +177,109 @@ export const useMapboxComponent = (tenantId: string, orders: Order[], onClose: (
 
   const optimizeOrders = async () => {
     if (!tenantAddress || orderedOrders.length === 0) return;
-
+  
+    const tenantLocation = await geocodeAddress(tenantAddress);
+    if (!tenantLocation) return;
+  
     // Função para calcular a distância euclidiana entre dois pontos
     const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
       const dx = lng2 - lng1;
       const dy = lat2 - lat1;
       return Math.sqrt(dx * dx + dy * dy);
     };
-
-    // Lista de pedidos otimizados
-    const optimizedOrders: Order[] = [];
-    let remainingOrders = [...orderedOrders];
-    let currentLocation = await geocodeAddress(tenantAddress);
-
-    // Verifica se a localização atual foi obtida com sucesso
-    if (!currentLocation) {
-      console.error('Failed to fetch current location');
-      return;
-    }
-
-    while (remainingOrders.length > 0) {
+  
+    // Função para encontrar a ordem mais próxima
+    const findNearestOrder = (currentLocation: { lat: number; lng: number }, remainingOrders: Order[]) => {
       let nearestOrderIndex = -1;
       let nearestDistance = Infinity;
-
-      // Encontrar a ordem mais próxima da localização atual
+  
       remainingOrders.forEach((order, index) => {
-        const distance = calculateDistance(currentLocation!.lat, currentLocation!.lng, order.lat, order.lng);
+        const distance = calculateDistance(currentLocation.lat, currentLocation.lng, order.lat, order.lng);
         if (distance < nearestDistance) {
           nearestOrderIndex = index;
           nearestDistance = distance;
         }
       });
-
-      if (nearestOrderIndex !== -1) {
-        const nearestOrder = remainingOrders[nearestOrderIndex];
-        optimizedOrders.push(nearestOrder);
-        currentLocation = { lat: nearestOrder.lat, lng: nearestOrder.lng };
-        remainingOrders.splice(nearestOrderIndex, 1);
+  
+      return nearestOrderIndex;
+    };
+  
+    // Otimizar a rota globalmente
+    const optimizeGlobalRoute = (orders: Order[], startLocation: { lat: number; lng: number }) => {
+      const optimizedOrders: Order[] = [];
+      let remainingOrders = [...orders];
+      let currentLocation = startLocation;
+  
+      while (remainingOrders.length > 0) {
+        const nearestOrderIndex = findNearestOrder(currentLocation, remainingOrders);
+        if (nearestOrderIndex !== -1) {
+          const nearestOrder = remainingOrders[nearestOrderIndex];
+          optimizedOrders.push(nearestOrder);
+          currentLocation = { lat: nearestOrder.lat, lng: nearestOrder.lng };
+          remainingOrders.splice(nearestOrderIndex, 1);
+        }
       }
-    }
-
+  
+      return optimizedOrders;
+    };
+  
+    // Dividir os pedidos em chunks de no máximo 11 pedidos (considerando o ponto inicial)
+    const chunkArray = (arr: Order[], chunkSize: number) => {
+      let index = 0;
+      const arrayLength = arr.length;
+      const tempArray: Order[][] = [];
+  
+      for (index = 0; index < arrayLength; index += chunkSize) {
+        const chunk = arr.slice(index, index + chunkSize);
+        tempArray.push(chunk);
+      }
+  
+      return tempArray;
+    };
+  
+    // Otimizar a rota globalmente
+    const optimizedGlobalOrders = optimizeGlobalRoute(orderedOrders, tenantLocation);
+  
     // Atualizar a lista de pedidos ordenados
-    setOrderedOrders(optimizedOrders);
-
+    setOrderedOrders(optimizedGlobalOrders);
+  
+    // Dividir a rota otimizada em chunks de 11 pedidos + 1 ponto inicial
+    const orderChunks = chunkArray(optimizedGlobalOrders, 11);
+    let combinedOptimizedOrders: Order[] = [];
+  
+    // Recalcular a rota para cada chunk
+    for (let i = 0; i < orderChunks.length; i++) {
+      const chunk = orderChunks[i];
+      const optimizedOrdersChunk: Order[] = [];
+      let remainingOrders = [...chunk];
+      let currentLocation = i === 0 ? tenantLocation : {
+        lat: combinedOptimizedOrders[combinedOptimizedOrders.length - 1].lat,
+        lng: combinedOptimizedOrders[combinedOptimizedOrders.length - 1].lng
+      };
+  
+      while (remainingOrders.length > 0) {
+        const nearestOrderIndex = findNearestOrder(currentLocation, remainingOrders);
+        if (nearestOrderIndex !== -1) {
+          const nearestOrder = remainingOrders[nearestOrderIndex];
+          optimizedOrdersChunk.push(nearestOrder);
+          currentLocation = { lat: nearestOrder.lat, lng: nearestOrder.lng };
+          remainingOrders.splice(nearestOrderIndex, 1);
+        }
+      }
+  
+      combinedOptimizedOrders = [...combinedOptimizedOrders, ...optimizedOrdersChunk];
+    }
+  
+    // Atualizar a lista de pedidos ordenados
+    setOrderedOrders(combinedOptimizedOrders);
+  
     // Recalcular a rota com base nos pedidos otimizados
-    calculateRouteService(tenantAddress, optimizedOrders, true, map, setDistance, setDuration, setOrderedOrders);
+    calculateRouteService(tenantAddress, combinedOptimizedOrders, true, map, setDistance, setDuration, setOrderedOrders);
   };
+  
+  
+  
+  
 
   const handleGenerateRoute = async () => {
     const token = localStorage.getItem('token')!;
@@ -255,10 +312,10 @@ export const useMapboxComponent = (tenantId: string, orders: Order[], onClose: (
       onClose();
     } catch (error: unknown) {
       if (error instanceof Error) {
-        console.error('Failed to create delivery:', error.message);
+      //  console.error('Failed to create delivery:', error.message);
         alert(`Erro: ${error.message}`);
       } else {
-        console.error('Failed to create delivery:', error);
+      //  console.error('Failed to create delivery:', error);
         alert('Erro: Falha ao criar roteiro.');
       }
     }
@@ -267,25 +324,25 @@ export const useMapboxComponent = (tenantId: string, orders: Order[], onClose: (
   const handleDriverChange = (event: SelectChangeEvent<string>) => {
     const driverId = event.target.value;
     setSelectedDriver(driverId);
-
+  
     const driverVehicles = vehicles.filter(vehicle => vehicle.driverId === driverId);
     if (driverVehicles.length > 0) {
       const vehicle = driverVehicles[0];
       setSelectedVehicle(vehicle.id);
-      setFreightValue(calculateFreightValue(vehicle.categoryId, categories, directions));
+      setFreightValue(calculateFreightValue(orderedOrders, categories, directions, vehicle.categoryId));
     }
   };
-
+  
   const handleVehicleChange = (event: SelectChangeEvent<string>) => {
     const vehicleId = event.target.value;
     setSelectedVehicle(vehicleId);
-
+  
     const vehicle = vehicles.find(vehicle => vehicle.id === vehicleId);
     if (vehicle) {
-      setFreightValue(calculateFreightValue(vehicle.categoryId, categories, directions));
+      setFreightValue(calculateFreightValue(orderedOrders, categories, directions, vehicle.categoryId));
     }
   };
-
+  
   const handleOpenOrderDetails = (order: Order) => {
     setSelectedOrder(order);
     setOrderDetailsOpen(true);
@@ -334,8 +391,24 @@ function calculateTotalWeightAndValue(ordersInDirection: Order[]): { totalWeight
   }, { totalWeight: 0, totalValue: 0 });
 }
 
-function calculateFreightValue(categoryId: string, categories: Category[], directions: Direction[]): number {
-  const category = categories.find(category => category.id === categoryId);
-  const directionValue = directions.length > 0 ? parseFloat(directions[0].valorDirecao) : 0;
-  return (category ? category.valor : 0) + directionValue;
+function calculateFreightValue(orders: Order[], categories: Category[], directions: Direction[], selectedCategoryId: string): number {
+  let maxDirectionValue = 0;
+
+  // Encontrar o maior valor de direção aplicável aos pedidos
+  orders.forEach(order => {
+    directions.forEach(direction => {
+      if (order.cep >= direction.rangeInicio && order.cep <= direction.rangeFim) {
+        if (direction.valorDirecao > maxDirectionValue) {
+          maxDirectionValue = direction.valorDirecao;
+        }
+      }
+    });
+  });
+
+  // Encontrar o valor da categoria do veículo selecionado
+  const category = categories.find(category => category.id === selectedCategoryId);
+  const categoryValue = category ? category.valor : 0;
+
+  // Somar o maior valor de direção e o valor da categoria
+  return maxDirectionValue + categoryValue;
 }

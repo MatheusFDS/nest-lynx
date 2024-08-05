@@ -5,7 +5,7 @@ import { Container, Typography, Grid, TextField, Button } from '@mui/material';
 import { fetchDeliveries, releaseDelivery, rejectRelease } from '../../services/deliveryService';
 import { Delivery, Order } from '../../types';
 import withAuth from '../hoc/withAuth';
-import DeliveryTable from '../components/realese/DeliveryTable';
+import RealeseTable from '../components/realese/RealeseTable';
 import ReleaseDialog from '../components/realese/ReleaseDialog';
 import RejectDialog from '../components/realese/RejectDialog';
 import DetailsDialog from '../components/realese/DetailsDialog';
@@ -126,7 +126,7 @@ const ReleasePage: React.FC = () => {
         handleDateFilter={handleDateFilter}
         setStatusFilter={setStatusFilter}
       />
-      <DeliveryTable
+      <RealeseTable
         deliveries={filteredDeliveries}
         handleDetailsDialogOpen={handleDetailsDialogOpen}
         handleReleaseDialogOpen={handleReleaseDialogOpen}

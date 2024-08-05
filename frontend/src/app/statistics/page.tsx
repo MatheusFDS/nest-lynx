@@ -137,6 +137,7 @@ const StatisticsPage: React.FC = () => {
       { name: 'Em Rota', value: statistics.ordersInRoute },
       { name: 'Finalizado', value: statistics.ordersFinalized },
       { name: 'Pendente', value: statistics.ordersPending },
+      { name: 'A liberar', value: statistics.ordersInRoute },
     ],
     [statistics.ordersInRoute, statistics.ordersFinalized, statistics.ordersPending]
   );

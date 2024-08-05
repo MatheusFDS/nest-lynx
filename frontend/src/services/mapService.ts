@@ -1,4 +1,4 @@
-// services/routeService.ts
+//mapService.ts
 import axios from 'axios';
 import mapboxgl from 'mapbox-gl';
 import { Order } from '../types';
@@ -85,7 +85,7 @@ export const calculateRoute = async (
   }
 
   setDistance((combinedRoute.distance / 1000).toFixed(2) + ' km');
-  setDuration((combinedRoute.duration / 60).toFixed(2) + ' mins');
+  setDuration(formatDuration(combinedRoute.duration / 60)); // Converte minutos para horas e minutos
 
   if (useOptimizedRoute && combinedRoute.waypoints.length > 0) {
     const optimizedOrderIds = combinedRoute.waypoints.map((wp: any) => wp.waypoint_index);
@@ -157,5 +157,14 @@ export const calculateRoute = async (
     }
   }
 };
-export { geocodeAddress };
 
+// Função utilitária para converter minutos em horas e minutos
+const formatDuration = (minutes: number) => {
+  const hrs = Math.floor(minutes / 60);
+  const mins = Math.floor(minutes % 60);
+  const hoursString = hrs > 0 ? `${hrs}h ` : '';
+  const minutesString = mins > 0 ? `${mins}m` : '';
+  return `${hoursString}${minutesString}`.trim();
+};
+
+export { geocodeAddress };

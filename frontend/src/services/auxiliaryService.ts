@@ -90,6 +90,6 @@ export const fetchTenantData = async (token: string): Promise<Tenant[]> => {
   }
 
   const data: Tenant[] = await response.json();
-  console.log('Tenant data:', data); // Log para verificar os dados retornados
+  //console.log('Tenant data:', data); // Log para verificar os dados retornados
   return data;
 };

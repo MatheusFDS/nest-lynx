@@ -72,7 +72,6 @@ const TenantPage = () => {
       return;
     }
 
-    console.log('Saving Tenant:', editTenant); // Log para verificar os dados enviados
 
     try {
       const response = await fetch(`http://localhost:4000/tenant/${editTenant.id}`, {
@@ -109,9 +108,6 @@ const TenantPage = () => {
               <Typography variant="h6">{tenant.name}</Typography>
               <Typography variant="body1">Min Delivery Percentage: {tenant.minDeliveryPercentage}</Typography>
               <Typography variant="body1">Address: {tenant.address}</Typography>
-              <Typography variant="body1">Database URL: {tenant.databaseUrl}</Typography>
-              <Typography variant="body1">Schema: {tenant.databaseSchema}</Typography>
-              <Typography variant="body1">Port: {tenant.port}</Typography>
               <Button variant="contained" color="primary" onClick={() => handleEdit(tenant)} style={{ marginTop: '8px' }}>
                 Edit
               </Button>
@@ -125,7 +121,6 @@ const TenantPage = () => {
           <Typography variant="h6">Edit Tenant</Typography>
           <Tabs value={activeTab} onChange={handleTabChange}>
             <Tab label="General" />
-            <Tab label="Database" />
             <Tab label="Parameters" />
           </Tabs>
           <Box role="tabpanel" hidden={activeTab !== 0} style={{ padding: '16px' }}>
@@ -137,15 +132,7 @@ const TenantPage = () => {
               fullWidth
               margin="normal"
             />
-            <TextField
-              label="Min Delivery Percentage"
-              name="minDeliveryPercentage"
-              type="number"
-              value={editTenant.minDeliveryPercentage}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
+          
             <TextField
               label="Address"
               name="address"
@@ -156,44 +143,37 @@ const TenantPage = () => {
             />
           </Box>
           <Box role="tabpanel" hidden={activeTab !== 1} style={{ padding: '16px' }}>
-            <TextField
-              label="Database URL"
-              name="databaseUrl"
-              value={editTenant.databaseUrl || ''}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              label="Schema"
-              name="databaseSchema"
-              value={editTenant.databaseSchema || ''}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              label="Port"
-              name="port"
+
+          <TextField
+              label="Min Delivery Percentage"
+              name="minDeliveryPercentage"
               type="number"
-              value={editTenant.port || ''}
+              value={editTenant.minDeliveryPercentage}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            
+          <TextField
+              label="Minímo de Valor"
+              name="valor"
+              value={editTenant.minValue || ''}
               onChange={handleChange}
               fullWidth
               margin="normal"
             />
             <TextField
-              label="User"
-              name="user"
-              value={editTenant.user || ''}
+              label="Mínimo de Documentos"
+              name="doccumentos"
+              value={editTenant.minOrders || ''}
               onChange={handleChange}
               fullWidth
               margin="normal"
             />
             <TextField
-              label="Password"
-              name="password"
-              type="password"
-              value={editTenant.password || ''}
+              label="Mínimo de Peso"
+              name="peso"
+              value={editTenant.minPeso || ''}
               onChange={handleChange}
               fullWidth
               margin="normal"

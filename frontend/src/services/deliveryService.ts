@@ -139,7 +139,7 @@ export const releaseDelivery = async (token: string, id: string): Promise<void> 
 
   if (!response.ok) {
     const errorData = await response.json();
-    console.error('Failed to release delivery:', errorData);
+ //   console.error('Failed to release delivery:', errorData);
     throw new Error('Failed to release delivery');
   }
 
@@ -147,20 +147,31 @@ export const releaseDelivery = async (token: string, id: string): Promise<void> 
 };
 
 export const rejectRelease = async (token: string, id: string, motivo: string): Promise<void> => {
-  const response = await fetch(`${API_URL}/${id}/reject`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ motivo }),
-  });
+  try {
+    const response = await fetch(`${API_URL}/${id}/reject`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ motivo }),
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    console.error('Failed to reject delivery:', errorData);
-    throw new Error('Failed to reject delivery');
+    if (!response.ok) {
+      const errorData = await response.json();
+   //   console.error('Failed to reject delivery:', errorData);
+      throw new Error(`Failed to reject delivery: ${errorData.message || 'Unknown error'}`);
+    }
+  } catch (error) {
+    // Type assertion to ensure error is treated as an Error object
+    if (error instanceof Error) {
+    //  console.error('An unexpected error occurred:', error);
+      throw new Error(`Failed to reject delivery: ${error.message || 'Unknown error'}`);
+    } else {
+    //  console.error('An unexpected non-error object was thrown:', error);
+      throw new Error('Failed to reject delivery: An unknown error occurred');
+    }
   }
-
-  return await response.json();
 };
+
+

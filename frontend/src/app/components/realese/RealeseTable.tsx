@@ -20,7 +20,7 @@ interface DeliveryTableProps {
   handleRejectDialogOpen: (delivery: Delivery) => void;
 }
 
-const DeliveryTable: React.FC<DeliveryTableProps> = ({
+const RealeseTable: React.FC<DeliveryTableProps> = ({
   deliveries,
   handleDetailsDialogOpen,
   handleReleaseDialogOpen,
@@ -77,4 +77,4 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({
   );
 };
 
-export default DeliveryTable;
+export default RealeseTable;

@@ -9,7 +9,7 @@ import {
   Paper,
   IconButton,
 } from '@mui/material';
-import { Edit, Delete, Print } from '@mui/icons-material';
+import { Edit, Delete, Print, Info } from '@mui/icons-material';
 import { Delivery, Driver, Vehicle, Order } from '../../../types';
 import { generatePDF } from './DeliveryReport';
 
@@ -21,6 +21,7 @@ interface DeliveryTableProps {
   getRegionName: (delivery: Delivery) => string;
   handleEditDelivery: (delivery: Delivery) => void;
   handleDeleteDelivery: (deliveryId: string) => void;
+  handleViewOrders: (delivery: Delivery) => void; // Adiciona a função de visualização de ordens
 }
 
 const DeliveryTable: React.FC<DeliveryTableProps> = ({
@@ -31,6 +32,7 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({
   getRegionName,
   handleEditDelivery,
   handleDeleteDelivery,
+  handleViewOrders, // Adiciona a função de visualização de ordens
 }) => {
   const handlePrintDelivery = (delivery: Delivery) => {
     const driver = drivers.find(driver => driver.id === delivery.motoristaId);
@@ -78,7 +80,10 @@ const DeliveryTable: React.FC<DeliveryTableProps> = ({
                 <TableCell style={{ whiteSpace: 'nowrap' }}>{delivery.liberador}</TableCell>
                 <TableCell style={{ whiteSpace: 'nowrap' }}>{delivery.dataLiberacao ? new Date(delivery.dataLiberacao).toLocaleString() : 'N/A'}</TableCell>
                 <TableCell style={{ whiteSpace: 'nowrap' }}>
-                  {delivery.status !== 'A liberar' && delivery.status !== 'Negado' && (
+                  <IconButton onClick={() => handleViewOrders(delivery)}>
+                    <Info />
+                  </IconButton>
+                  {(delivery.status !== 'A liberar' && delivery.status !== 'Negado') && (
                     <>
                       <IconButton onClick={() => handleEditDelivery(delivery)}>
                         <Edit />

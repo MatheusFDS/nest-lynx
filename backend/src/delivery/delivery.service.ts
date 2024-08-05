@@ -150,20 +150,22 @@ export class DeliveryService {
       where: { id },
       include: { orders: true, liberacoes: true },
     });
-
+  
     if (!delivery) {
+     // console.error(`Delivery not found for ID: ${id}`);
       throw new NotFoundException('Delivery not found');
     }
-
+  
     if (delivery.tenantId !== tenantId) {
+   //   console.error(`Delivery ID: ${id} not found for tenant ID: ${tenantId}`);
       throw new NotFoundException('Delivery not found for the tenant');
     }
-
+  
     await this.prisma.order.updateMany({
       where: { deliveryId: id },
       data: { status: 'Pendente', deliveryId: null },
     });
-
+  
     await this.prisma.approval.create({
       data: {
         deliveryId: id,
@@ -173,13 +175,15 @@ export class DeliveryService {
         userId,
       },
     });
-
+  
     await this.prisma.delivery.update({
       where: { id },
       data: {
         status: 'Negado',
       },
     });
+  
+    //console.log(`Delivery ID: ${id} rejected for tenant ID: ${tenantId} by user ID: ${userId}`);
   }
 
   async update(id: string, updateDeliveryDto: UpdateDeliveryDto, tenantId: string) {

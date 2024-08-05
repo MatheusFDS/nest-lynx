@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
+import {
+  Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle
+} from '@mui/material';
 import { Direction } from '../../types';
 import withAuth from '../hoc/withAuth';
 import { fetchDirections, addDirection, updateDirection, deleteDirection } from '../../services/directionsService';
@@ -14,7 +17,7 @@ const DirectionsPage: React.FC = () => {
   const [currentDirection, setCurrentDirection] = useState<Partial<Direction>>({
     rangeInicio: '',
     rangeFim: '',
-    valorDirecao: '',
+    valorDirecao: 0,
     regiao: '',
   });
   const [selectedDirection, setSelectedDirection] = useState<Direction | null>(null);
@@ -67,25 +70,31 @@ const DirectionsPage: React.FC = () => {
 
   const handleAddOrEditDirection = async () => {
     try {
-      const directionToSave: Direction = {
-        ...currentDirection,
-        valorDirecao: (currentDirection.valorDirecao || '0').toString(),
-      } as Direction;
-
+      const directionToSave: Partial<Direction> = {
+        rangeInicio: currentDirection.rangeInicio!,
+        rangeFim: currentDirection.rangeFim!,
+        valorDirecao: currentDirection.valorDirecao!,
+        regiao: currentDirection.regiao!,
+      };
+  
       if (!selectedDirection && !validateCepRange(currentDirection.rangeInicio!, currentDirection.rangeFim!)) {
         return;
       }
-
+  
+      console.log("Direction to Save:", directionToSave);
+  
       if (selectedDirection) {
+        console.log("Updating Direction with ID:", selectedDirection.id);
         await updateDirection(token, selectedDirection.id, directionToSave);
       } else {
+        console.log("Adding New Direction");
         await addDirection(token, directionToSave);
       }
-
+  
       setCurrentDirection({
         rangeInicio: '',
         rangeFim: '',
-        valorDirecao: '',
+        valorDirecao: 0,
         regiao: '',
       });
       setSelectedDirection(null);
@@ -93,6 +102,7 @@ const DirectionsPage: React.FC = () => {
       loadDirections();
     } catch (error) {
       handleError('Falha ao enviar direção.');
+      console.error("Error while adding/updating direction:", error);
     }
   };
 
@@ -100,7 +110,7 @@ const DirectionsPage: React.FC = () => {
     setSelectedDirection(direction);
     setCurrentDirection({
       ...direction,
-      valorDirecao: direction.valorDirecao.toString(),
+      valorDirecao: direction.valorDirecao,
     });
     setShowForm(true);
   };
@@ -119,7 +129,7 @@ const DirectionsPage: React.FC = () => {
     setCurrentDirection({
       rangeInicio: '',
       rangeFim: '',
-      valorDirecao: '',
+      valorDirecao: 0,
       regiao: '',
     });
     setShowForm(false);
@@ -165,8 +175,8 @@ const DirectionsPage: React.FC = () => {
           />
           <TextField
             label="Valor Direção"
-            value={currentDirection.valorDirecao || ''}
-            onChange={(e) => setCurrentDirection({ ...currentDirection, valorDirecao: e.target.value })}
+            value={currentDirection.valorDirecao}
+            onChange={(e) => setCurrentDirection({ ...currentDirection, valorDirecao: parseFloat(e.target.value) })}
             type="number"
             fullWidth
             margin="normal"

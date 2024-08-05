@@ -1,5 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Table, TableHead, TableBody, TableRow, TableCell, Checkbox, Button, TextField, Grid, Paper, Typography, IconButton, TableContainer } from '@mui/material';
+import {
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Checkbox,
+  Button,
+  TextField,
+  Grid,
+  Paper,
+  Typography,
+  IconButton,
+  TableContainer,
+} from '@mui/material';
 import { Order, Direction } from '../../../../types';
 import { Delete } from '@mui/icons-material';
 
@@ -16,6 +30,7 @@ const CreateRouteTable: React.FC<CreateRouteTableProps> = ({ orders, directions,
   const [regionName, setRegionName] = useState('');
   const [filteredOrders, setFilteredOrders] = useState<Order[]>(orders);
   const [localOrders, setLocalOrders] = useState<Order[]>(orders);
+  const [isMapActive, setIsMapActive] = useState(false); // Adicione este estado
 
   useEffect(() => {
     setLocalOrders(orders);
@@ -103,8 +118,13 @@ const CreateRouteTable: React.FC<CreateRouteTableProps> = ({ orders, directions,
   };
 
   const handleShowMapClick = () => {
+    setIsMapActive(true); // Ativar o mapa
     handleShowMap(selectedOrders);
     handleClearCart(); // Limpar o carrinho após mostrar o mapa
+  };
+
+  const handleHideMap = () => {
+    setIsMapActive(false); // Desativar o mapa
   };
 
   const calculateTotalValue = () => {
@@ -118,50 +138,52 @@ const CreateRouteTable: React.FC<CreateRouteTableProps> = ({ orders, directions,
   return (
     <Grid container spacing={2}>
       <Grid item xs={12}>
-        <Grid container spacing={2} style={{ marginBottom: '16px' }}>
-          <Grid item xs={12} sm={3}>
-            <TextField
-              label="Pesquisar"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              variant="outlined"
-              size="small"
-              fullWidth
-            />
+        {!isMapActive && (
+          <Grid container spacing={2} style={{ marginBottom: '16px' }}>
+            <Grid item xs={12} sm={3}>
+              <TextField
+                label="Pesquisar"
+                value={searchTerm}
+                onChange={handleSearchChange}
+                variant="outlined"
+                size="small"
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={3}>
+              <TextField
+                label="CEP Início"
+                name="start"
+                value={cepRange.start}
+                onChange={handleCepRangeChange}
+                variant="outlined"
+                size="small"
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={3}>
+              <TextField
+                label="CEP Fim"
+                name="end"
+                value={cepRange.end}
+                onChange={handleCepRangeChange}
+                variant="outlined"
+                size="small"
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={3}>
+              <TextField
+                label="Nome da Região"
+                value={regionName}
+                onChange={handleRegionNameChange}
+                variant="outlined"
+                size="small"
+                fullWidth
+              />
+            </Grid>
           </Grid>
-          <Grid item xs={12} sm={3}>
-            <TextField
-              label="CEP Início"
-              name="start"
-              value={cepRange.start}
-              onChange={handleCepRangeChange}
-              variant="outlined"
-              size="small"
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={12} sm={3}>
-            <TextField
-              label="CEP Fim"
-              name="end"
-              value={cepRange.end}
-              onChange={handleCepRangeChange}
-              variant="outlined"
-              size="small"
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={12} sm={3}>
-            <TextField
-              label="Nome da Região"
-              value={regionName}
-              onChange={handleRegionNameChange}
-              variant="outlined"
-              size="small"
-              fullWidth
-            />
-          </Grid>
-        </Grid>
+        )}
         {selectedOrders.length > 0 && (
           <Paper elevation={3} style={{ padding: '8px', marginBottom: '16px' }}>
             <Typography variant="h6">Lista de Entregas</Typography>

@@ -23,8 +23,8 @@ const StatisticsBarChart: React.FC<StatisticsBarChartProps> = ({ title, data }) 
             <XAxis dataKey="name" />
             <YAxis />
             <Tooltip />
-            <Legend />
-            <Bar dataKey="value" fill={theme.palette.primary.main}>
+         
+            <Bar dataKey="value" name="Motorista" fill={theme.palette.primary.main}>
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}

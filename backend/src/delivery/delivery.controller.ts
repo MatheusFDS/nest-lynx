@@ -74,10 +74,11 @@ export class DeliveryController {
     const tenantId = req.user.tenantId;
     const userId = req.user.userId;
     if (!userId) {
-    //  this.logger.error('User ID is missing');
+      this.logger.error('User ID is missing');
       throw new BadRequestException('User ID is missing');
     }
-    this.logger.log(`Rejecting release of delivery ID: ${id} for tenant: ${tenantId} by user: ${userId} with reason: ${rejectDeliveryDto.motivo}`);
-    return this.deliveryService.rejectRelease(id, tenantId, userId, rejectDeliveryDto.motivo);
-  }
+ //   this.logger.log(`Rejecting release of delivery ID: ${id} for tenant: ${tenantId} by user: ${userId} with reason: ${rejectDeliveryDto.motivo}`);
+    await this.deliveryService.rejectRelease(id, tenantId, userId, rejectDeliveryDto.motivo);
+    return { message: 'Delivery rejected successfully' };
+  }  
 }

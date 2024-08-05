@@ -20,7 +20,7 @@ import { Order, Driver, Vehicle, Category, Delivery, Direction } from '../../typ
 import withAuth from '../hoc/withAuth';
 import DeliveryTable from '../components/delivery/DeliveryTable';
 import EditDeliveryDialog from '../components/delivery/EditDeliveryDialog';
-import OrderDetailsDialog from '../components/delivery/OrderDetailsDialog';
+import ConsultOrder from '../components/delivery/ConsultOrder'; // Alterado para ConsultOrder
 import ConfirmDialog from '../components/delivery/ConfirmDialog';
 
 const StyledButton = styled(Button)({
@@ -45,7 +45,6 @@ const DeliveriesPage: React.FC = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [error, setError] = useState<string>('');
   const [currentDelivery, setCurrentDelivery] = useState<Delivery | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [tabIndex, setTabIndex] = useState(0);
   const [tollValue, setTollValue] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -83,7 +82,7 @@ const DeliveriesPage: React.FC = () => {
   }, []);
 
   const handleEditDelivery = (delivery: Delivery) => {
-    if (delivery.status === 'A liberar') {
+    if (delivery.status === 'A liberar' || delivery.status === 'Negado') {
       return;
     }
 
@@ -102,14 +101,14 @@ const DeliveriesPage: React.FC = () => {
     setCurrentDelivery(null);
   };
 
-  const handleDetailsDialogOpen = (order: Order) => {
-    setSelectedOrder(order);
+  const handleDetailsDialogOpen = (delivery: Delivery) => {
+    setCurrentDelivery(delivery);
     setDetailsDialogOpen(true);
   };
 
   const handleDetailsDialogClose = () => {
     setDetailsDialogOpen(false);
-    setSelectedOrder(null);
+    setCurrentDelivery(null);
   };
 
   const calculateTotalWeightAndValue = (orders: Order[]) => {
@@ -352,6 +351,7 @@ const DeliveriesPage: React.FC = () => {
             getRegionName={getRegionName}
             handleEditDelivery={handleEditDelivery}
             handleDeleteDelivery={handleDeleteDelivery}
+            handleViewOrders={handleDetailsDialogOpen} // Alterado para handleDetailsDialogOpen
           />
         ) : (
           <Typography align="center" style={{ padding: '16px' }}>
@@ -378,10 +378,10 @@ const DeliveriesPage: React.FC = () => {
         calculateTotalWeightAndValue={calculateTotalWeightAndValue}
         handleRemoveOrderFromDelivery={handleRemoveOrderFromDelivery}
       />
-      <OrderDetailsDialog
+      <ConsultOrder // Alterado para ConsultOrder
         detailsDialogOpen={detailsDialogOpen}
         handleDetailsDialogClose={handleDetailsDialogClose}
-        selectedOrder={selectedOrder}
+        orders={currentDelivery ? currentDelivery.orders : []}
       />
       <ConfirmDialog
         confirmDialogOpen={confirmDialogOpen}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -27,11 +27,29 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
   setRejectReason,
   onReject,
 }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open && dialogRef.current) {
+      dialogRef.current.focus();
+    }
+  }, [open]);
+
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Negar Roteiro</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2">Tem certeza que deseja negar o roteiro {delivery.id}?</Typography>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="sm"
+      aria-labelledby="reject-dialog-title"
+      aria-describedby="reject-dialog-description"
+      ref={dialogRef}
+    >
+      <DialogTitle id="reject-dialog-title">Negar Roteiro</DialogTitle>
+      <DialogContent id="reject-dialog-description">
+        <Typography variant="body2">
+          Tem certeza que deseja negar o roteiro {delivery.id}?
+        </Typography>
         <TextField
           label="Motivo da Negação"
           fullWidth

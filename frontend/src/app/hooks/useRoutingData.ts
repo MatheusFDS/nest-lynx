@@ -40,7 +40,7 @@ const useRoutingData = (token: string) => {
           if (location) {
             return { ...order, lat: location.lat, lng: location.lng };
           } else {
-            console.error(`Failed to geocode address: ${address}`);
+          //  console.error(`Failed to geocode address: ${address}`);
             return order;
           }
         })
@@ -64,7 +64,7 @@ const useRoutingData = (token: string) => {
       });
       setSelectedOrders(initialOrders);
     } catch (error: unknown) {
-      console.error('Failed to load initial data:', error);
+   //   console.error('Failed to load initial data:', error);
       setError('Failed to load initial data.');
     }
   }, [token]);
@@ -81,7 +81,7 @@ const useRoutingData = (token: string) => {
           if (location) {
             return { ...order, lat: location.lat, lng: location.lng };
           } else {
-            console.error(`Failed to geocode address: ${address}`);
+     //       console.error(`Failed to geocode address: ${address}`);
             return order;
           }
         })
@@ -89,7 +89,7 @@ const useRoutingData = (token: string) => {
 
       setOrders(geocodedOrders);
     } catch (error: unknown) {
-      console.error('Failed to update orders state:', error);
+     // console.error('Failed to update orders state:', error);
       setError('Failed to update orders state.');
     }
   }, [token]);

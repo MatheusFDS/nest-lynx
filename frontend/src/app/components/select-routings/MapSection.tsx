@@ -25,6 +25,7 @@ const MapSection: React.FC<MapSectionProps> = ({
       isOpen={showMap}
       onRequestClose={handleCloseMap}
       contentLabel="Mapa"
+      ariaHideApp={false} // Importante para acessibilidade quando o modal é o foco principal
       style={{
         content: {
           top: '50%',
@@ -37,7 +38,12 @@ const MapSection: React.FC<MapSectionProps> = ({
           height: '90%',
           backgroundColor: isDarkMode ? '#121212' : '#fff',
           color: isDarkMode ? '#fff' : '#000',
+          overflow: 'hidden', // Evitar overflow no modal
+          padding: 0, // Remover padding para que o mapa ocupe toda a área
         },
+        overlay: {
+          backgroundColor: 'rgba(0, 0, 0, 0.75)' // Melhorar o contraste do fundo do modal
+        }
       }}
     >
       <MapboxComponent
