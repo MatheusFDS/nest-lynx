@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TextField, Button, Box, Typography } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
+const API_BACK = process.env.NEXT_PUBLIC_API_URL as string;
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -12,7 +13,7 @@ const LoginForm = () => {
     event.preventDefault();
 
     try {
-      const response = await fetch('http://localhost:4000/auth/login', {
+      const response = await fetch(API_BACK + '/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

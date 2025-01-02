@@ -116,8 +116,6 @@ export interface Approval {
   userName?: string; // Adicionado para exibir o nome do usuário
 }
 
-
-
 export interface Payment {
   id: string;
   amount: number;

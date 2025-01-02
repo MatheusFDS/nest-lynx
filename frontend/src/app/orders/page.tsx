@@ -107,15 +107,6 @@ const formatDateTimeBR = (date: string) => {
   return `${day}/${month}/${year} ${timePart.split('.')[0]}`;
 };
 
-const StyledButton = styled(Button)({
-  margin: '8px 0',
-  padding: '8px 16px',
-  backgroundColor: '#1976d2',
-  color: '#fff',
-  '&:hover': {
-    backgroundColor: '#115293',
-  },
-});
 
 const OrdersPage: React.FC = () => {
   const { setLoading, isLoading } = useLoading();

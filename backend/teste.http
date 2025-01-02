@@ -156,3 +156,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQ
 ### Get Statistics
 GET http://localhost:4000/statistics?startDate=2024-01-01&endDate=2024-12-31
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQHRlbmFudDEuY29tIiwic3ViIjoxLCJyb2xlIjoiYWRtaW4iLCJ0ZW5hbnRJZCI6MSwiaWF0IjoxNzE5ODk2MzM3LCJleHAiOjE3MTk4OTk5Mzd9.M8Ruxv9ntvNMkz0eI9xkSJpXGLVdpu8s_lsJZtHGQI4
+
+
+GET http://localhost:8080/clientes
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlhdCI6MTcyOTkwNTUxOCwiZXhwIjoxNzI5OTA5MTE4fQ.kJsptjUpfGLwByDQ7_tdKxnaFOYnT-MoFuxwlHvKsZ0

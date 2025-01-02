@@ -113,7 +113,7 @@ const PaymentsPage: React.FC = () => {
     if (grouped || paid || pending) {
       filtered = filtered.filter(payment => {
         return (
-          (grouped && payment.groupedPaymentId !== null) ||
+          (grouped && payment.isGroup === true) ||
           (paid && payment.status === 'Baixado') ||
           (pending && payment.status === 'Pendente')
         );
@@ -235,7 +235,7 @@ const PaymentsPage: React.FC = () => {
         <Grid item xs={12}>
           <FormControlLabel
             control={<Checkbox checked={grouped} onChange={handleStatusFilterChange} name="grouped" />}
-            label="Agrupados"
+            label="Agrupamentos"
           />
           <FormControlLabel
             control={<Checkbox checked={paid} onChange={handleStatusFilterChange} name="paid" />}

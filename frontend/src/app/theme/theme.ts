@@ -46,7 +46,7 @@ const commonComponents = {
 };
 
 const themeColors = {
-  primary: '#1F5090', // Azul Claro
+  primary: '#1F80E0', // Azul Claro
   backgroundDark: '#040714', // Azul Escuro
   backgroundLight: '#E5E7EB', // Cinza Claro
   textPrimary: '#FFFFFF', // Branco

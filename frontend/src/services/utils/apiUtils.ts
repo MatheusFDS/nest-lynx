@@ -1,5 +1,6 @@
-// service/utils/apiUtils.ts
+const API_BACK = process.env.NEXT_PUBLIC_API_URL as string;
+
 export const getApiUrl = () => {
   // Sempre retorna a URL do backend
-  return 'http://localhost:4000';
+  return API_BACK;
 };

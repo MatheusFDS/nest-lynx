@@ -32,6 +32,7 @@ const panelStyle = {
   width: '100%',
   padding: '5px',
   fontSize: '0.95em',
+  overflow: 'auto', // Adicionando overflow
 };
 
 const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onClose, onGenerateRoute }) => {
