@@ -24,7 +24,7 @@ const LayoutContent = ({ children }: LayoutProps) => {
 
   return (
     <>
-      {isLoggedIn && <Toolbar title="MATHEX FLOW" />}
+      {isLoggedIn && <Toolbar title="GERA ROTA" />}
       {isLoading && <LinearDeterminate />} {/* Display the progress bar when loading */}
       <div id="__next" style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
         {children}
@@ -39,7 +39,7 @@ const Layout = ({ children }: LayoutProps) => {
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>My App</title>
+        <title>Gera Rota</title>
       </head>
       <body style={{ margin: 0, height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column' }}>
         <AuthProvider>

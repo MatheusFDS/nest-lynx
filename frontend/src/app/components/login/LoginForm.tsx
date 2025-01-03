@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TextField, Button, Box, Typography } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
-const API_BACK = process.env.NEXT_PUBLIC_API_URL as string;
+
 import { getApiUrl } from '../../../services/utils/apiUtils';
 
 const LoginForm = () => {

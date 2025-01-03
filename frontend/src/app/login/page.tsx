@@ -51,7 +51,7 @@ const LoginPage = () => {
             }}
           >
             <Typography component="h1" variant="h5" sx={{ mb: 2 }}>
-              MATHEX FLOW
+              GERA ROTA
             </Typography>
             <LoginForm />
           </Box>
