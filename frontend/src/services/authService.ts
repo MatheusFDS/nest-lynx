@@ -1,5 +1,5 @@
 // src/services/authService.ts
-
+import { getApiUrl } from './utils/apiUtils';
 export const getStoredToken = () => {
     return localStorage.getItem('token');
   };
@@ -13,7 +13,7 @@ export const getStoredToken = () => {
   };
   
   export const refreshAccessToken = async (refreshToken: string) => {
-    const response = await fetch('http://localhost:4000/auth/refresh-token', {
+    const response = await fetch(getApiUrl + '/auth/refresh-token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
