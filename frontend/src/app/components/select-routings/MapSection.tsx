@@ -34,8 +34,8 @@ const MapSection: React.FC<MapSectionProps> = ({
           bottom: 'auto',
           marginRight: '-50%',
           transform: 'translate(-50%, -50%)',
-          width: '90%',
-          height: '90%',
+          width: '100%',
+          height: '100%',
           backgroundColor: isDarkMode ? '#121212' : '#fff',
           color: isDarkMode ? '#fff' : '#000',
           overflow: 'hidden', // Evitar overflow no modal

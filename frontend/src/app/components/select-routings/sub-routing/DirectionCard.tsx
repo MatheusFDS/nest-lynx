@@ -29,41 +29,52 @@ const DirectionCard: React.FC<DirectionCardProps> = ({
 
   return (
     <Grid item xs={12} sm={6} md={4}>
-      <Paper elevation={3} style={{ padding: '8px', height: '550px', overflow: 'hidden' }}>
-        <Typography variant="subtitle1">{regionLabel}</Typography>
+      <Paper elevation={3} style={{ padding: '16px', display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <Typography variant="subtitle1" gutterBottom>
+          {regionLabel}
+        </Typography>
         {direction && (
-          <>
-            <Typography variant="body2">CEP: {direction.rangeInicio} - {direction.rangeFim}</Typography>
-          </>
+          <Typography variant="body2">
+            CEP: {direction.rangeInicio} - {direction.rangeFim}
+          </Typography>
         )}
         <Typography variant="body2">Total Valor: R$ {totalValue.toFixed(2)}</Typography>
         <Typography variant="body2">Total Peso: {totalWeight.toFixed(2)} kg</Typography>
         <Typography variant="body2">Total de Documentos: {orders.length}</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          size="small"
-          style={{ marginTop: '8px' }}
-          onClick={() => handleGenerateDelivery(direction ? direction.id : null)}
-        >
-          Gerar Rota
-        </Button>
-        <IconButton
-          edge="end"
-          size="small"
-          onClick={() => handleExpandedOrdersDialogOpen(direction ? direction.id : null)}
-          style={{ marginLeft: '8px' }}
-        >
-          <ExpandMore fontSize="small" />
-        </IconButton>
+        <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            onClick={() => handleGenerateDelivery(direction ? direction.id : null)}
+          >
+            Gerar Rota
+          </Button>
+          <IconButton
+            edge="end"
+            size="small"
+            onClick={() => handleExpandedOrdersDialogOpen(direction ? direction.id : null)}
+          >
+            <ExpandMore fontSize="small" />
+          </IconButton>
+        </div>
         <Droppable droppableId={directionId.toString()}>
           {(provided) => (
-            <div ref={provided.innerRef} {...provided.droppableProps} style={{ marginTop: '8px', overflowY: 'auto', maxHeight: '100%' }}>
+            <div
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              style={{
+                marginTop: '16px',
+                overflowY: 'auto',
+                flexGrow: 1,
+                maxHeight: 'calc(100% - 150px)', // Ajusta dinamicamente a altura da lista
+              }}
+            >
               {orders.map((order, index) => (
                 <Draggable key={order.id.toString()} draggableId={order.id.toString()} index={index}>
                   {(provided) => (
                     <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                      <Paper style={{ padding: '4px', marginBottom: '4px', width: '100%' }}>
+                      <Paper style={{ padding: '8px', marginBottom: '8px', width: '100%' }}>
                         <Typography variant="body2">{`Documento ${order.numero} - Cliente: ${order.cliente}`}</Typography>
                         <Typography variant="caption">{`CEP: ${order.cep}, Valor: ${order.valor}, Peso: ${order.peso}`}</Typography>
                         <IconButton
