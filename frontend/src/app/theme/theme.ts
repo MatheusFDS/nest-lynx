@@ -1,3 +1,5 @@
+// src/theme.ts
+
 import { createTheme } from '@mui/material/styles';
 
 const commonTypography = {
@@ -27,7 +29,7 @@ const commonComponents = {
   MuiButton: {
     styleOverrides: {
       root: {
-        borderRadius: 8,
+        borderRadius: 4, // Reduzido de 8 para 4
         boxShadow: 'none',
         padding: '8px 16px',
         '&:hover': {
@@ -36,21 +38,21 @@ const commonComponents = {
       },
     },
   },
-  MuiPaper: {
+  MuiCard: {
     styleOverrides: {
       root: {
-        borderRadius: 8,
+        borderRadius: 4, // Exemplo adicional para outros componentes
       },
     },
   },
 };
 
 const themeColors = {
-  primary: '#1F80E0', // Azul Claro
-  backgroundDark: '#040714', // Azul Escuro
-  backgroundLight: '#E5E7EB', // Cinza Claro
-  textPrimary: '#FFFFFF', // Branco
-  textSecondary: '#A0AEC0', // Cinza Médio
+  primary: '#00838F',
+  backgroundDark: '#0A1929',
+  backgroundLight: '#ECEFF1', // Tom de cinza mais suave
+  textPrimary: '#FFFFFF',
+  textSecondary: '#A0AEC0',
 };
 
 const lightTheme = createTheme({
@@ -63,17 +65,19 @@ const lightTheme = createTheme({
       main: themeColors.backgroundDark,
     },
     background: {
+      // Fundo principal cinza-claro (menos branco)
       default: themeColors.backgroundLight,
-      paper: '#FFFFFF',
+      // Paper num cinza levemente diferente, para dar um contraste suave
+      paper: '#F5F6F7',
     },
     text: {
-      primary: themeColors.backgroundDark,
+      primary: '#1A1A1A', // Texto escuro no modo claro
       secondary: themeColors.textSecondary,
     },
   },
   typography: commonTypography,
   shape: {
-    borderRadius: 8,
+    borderRadius: 4, // Reduzido de 8 para 4
   },
   components: commonComponents,
 });
@@ -88,8 +92,8 @@ const darkTheme = createTheme({
       main: themeColors.backgroundLight,
     },
     background: {
-      default: themeColors.backgroundDark,
-      paper: '#1A202C',
+      default: themeColors.backgroundDark, // Fundo escuro
+      paper: '#1A202C', // Papel levemente mais claro que o default
     },
     text: {
       primary: themeColors.textPrimary,
@@ -98,7 +102,7 @@ const darkTheme = createTheme({
   },
   typography: commonTypography,
   shape: {
-    borderRadius: 8,
+    borderRadius: 4, // Reduzido de 8 para 4
   },
   components: commonComponents,
 });

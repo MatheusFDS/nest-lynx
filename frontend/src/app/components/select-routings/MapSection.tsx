@@ -18,32 +18,39 @@ const MapSection: React.FC<MapSectionProps> = ({
   tenantId,
   isDarkMode,
   handleGenerateRouteFromMap,
-  handleCloseMap
+  handleCloseMap,
 }) => {
   return (
     <Modal
       isOpen={showMap}
       onRequestClose={handleCloseMap}
       contentLabel="Mapa"
-      ariaHideApp={false} // Importante para acessibilidade quando o modal é o foco principal
+      ariaHideApp={false}
       style={{
         content: {
-          top: '50%',
-          left: '50%',
-          right: 'auto',
-          bottom: 'auto',
-          marginRight: '-50%',
-          transform: 'translate(-50%, -50%)',
-          width: '100%',
-          height: '100%',
+          // Ocupa 100% da largura e altura da tela
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           backgroundColor: isDarkMode ? '#121212' : '#fff',
           color: isDarkMode ? '#fff' : '#000',
-          overflow: 'hidden', // Evitar overflow no modal
-          padding: 0, // Remover padding para que o mapa ocupe toda a área
+          overflow: 'hidden',
+          padding: 0,
+          margin: 0,
+          border: 'none',
         },
         overlay: {
-          backgroundColor: 'rgba(0, 0, 0, 0.75)' // Melhorar o contraste do fundo do modal
-        }
+          // Ocupa também 100% da tela
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          zIndex: 9999, // garantir sobreposição máxima
+        },
       }}
     >
       <MapboxComponent

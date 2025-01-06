@@ -1,80 +1,137 @@
-import React, { useState } from 'react';
-import { TextField, Button, Box, Typography } from '@mui/material';
-import { useAuth } from '../../context/AuthContext';
+// components/LoginForm.tsx
+'use client';
 
-import { getApiUrl } from '../../../services/utils/apiUtils';
+import React from 'react';
+import {
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  Link,
+  FormControlLabel,
+  Checkbox,
+  IconButton,
+  InputAdornment,
+  CircularProgress,
+  Alert,
+} from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 
-const LoginForm = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const { login } = useAuth();
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    try {
-      const response = await fetch(getApiUrl() + '/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Resposta de Erro:', errorData);
-        throw new Error('Falha ao fazer login');
-      }
-
-      const data = await response.json();
-      const token = data.access_token;
-      const refreshToken = data.refresh_token;
-
-      login(token, refreshToken);
-    } catch (error) {
-      console.error('Erro de Login:', error);
-      setError('Falha ao fazer login. Verifique suas credenciais e tente novamente.');
-    }
+interface LoginFormProps {
+  loginForm: {
+    email: string;
+    password: string;
+    rememberMe: boolean;
+    error: string;
   };
+  handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleSubmit: (e: React.FormEvent) => void;
+  showPassword: boolean;
+  toggleShowPassword: () => void;
+  isLoading: boolean;
+}
 
-  return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+const LoginForm: React.FC<LoginFormProps> = ({
+  loginForm,
+  handleChange,
+  handleSubmit,
+  showPassword,
+  toggleShowPassword,
+  isLoading,
+}) => (
+  <Paper
+    elevation={3}
+    sx={{
+      p: { xs: 3, md: 4 },
+      borderRadius: 2,
+      backgroundColor: 'background.paper',
+      maxWidth: 400, // Mantém o formulário mais fino
+      margin: '0 auto', // Centraliza o Paper
+    }}
+  >
+    <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }} align="center">
+      GERA ROTA
+    </Typography>
+    <Typography variant="body1" align="center" sx={{ mb: 3 }}>
+      Faça login para continuar
+    </Typography>
+
+    <form onSubmit={handleSubmit}>
       <TextField
+        name="email"
         label="E-mail de acesso"
         variant="outlined"
         fullWidth
         required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        value={loginForm.email}
+        onChange={handleChange}
         margin="normal"
+        type="email"
+        autoComplete="email"
       />
       <TextField
+        name="password"
         label="Senha"
-        type="password"
+        type={showPassword ? 'text' : 'password'}
         variant="outlined"
         fullWidth
         required
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        value={loginForm.password}
+        onChange={handleChange}
         margin="normal"
+        autoComplete="current-password"
+        InputProps={{
+          endAdornment: (
+            <InputAdornment position="end">
+              <IconButton
+                onClick={toggleShowPassword}
+                edge="end"
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showPassword ? <VisibilityOff /> : <Visibility />}
+              </IconButton>
+            </InputAdornment>
+          ),
+        }}
       />
-      {error && <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>}
+
+      {loginForm.error && (
+        <Alert severity="error" sx={{ mt: 1 }}>
+          {loginForm.error}
+        </Alert>
+      )}
+
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={loginForm.rememberMe}
+            onChange={handleChange}
+            name="rememberMe"
+            color="primary"
+          />
+        }
+        label="Lembrar-me"
+        sx={{ mt: 1 }}
+      />
+
       <Button
         type="submit"
         fullWidth
         variant="contained"
         color="primary"
         sx={{ mt: 3, mb: 2 }}
+        disabled={isLoading}
       >
-        ENTRAR
+        {isLoading ? <CircularProgress size={24} color="inherit" /> : 'ENTRAR'}
       </Button>
-      <Typography variant="body2" color="textSecondary" align="center">
-        Esqueceu a senha?
+
+      <Typography variant="body2" color="text.secondary" align="center">
+        <Link href="#" variant="body2" underline="hover">
+          Esqueceu a senha?
+        </Link>
       </Typography>
-    </Box>
-  );
-};
+    </form>
+  </Paper>
+);
 
 export default LoginForm;

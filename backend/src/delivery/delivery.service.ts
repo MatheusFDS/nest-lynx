@@ -209,6 +209,20 @@ export class DeliveryService {
   async update(id: string, updateDeliveryDto: UpdateDeliveryDto, tenantId: string) {
     const { motoristaId, veiculoId, orders, status, ...rest } = updateDeliveryDto;
 
+     // Verifica se o motorista está em outra rota proibida
+  if (motoristaId) {
+    const existingDelivery = await this.prisma.delivery.findFirst({
+      where: {
+        motoristaId,
+        status: { in: ['Em Rota', 'A liberar'] },
+        id: { not: id }, // Exclui a própria entrega
+      },
+    });
+
+    if (existingDelivery) {
+      throw new BadRequestException('O motorista já está em uma rota ativa.');
+    }
+  }
     const hasBaixadoPayments = await this.prisma.accountsPayable.findFirst({
       where: {
         paymentDeliveries: { some: { deliveryId: id } },

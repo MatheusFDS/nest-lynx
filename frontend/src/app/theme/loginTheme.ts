@@ -1,12 +1,19 @@
 import { createTheme } from '@mui/material/styles';
 
+/**
+ * Paleta futurista ajustada:
+ * - Azul-petróleo (primary) e verde-água (secondary) para destaque
+ * - Fundo (background) em cinza-escuro suave
+ * - "surface" levemente transparente, permitindo ver detalhes de fundo
+ * - Texto claro, mas não 100% branco puro
+ */
 const futuristicPalette = {
-  primary: '#1F80E0',
-  secondary: '#14FFEC',
-  background: '#323232',
-  surface: '#040714CC',
-  textPrimary: '#E1E1E1',
-  textSecondary: '#A1A1A1',
+  primary: '#00838F',       // Azul principal
+  secondary: '#14FFEC',     // Verde-água para hover/destaque
+  background: '#2D2F33',    // Cinza-escuro suave de fundo
+  surface: 'rgba(35, 42, 56, 0.8)', // Superfície levemente transparente
+  textPrimary: '#E6E6E6',   // Texto claro (menos brilhante que #FFF)
+  textSecondary: '#B0B0B0', // Texto secundário cinza
 };
 
 const loginTheme = createTheme({
@@ -19,11 +26,11 @@ const loginTheme = createTheme({
     },
     background: {
       default: futuristicPalette.background, // Fundo escuro futurístico
-      paper: futuristicPalette.surface, // Superfície escura futurística
+      paper: futuristicPalette.surface,      // Superfície escura futurística
     },
     text: {
-      primary: futuristicPalette.textPrimary, // Texto claro
-      secondary: futuristicPalette.textSecondary, // Texto secundário claro
+      primary: futuristicPalette.textPrimary,   // Texto claro
+      secondary: futuristicPalette.textSecondary, // Texto secundário
     },
   },
   typography: {

@@ -35,7 +35,7 @@ const OrderSection: React.FC<OrderSectionProps> = ({
   const sortedDirections = [...directions].sort((a, b) => a.rangeInicio.localeCompare(b.rangeInicio));
 
   return (
-    <Grid container spacing={3}>
+    <Grid container spacing={1}>
       {sortedDirections.map(direction => {
         const ordersInDirection = selectedOrders[direction.id] || [];
         if (ordersInDirection.length === 0) return null;
