@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Typography, Button } from '@mui/material';
 import Modal from 'react-modal';
 import { DragDropContext, DropResult } from 'react-beautiful-dnd';
@@ -17,7 +17,6 @@ import CreateRouteTable from '../components/select-routings/sub-routing/CreateRo
 import { fetchTenantData } from '../../services/auxiliaryService'; // Importar a função de serviço
 import SkeletonLoader from '../components/SkeletonLoader'; // Importar o SkeletonLoader
 import { useLoading } from '../context/LoadingContext';
-import { useMessage } from '../context/MessageContext'; // Importar o contexto de mensagens
 
 interface SelectedOrders {
   [key: string]: Order[];
@@ -26,15 +25,14 @@ interface SelectedOrders {
 
 const RoutingPage: React.FC = () => {
   const { setLoading, isLoading } = useLoading();
-  const { showMessage } = useMessage(); // Hook para mensagens
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState<boolean>(false);
-  const [expandedOrdersDialogOpen, setExpandedOrdersDialogOpen] = useState<boolean>(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [expandedOrdersDialogOpen, setExpandedOrdersDialogOpen] = useState(false);
   const [currentDirectionId, setCurrentDirectionId] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [showMap, setShowMap] = useState<boolean>(false);
+  const [showMap, setShowMap] = useState(false);
   const [ordersForMap, setOrdersForMap] = useState<Order[]>([]);
   const [tenantId, setTenantId] = useState<string>('');
-  const [useTableLayout, setUseTableLayout] = useState<boolean>(() => {
+  const [useTableLayout, setUseTableLayout] = useState(() => {
     const savedLayout = localStorage.getItem('useTableLayout');
     return savedLayout ? JSON.parse(savedLayout) : false;
   });
@@ -49,32 +47,25 @@ const RoutingPage: React.FC = () => {
     Modal.setAppElement('#__next');
   }, []);
 
-  // Função para carregar os dados do Tenant
-  const fetchTenant = useCallback(async () => {
-    if (token) {
-      setLoading(true);
-      try {
-        const tenants = await fetchTenantData(token);
-        if (tenants && tenants.length > 0) {
-          setTenantId(tenants[0].id);
-          showMessage('Dados do Tenant carregados com sucesso.', 'success'); // Mensagem de sucesso
-        } else {
-          showMessage('Nenhum Tenant encontrado.', 'warning'); // Mensagem de aviso
-        }
-      } catch (error: unknown) {
-        console.error('Failed to fetch tenant data:', error);
-        showMessage('Falha ao carregar dados do Tenant.', 'error'); // Mensagem de erro
-      } finally {
-        setLoading(false);
-      }
-    }
-  }, [token, setLoading, showMessage]);
-
   useEffect(() => {
+    const fetchTenant = async () => {
+      if (token) {
+        setLoading(true);
+        try {
+          const tenants = await fetchTenantData(token);
+          if (tenants && tenants.length > 0) {
+            setTenantId(tenants[0].id);
+          }
+        } catch (error) {
+          console.error('Failed to fetch tenant data:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
     fetchTenant();
-  }, [fetchTenant]);
+  }, [token, setLoading]);
 
-  // Função para organizar pedidos por direção
   useEffect(() => {
     const ordersByDirection: SelectedOrders = directions.reduce((acc, direction) => {
       acc[direction.id] = orders.filter(order => 
@@ -94,22 +85,14 @@ const RoutingPage: React.FC = () => {
     setSelectedOrders(ordersByDirection);
   }, [orders, directions]);
 
-  // Função para transferir pedidos entre direções
   const handleOrderTransfer = (orderId: string, fromDirectionId: string | 'noRegion', toDirectionId: string | 'noRegion') => {
     setSelectedOrders(prevState => {
       const fromOrders = prevState[fromDirectionId].filter(order => order.id !== orderId);
-      const orderToMove = orders.find(order => order.id === orderId);
-      if (!orderToMove) {
-        showMessage('Pedido não encontrado.', 'error'); // Mensagem de erro
-        return prevState;
-      }
-      const toOrders = [...prevState[toDirectionId], orderToMove];
-      showMessage('Pedido transferido com sucesso.', 'success'); // Mensagem de sucesso
+      const toOrders = [...prevState[toDirectionId], orders.find(order => order.id === orderId)!];
       return { ...prevState, [fromDirectionId]: fromOrders, [toDirectionId]: toOrders };
     });
   };
 
-  // Funções para abrir e fechar diálogos de detalhes
   const handleDetailsDialogOpen = (order: Order) => {
     setSelectedOrder(order);
     setDetailsDialogOpen(true);
@@ -120,7 +103,6 @@ const RoutingPage: React.FC = () => {
     setSelectedOrder(null);
   };
 
-  // Funções para abrir e fechar diálogos de pedidos expandidos
   const handleExpandedOrdersDialogOpen = (directionId: string | null) => {
     setCurrentDirectionId(directionId);
     setExpandedOrdersDialogOpen(true);
@@ -131,80 +113,57 @@ const RoutingPage: React.FC = () => {
     setCurrentDirectionId(null);
   };
 
-  // Função para lidar com o fim do arrastar e soltar
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     const { source, destination } = result;
 
-    const fromDirectionId = source.droppableId === 'no-region' ? 'noRegion' : source.droppableId;
-    const toDirectionId = destination.droppableId === 'no-region' ? 'noRegion' : destination.droppableId;
-
-    if (fromDirectionId !== toDirectionId) {
-      handleOrderTransfer(result.draggableId, fromDirectionId, toDirectionId);
+    if (source.droppableId !== destination.droppableId) {
+      handleOrderTransfer(
+        result.draggableId,
+        source.droppableId === 'no-region' ? 'noRegion' : source.droppableId,
+        destination.droppableId === 'no-region' ? 'noRegion' : destination.droppableId
+      );
     }
   };
 
-  // Função para exibir o mapa a partir da tabela
   const handleShowMapFromTable = (selectedOrders: Order[]) => {
     const validOrders = selectedOrders.filter(order => order.lat !== undefined && order.lng !== undefined);
     setOrdersForMap(validOrders);
     setShowMap(true);
-    showMessage('Mapa exibido com sucesso.', 'info'); // Mensagem informativa
   };
 
-  // Função para exibir o mapa a partir de uma seção específica
   const handleShowMapFromSection = (directionId: string | null) => {
     if (directionId !== null) {
       const validOrders = selectedOrders[directionId].filter(order => order.lat !== undefined && order.lng !== undefined);
       setOrdersForMap(validOrders);
       setCurrentDirectionId(directionId);
       setShowMap(true);
-      showMessage('Mapa exibido com sucesso.', 'info'); // Mensagem informativa
     }
   };
 
-  // Função para gerar a rota a partir do mapa
   const handleGenerateRouteFromMap = (orderedOrders: Order[]) => {
-    if (currentDirectionId) {
-      setSelectedOrders(prevState => ({ ...prevState, [currentDirectionId]: orderedOrders }));
-      setShowMap(false);
-      updateOrdersState();
-      handleClearCart();
-      showMessage('Rota gerada com sucesso!', 'success'); // Mensagem de sucesso
-    } else {
-      showMessage('Direção atual não encontrada.', 'error'); // Mensagem de erro
-    }
+    setSelectedOrders({ ...selectedOrders, [currentDirectionId!]: orderedOrders });
+    setShowMap(false);
+    updateOrdersState();
+    handleClearCart();
   };
 
-  // Função para fechar o mapa
   const handleCloseMap = () => {
     setShowMap(false);
     updateOrdersState();
     handleClearCart();
-    showMessage('Mapa fechado.', 'info'); // Mensagem informativa
   };
 
-  // Função para limpar o carrinho de pedidos
   const handleClearCart = () => {
     setSelectedOrders({ noRegion: [] });
-    showMessage('Carrinho de pedidos limpo.', 'info'); // Mensagem informativa
   };
 
-  // Função para alternar o layout entre tabela e arrastar e soltar
   const toggleLayout = () => {
-    setUseTableLayout(prev => {
+    setUseTableLayout((prev: any) => {
       const newLayout = !prev;
       localStorage.setItem('useTableLayout', JSON.stringify(newLayout));
-      showMessage(`Layout alterado para ${newLayout ? 'Tabela' : 'Arrastar e Soltar'}.`, 'info'); // Mensagem informativa
       return newLayout;
     });
-  };
-
-  // Função para lidar com a mudança de status no FilterBar
-  const handleStatusFilterChange = (status: string) => {
-    // Supondo que você tenha uma função para carregar as entregas filtradas
-    // loadDeliveries(); // Descomente e implemente conforme necessário
-    showMessage(`Filtro de status alterado para "${status}".`, 'info'); // Mensagem informativa
   };
 
   return (
@@ -213,7 +172,6 @@ const RoutingPage: React.FC = () => {
         <SkeletonLoader />
       ) : (
         <>
-          {/* Exibição de mensagens de erro, se houver */}
           <Typography style={{ marginTop: '10px', marginBottom: '10px' }}>
             {error && <Typography color="error">{error}</Typography>}
           </Typography>
