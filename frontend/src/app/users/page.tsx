@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Typography,
   Container,
@@ -18,6 +18,7 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Box,
 } from '@mui/material';
 import { Delete, Edit } from '@mui/icons-material';
 import { User, Role } from '../../types';
@@ -25,16 +26,17 @@ import SkeletonLoader from '../components/SkeletonLoader';
 import { useLoading } from '../context/LoadingContext';
 import { fetchUsers, addUser, updateUser, deleteUser, fetchRoles } from '../../services/userService';
 import withAuth from '../hoc/withAuth';
+import { useMessage } from '../context/MessageContext'; // Importar o contexto de mensagens
 
 const UsersPage: React.FC = () => {
   const { setLoading, isLoading } = useLoading();
+  const { showMessage } = useMessage(); // Hook para mensagens
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [newUser, setNewUser] = useState<Partial<User>>({});
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
 
   const token = localStorage.getItem('token') || '';
 
@@ -52,32 +54,49 @@ const UsersPage: React.FC = () => {
   const tenantId = getTenantIdFromToken();
 
   // Função para carregar usuários
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
+    if (!token) {
+      showMessage('Token de autenticação não encontrado.', 'error'); // Mensagem de erro
+      return;
+    }
+
     setLoading(true);
     try {
-      const users = await fetchUsers(token);
-      setUsers(Array.isArray(users) ? users : []);
-    } catch (error) {
-      setError('Failed to fetch users.');
+      const fetchedUsers = await fetchUsers(token);
+      setUsers(Array.isArray(fetchedUsers) ? fetchedUsers : []);
+      //showMessage('Usuários carregados com sucesso.', 'success'); // Mensagem de sucesso
+    } catch (error: unknown) {
+      console.error('Failed to fetch users:', error);
+      showMessage('Falha ao carregar usuários.', 'error'); // Mensagem de erro
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, setLoading, showMessage]);
 
   // Função para carregar roles
-  const loadRoles = async () => {
-    try {
-      const roles = await fetchRoles(token);
-      setRoles(Array.isArray(roles) ? roles : []);
-    } catch (error) {
-      setError('Failed to fetch roles.');
+  const loadRoles = useCallback(async () => {
+    if (!token) {
+      showMessage('Token de autenticação não encontrado.', 'error'); // Mensagem de erro
+      return;
     }
-  };
+
+    setLoading(true);
+    try {
+      const fetchedRoles = await fetchRoles(token);
+      setRoles(Array.isArray(fetchedRoles) ? fetchedRoles : []);
+      showMessage('Roles carregados com sucesso.', 'success'); // Mensagem de sucesso
+    } catch (error: unknown) {
+      console.error('Failed to fetch roles:', error);
+      showMessage('Falha ao carregar roles.', 'error'); // Mensagem de erro
+    } finally {
+      setLoading(false);
+    }
+  }, [token, setLoading, showMessage]);
 
   useEffect(() => {
     loadUsers();
     loadRoles();
-  }, [token]);
+  }, [loadUsers, loadRoles]);
 
   // Manipulador de busca
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,7 +111,7 @@ const UsersPage: React.FC = () => {
   // Manipulador de adicionar ou atualizar usuário
   const handleAddOrUpdateUser = async () => {
     if (!tenantId) {
-      setError('Invalid tenantId');
+      showMessage('tenantId inválido.', 'error'); // Mensagem de erro
       return;
     }
 
@@ -101,15 +120,18 @@ const UsersPage: React.FC = () => {
     try {
       if (selectedUser) {
         await updateUser(token, selectedUser.id, userToSave);
+        showMessage('Usuário atualizado com sucesso.', 'success'); // Mensagem de sucesso
       } else {
         await addUser(token, userToSave);
+        showMessage('Usuário adicionado com sucesso.', 'success'); // Mensagem de sucesso
       }
       setNewUser({});
       setSelectedUser(null);
       setShowForm(false);
       loadUsers();
-    } catch (error) {
-      setError('Failed to submit user.');
+    } catch (error: unknown) {
+      console.error('Failed to submit user:', error);
+      showMessage('Falha ao submeter usuário.', 'error'); // Mensagem de erro
     }
   };
 
@@ -118,15 +140,18 @@ const UsersPage: React.FC = () => {
     setSelectedUser(user);
     setNewUser(user);
     setShowForm(true);
+    showMessage(`Editando o usuário: ${user.email}`, 'info'); // Mensagem informativa
   };
 
   // Manipulador de exclusão
   const handleDelete = async (id: string) => {
     try {
       await deleteUser(token, id);
+      showMessage('Usuário deletado com sucesso.', 'success'); // Mensagem de sucesso
       loadUsers();
-    } catch (error) {
-      setError('Failed to delete user.');
+    } catch (error: unknown) {
+      console.error('Failed to delete user:', error);
+      showMessage('Falha ao deletar usuário.', 'error'); // Mensagem de erro
     }
   };
 
@@ -135,13 +160,16 @@ const UsersPage: React.FC = () => {
     setSelectedUser(null);
     setNewUser({});
     setShowForm(false);
+    showMessage('Formulário fechado.', 'info'); // Mensagem informativa
   };
 
   return (
     <Container>
-      {error && <Typography color="error">{error}</Typography>}
+      {/* Removido: Exibição de mensagens de erro diretamente no JSX */}
+      {/* {error && <Typography color="error">{error}</Typography>} */}
+
       <TextField
-        label="Search Users"
+        label="Buscar Usuários"
         value={searchTerm}
         onChange={handleSearch}
         fullWidth
@@ -152,6 +180,7 @@ const UsersPage: React.FC = () => {
       </Button>
       {showForm && (
         <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
+          <Typography variant="h6">{selectedUser ? 'Atualizar Usuário' : 'Adicionar Usuário'}</Typography>
           <TextField
             label="Email"
             value={newUser.email || ''}
@@ -187,10 +216,19 @@ const UsersPage: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-          <Button variant="contained" color="primary" onClick={handleAddOrUpdateUser}>
-            {selectedUser ? 'Atualizar Usuário' : 'Adicionar Usuário'}
-          </Button>
-          <Button onClick={handleFormClose}>Cancelar</Button>
+          <Box style={{ marginTop: '16px' }}>
+            <Button variant="contained" color="primary" onClick={handleAddOrUpdateUser}>
+              {selectedUser ? 'Atualizar Usuário' : 'Adicionar Usuário'}
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleFormClose}
+              style={{ marginLeft: '8px' }}
+            >
+              Cancelar
+            </Button>
+          </Box>
         </Paper>
       )}
       <TableContainer component={Paper} style={{ marginTop: '16px' }}>
@@ -201,7 +239,7 @@ const UsersPage: React.FC = () => {
             <TableHead>
               <TableRow>
                 <TableCell>Email</TableCell>
-                <TableCell>Tipo</TableCell>
+                <TableCell>Nome</TableCell>
                 <TableCell>Tipo</TableCell>
                 <TableCell>Ações</TableCell>
               </TableRow>
@@ -211,7 +249,7 @@ const UsersPage: React.FC = () => {
                 <TableRow key={user.id}>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>{user.name}</TableCell>
-                  <TableCell>{roles.find(role => role.id === user.roleId)?.name || 'No Role'}</TableCell>
+                  <TableCell>{roles.find(role => role.id === user.roleId)?.name || 'Sem Role'}</TableCell>
                   <TableCell>
                     <IconButton onClick={() => handleEdit(user)}>
                       <Edit />

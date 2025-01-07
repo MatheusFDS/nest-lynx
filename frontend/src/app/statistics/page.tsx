@@ -1,7 +1,7 @@
 // src/pages/StatisticsPage.tsx
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Typography, Grid, Box, Paper, Container } from '@mui/material';
 import StatisticsPieChart from '../components/statistics/StatisticsPieChart';
 import StatisticsBarChart from '../components/statistics/StatisticsBarChart';
@@ -10,6 +10,7 @@ import { fetchStatistics } from '../../services/statisticsService';
 import DateFilter from '../components/statistics/DateFilter';
 import { useLoading } from '../context/LoadingContext'; // Importe o hook de carregamento
 import SkeletonLoader from '../components/SkeletonLoader'; // Importe o SkeletonLoader
+import { useMessage } from '../context/MessageContext'; // Importar o contexto de mensagens
 
 interface Statistics {
   ordersInRoute: number;
@@ -34,6 +35,7 @@ interface Driver {
 
 const StatisticsPage: React.FC = () => {
   const { setLoading, isLoading } = useLoading(); // Use o hook de carregamento
+  const { showMessage } = useMessage(); // Hook para mensagens
   const [statistics, setStatistics] = useState<Statistics>({
     ordersInRoute: 0,
     ordersFinalized: 0,
@@ -53,9 +55,10 @@ const StatisticsPage: React.FC = () => {
   const [startDate, setStartDate] = useState('2024-01-01');
   const [endDate, setEndDate] = useState('2024-12-31');
 
-  const fetchAndSetStatistics = async () => {
+  const fetchAndSetStatistics = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) {
+      showMessage('Token de autenticação não encontrado.', 'error'); // Mensagem de erro
       return;
     }
 
@@ -64,16 +67,18 @@ const StatisticsPage: React.FC = () => {
       const data = await fetchStatistics(token, startDate, endDate);
       setStatistics(data);
       setDrivers(data.drivers);
-    } catch (error) {
+      //showMessage('Estatísticas carregadas com sucesso.', 'success'); // Mensagem de sucesso
+    } catch (error: unknown) {
       console.error('Failed to fetch statistics:', error);
+      showMessage('Falha ao carregar estatísticas.', 'error'); // Mensagem de erro
     } finally {
       setLoading(false);
     }
-  };
+  }, [startDate, endDate, setLoading, showMessage]);
 
   useEffect(() => {
     fetchAndSetStatistics();
-  }, [startDate, endDate]);
+  }, [fetchAndSetStatistics]);
 
   const deliveriesByDriverData = useMemo(
     () =>
@@ -217,8 +222,9 @@ const StatisticsPage: React.FC = () => {
                 />
               </Paper>
             </Grid>
-                       {/* Entregas por Região */}
-                       <Grid item xs={12} sm={6} md={20}>
+
+            {/* Entregas por Região */}
+            <Grid item xs={12} sm={6} md={6}>
               <Paper elevation={3} sx={{ padding: 2 }}>
                 <StatisticsPieChart title="Entregas por Região" data={regionData} />
               </Paper>
