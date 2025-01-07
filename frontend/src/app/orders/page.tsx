@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Container,
   Typography,
@@ -8,21 +8,18 @@ import {
   TextField,
   FormControlLabel,
   Checkbox,
-  Button,
-  Paper,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
   IconButton,
   Menu,
   MenuItem,
   Box,
   Badge,
-  FormGroup
+  FormGroup,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Paper,
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
 import {
   Add,
   CloudUpload,
@@ -44,6 +41,7 @@ import { Order } from '../../types';
 import { useTheme } from '../context/ThemeContext';
 import SkeletonLoader from '../components/SkeletonLoader'; // Importar o SkeletonLoader
 import { useLoading } from '../context/LoadingContext'; // Importar o LoadingContext
+import { useMessage } from '../context/MessageContext'; // Importar o hook useMessage
 
 enum Field {
   Id = 'id',
@@ -102,22 +100,22 @@ const defaultFields: Record<Field, boolean> = {
 };
 
 const formatDateTimeBR = (date: string) => {
+  if (!date) return '';
   const [datePart, timePart] = date.split('T');
   const [year, month, day] = datePart.split('-');
-  return `${day}/${month}/${year} ${timePart.split('.')[0]}`;
+  const time = timePart ? timePart.split('.')[0] : '';
+  return `${day}/${month}/${year} ${time}`;
 };
-
 
 const OrdersPage: React.FC = () => {
   const { setLoading, isLoading } = useLoading();
+  const { showMessage } = useMessage(); // Hook para disparar mensagens
   const [file, setFile] = useState<File | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
-  const [error, setError] = useState<string>('');
-  const [success, setSuccess] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showFields, setShowFields] = useState<Record<Field, boolean>>(defaultFields);
-  const [open, setOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [gridApi, setGridApi] = useState<any>(null);
   const [startDate, setStartDate] = useState<string>('');
@@ -133,15 +131,19 @@ const OrdersPage: React.FC = () => {
   const { isDarkMode } = useTheme();
   const token = localStorage.getItem('token') || '';
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     loadOrders();
     loadUserSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (token && showFields) {
       updateUserSettings(token, showFields);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showFields, token]);
 
   const loadOrders = async () => {
@@ -153,7 +155,7 @@ const OrdersPage: React.FC = () => {
       setLoading(false);
     } catch (error) {
       setLoading(false);
-      setError('Failed to fetch orders.');
+      showMessage('Falha ao buscar ordens.', 'error');
     }
   };
 
@@ -164,7 +166,7 @@ const OrdersPage: React.FC = () => {
         setShowFields(settings.settings);
       }
     } catch (error) {
-      setError('Failed to fetch user settings.');
+      showMessage('Falha ao buscar configurações do usuário.', 'error');
     }
   };
 
@@ -179,7 +181,7 @@ const OrdersPage: React.FC = () => {
 
     const reader = new FileReader();
     reader.onload = async () => {
-      const binaryStr = reader.result;
+      const binaryStr = reader.result as string;
       const workbook = read(binaryStr, { type: 'binary' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
@@ -188,15 +190,12 @@ const OrdersPage: React.FC = () => {
       try {
         await uploadOrders(token, ordersData);
         setOrders([...orders, ...ordersData]);
-        setSuccess('Orders uploaded successfully');
-        setError('');
+        setFilteredOrders([...orders, ...ordersData]);
+        showMessage(`Ordens importadas com sucesso! Quantidade: ${ordersData.length}`, 'success');
+        setFile(null);
       } catch (err: any) {
-        if (err.response && err.response.data && err.response.data.message) {
-          setError(err.response.data.message);
-        } else {
-          setError('Failed to upload orders.');
-        }
-        setSuccess('');
+        const errorMsg = err.response?.data?.message || 'Falha ao importar ordens.';
+        showMessage(errorMsg, 'error');
       }
     };
     reader.readAsBinaryString(file);
@@ -210,29 +209,36 @@ const OrdersPage: React.FC = () => {
     let filtered = orders;
 
     if (searchTerm) {
-      filtered = filtered.filter(order =>
-        Object.values(order).some(val =>
+      filtered = filtered.filter((order) =>
+        Object.values(order).some((val) =>
           String(val).toLowerCase().includes(searchTerm)
         )
       );
     }
 
     if (startDate) {
-      filtered = filtered.filter(order => new Date(order.data) >= new Date(startDate));
+      filtered = filtered.filter(
+        (order) => new Date(order.data) >= new Date(startDate)
+      );
     }
 
     if (endDate) {
-      filtered = filtered.filter(order => new Date(order.data) <= new Date(endDate));
+      filtered = filtered.filter(
+        (order) => new Date(order.data) <= new Date(endDate)
+      );
     }
 
-    const activeStatusFilters = Object.keys(statusFilters).filter(key => statusFilters[key]);
+    const activeStatusFilters = Object.keys(statusFilters).filter(
+      (key) => statusFilters[key]
+    );
 
     if (activeStatusFilters.length > 0) {
-      filtered = filtered.filter(order => activeStatusFilters.includes(order.status.replace(/\s+/g, '')));
+      filtered = filtered.filter((order) =>
+        activeStatusFilters.includes(order.status.replace(/\s+/g, ''))
+      );
     }
 
     setFilteredOrders(filtered);
-    setError('');
   };
 
   const handleFieldToggle = (field: Field) => {
@@ -244,11 +250,11 @@ const OrdersPage: React.FC = () => {
   };
 
   const handleDialogOpen = () => {
-    setOpen(true);
+    setDialogOpen(true);
   };
 
   const handleDialogClose = () => {
-    setOpen(false);
+    setDialogOpen(false);
   };
 
   const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -260,10 +266,13 @@ const OrdersPage: React.FC = () => {
   };
 
   const handleStatusFilterChange = (status: string) => {
-    setStatusFilters(prev => ({ ...prev, [status.replace(' ', '')]: !prev[status.replace(' ', '')] }));
+    setStatusFilters((prev) => ({
+      ...prev,
+      [status.replace(' ', '')]: !prev[status.replace(' ', '')],
+    }));
   };
 
-  const columns = Object.keys(Field).map(key => ({
+  const columns = Object.keys(Field).map((key) => ({
     headerName: Field[key as keyof typeof Field],
     field: Field[key as keyof typeof Field],
     hide: !showFields[Field[key as keyof typeof Field]],
@@ -276,7 +285,9 @@ const OrdersPage: React.FC = () => {
         return params.data.Delivery?.Driver?.name || '';
       }
       if (key === 'DataFinalizacao') {
-        return params.data.Delivery?.dataFim ? formatDateTimeBR(params.data.Delivery.dataFim) : '';
+        return params.data.Delivery?.dataFim
+          ? formatDateTimeBR(params.data.Delivery.dataFim)
+          : '';
       }
       return value;
     },
@@ -289,12 +300,14 @@ const OrdersPage: React.FC = () => {
   const copySelectedRowsToClipboard = () => {
     if (!gridApi) return;
     const selectedRows = gridApi.getSelectedRows();
-    const selectedDataString = selectedRows.map((row: any) => {
-      const rowData = Object.values(row).join('\t');
-      return rowData;
-    }).join('\n');
+    const selectedDataString = selectedRows
+      .map((row: any) => {
+        const rowData = Object.values(row).join('\t');
+        return rowData;
+      })
+      .join('\n');
     navigator.clipboard.writeText(selectedDataString).then(() => {
-      console.log('Rows copied to clipboard');
+      showMessage('Linhas copiadas para a área de transferência.', 'success');
     });
   };
 
@@ -304,7 +317,7 @@ const OrdersPage: React.FC = () => {
     gridApi.forEachNodeAfterFilterAndSort((node: any) => rowData.push(node.data));
     const csvContent = [
       Object.keys(Field).join(';'),
-      ...rowData.map((row: any) => Object.values(row).join(';'))
+      ...rowData.map((row: any) => Object.values(row).join(';')),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -316,6 +329,7 @@ const OrdersPage: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    showMessage('Exportado para CSV com sucesso.', 'success');
   };
 
   const exportToExcel = () => {
@@ -328,6 +342,7 @@ const OrdersPage: React.FC = () => {
     utils.book_append_sheet(workbook, worksheet, 'Orders');
 
     writeFile(workbook, 'orders.xlsx');
+    showMessage('Exportado para Excel com sucesso.', 'success');
   };
 
   const exportToPdf = (selectedOnly: boolean) => {
@@ -340,35 +355,36 @@ const OrdersPage: React.FC = () => {
     }
 
     const doc = new jsPDF();
+    const tableColumn = Object.keys(Field).map((key) => Field[key as keyof typeof Field]);
+    const tableRows: any[] = [];
+
     rowData.forEach((row, index) => {
-      const margin = 10;
-      const lineSpacing = 10;
-      let yPosition = margin;
-
-      doc.text(`Order ${index + 1}`, margin, yPosition);
-      yPosition += lineSpacing;
-
-      Object.entries(row).forEach(([key, value]) => {
-        if (key in Field) {
-          const displayValue = (key === 'Data' || key === 'DataFinalizacao') ? formatDateTimeBR(value as string) : value;
-          doc.text(`${key}: ${displayValue}`, margin, yPosition);
-          yPosition += lineSpacing;
+      const rowDataArray = Object.keys(Field).map((key) => {
+        const value = row[Field[key as keyof typeof Field]];
+        if (key === 'Data' || key === 'DataFinalizacao') {
+          return formatDateTimeBR(value as string);
         }
+        if (key === 'Motorista') {
+          return row.Delivery?.Driver?.name || '';
+        }
+        return value;
       });
-
-      if (index < rowData.length - 1) {
-        doc.addPage();
-      }
+      tableRows.push(rowDataArray);
     });
 
-    doc.save('orders.pdf');
+    (doc as any).autoTable({
+      head: [tableColumn],
+      body: tableRows,
+    });
+
+    const fileName = selectedOnly ? 'selected_orders.pdf' : 'orders.pdf';
+    doc.save(fileName);
+    showMessage(`Exportado para PDF com sucesso (${fileName}).`, 'success');
   };
 
   return (
-    <Container>
-      {error && <Typography color="error">{error}</Typography>}
-      {success && <Typography color="primary">{success}</Typography>}
-      <Grid container spacing={2} style={{ marginTop: '16px', marginBottom: '16px' }}>
+    <Container sx={{ paddingTop: '60px' }}> {/* Adiciona padding para não sobrepor o MessageBanner */}
+      <Grid container spacing={2} sx={{ marginTop: '16px', marginBottom: '16px' }}>
         <Grid item xs={12}>
           <TextField
             label="Buscar"
@@ -426,20 +442,19 @@ const OrdersPage: React.FC = () => {
             label="Finalizado"
           />
           <Badge badgeContent={filteredOrders.length} color="primary" showZero>
+            {/* Você pode adicionar um ícone ou outro elemento aqui se desejar */}
           </Badge>
         </Grid>
       </Grid>
       <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" mt={2} mb={2}>
         <Box display="flex" gap={2} alignItems="center">
+          {/* Aqui você pode adicionar outros elementos se necessário */}
         </Box>
         <Box display="flex" gap={2}>
           <IconButton color="primary" onClick={applyFilters}>
             <Refresh />
           </IconButton>
-          <IconButton
-            color="primary"
-            component="label"
-          >
+          <IconButton color="primary" component="label">
             <input
               type="file"
               hidden
@@ -448,23 +463,13 @@ const OrdersPage: React.FC = () => {
             />
             <Add />
           </IconButton>
-          <IconButton
-            color="primary"
-            onClick={handleUpload}
-            disabled={!file}
-          >
+          <IconButton color="primary" onClick={handleUpload} disabled={!file}>
             <CloudUpload />
           </IconButton>
-          <IconButton
-            color="primary"
-            onClick={copySelectedRowsToClipboard}
-          >
+          <IconButton color="primary" onClick={copySelectedRowsToClipboard}>
             <ContentCopy />
           </IconButton>
-          <IconButton
-            color="primary"
-            onClick={handleMenuClick}
-          >
+          <IconButton color="primary" onClick={handleMenuClick}>
             <MoreVert />
           </IconButton>
           <Menu
@@ -472,19 +477,19 @@ const OrdersPage: React.FC = () => {
             open={Boolean(anchorEl)}
             onClose={handleMenuClose}
           >
-            <MenuItem onClick={exportToCsv}>
+            <MenuItem onClick={() => { exportToCsv(); handleMenuClose(); }}>
               <FileDownload style={{ marginRight: '8px' }} />
               Exportar para CSV
             </MenuItem>
-            <MenuItem onClick={exportToExcel}>
+            <MenuItem onClick={() => { exportToExcel(); handleMenuClose(); }}>
               <FileDownload style={{ marginRight: '8px' }} />
               Exportar para Excel
             </MenuItem>
-            <MenuItem onClick={() => exportToPdf(false)}>
+            <MenuItem onClick={() => { exportToPdf(false); handleMenuClose(); }}>
               <FileDownload style={{ marginRight: '8px' }} />
               Exportar todos para PDF
             </MenuItem>
-            <MenuItem onClick={() => exportToPdf(true)}>
+            <MenuItem onClick={() => { exportToPdf(true); handleMenuClose(); }}>
               <FileDownload style={{ marginRight: '8px' }} />
               Exportar selecionados para PDF
             </MenuItem>
@@ -495,7 +500,15 @@ const OrdersPage: React.FC = () => {
         <SkeletonLoader />
       ) : filteredOrders.length > 0 ? (
         <Paper elevation={3}>
-          <div className={isDarkMode ? "ag-theme-balham-dark" : "ag-theme-balham"} style={{ height: 800, width: '100%', marginTop: '16px', overflowY: 'auto' }}>
+          <div
+            className={isDarkMode ? 'ag-theme-balham-dark' : 'ag-theme-balham'}
+            style={{
+              height: 800,
+              width: '100%',
+              marginTop: '16px',
+              overflowY: 'auto',
+            }}
+          >
             <AgGridReact
               rowData={filteredOrders}
               columnDefs={columns}
@@ -513,11 +526,11 @@ const OrdersPage: React.FC = () => {
           </div>
         </Paper>
       ) : (
-        <Typography align="center" style={{ padding: '16px' }}>
+        <Typography align="center" sx={{ padding: '16px' }}>
           Nenhuma ordem encontrada. Use os filtros para buscar ordens.
         </Typography>
       )}
-      <Dialog open={open} onClose={handleDialogClose}>
+      <Dialog open={dialogOpen} onClose={handleDialogClose}>
         <DialogTitle>Escolher Colunas para Exibir</DialogTitle>
         <DialogContent>
           <FormGroup>
@@ -541,6 +554,19 @@ const OrdersPage: React.FC = () => {
           </IconButton>
         </DialogActions>
       </Dialog>
+      {/* O MessageProvider já renderiza o MessageBanner */}
+      <input
+        type="file"
+        hidden
+        accept=".csv, .xls, .xlsx"
+        ref={fileInputRef}
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            setFile(e.target.files[0]);
+            handleUpload();
+          }
+        }}
+      />
     </Container>
   );
 };

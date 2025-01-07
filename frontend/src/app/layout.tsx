@@ -12,6 +12,7 @@ import { UserSettingsProvider, useUserSettings } from './context/UserSettingsCon
 import { darkTheme, lightTheme } from './theme/theme';
 import loginTheme from './theme/loginTheme';
 import { LoadingProvider, useLoading } from './context/LoadingContext'; // Importe o LoadingProvider
+import { MessageProvider } from './context/MessageContext'; // Importe o novo contexto
 import LinearDeterminate from './components/LinearDeterminate'; // Importe o componente LinearDeterminate
 
 interface LayoutProps {
@@ -45,9 +46,11 @@ const Layout = ({ children }: LayoutProps) => {
         <AuthProvider>
           <UserSettingsProvider>
             <LoadingProvider>
-              <ThemeProvider>
-                <AppContent>{children}</AppContent>
-              </ThemeProvider>
+              <MessageProvider> {/* Adicione o MessageProvider aqui */}
+                <ThemeProvider>
+                  <AppContent>{children}</AppContent>
+                </ThemeProvider>
+              </MessageProvider>
             </LoadingProvider>
           </UserSettingsProvider>
         </AuthProvider>
