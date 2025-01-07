@@ -132,6 +132,7 @@ const UsersPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await deleteUser(token, id);
+      showMessage('Usuário deletado', 'success');
       loadUsers();
     } catch (error) {
       setError('Failed to delete user.');
