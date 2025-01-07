@@ -10,6 +10,7 @@ import { fetchCategories } from '../../services/categoryService';
 import { Delete, Edit } from '@mui/icons-material';
 import { useLoading } from '../context/LoadingContext';
 import SkeletonLoader from '../components/SkeletonLoader';
+import { useMessage } from '../context/MessageContext';
 
 const VehiclesPage: React.FC = () => {
   const { setLoading, isLoading } = useLoading();
@@ -22,6 +23,7 @@ const VehiclesPage: React.FC = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const { showMessage } = useMessage();
 
   const token = localStorage.getItem('token') || '';
 
@@ -45,6 +47,7 @@ const VehiclesPage: React.FC = () => {
       setDrivers(data);
     } catch (error) {
       setError('Failed to fetch drivers.');
+      showMessage('Falha ao carregar veiculos', 'error');
     } finally {
       setLoading(false);
     }
@@ -80,8 +83,10 @@ const VehiclesPage: React.FC = () => {
     try {
       if (selectedVehicle) {
         await updateVehicle(token, selectedVehicle.id, newVehicle as Vehicle);
+        showMessage('Veículo atualizado', 'success');
       } else {
         await addVehicle(token, newVehicle as Vehicle);
+        showMessage('Veículo cadastrado', 'success');
       }
       setNewVehicle({});
       setSelectedVehicle(null);
@@ -89,6 +94,7 @@ const VehiclesPage: React.FC = () => {
       loadVehicles();
     } catch (error) {
       setError('Failed to submit vehicle.');
+      showMessage('Falha ao cadastrar veículos', 'error');
     }
   };
 
@@ -102,8 +108,10 @@ const VehiclesPage: React.FC = () => {
     try {
       await deleteVehicle(token, id);
       loadVehicles();
+      showMessage('Veículo deletado', 'success');
     } catch (error) {
       setError('Failed to delete vehicle.');
+      showMessage('Falha ao deletar veículo ', 'error');
     }
   };
 

@@ -181,7 +181,7 @@ const RoutingPage: React.FC = () => {
             onClick={toggleLayout}
             style={{ marginBottom: '16px' }}
           >
-            {useTableLayout ? 'Usar Layout de Arrastar e Soltar' : 'Usar Layout de Tabela'}
+            {useTableLayout ? 'Cards' : 'Carrinho'}
           </Button>
 
           {useTableLayout ? (

@@ -67,7 +67,7 @@ const StatisticsPage: React.FC = () => {
       const data = await fetchStatistics(token, startDate, endDate);
       setStatistics(data);
       setDrivers(data.drivers);
-      //showMessage('Estatísticas carregadas com sucesso.', 'success'); // Mensagem de sucesso
+      showMessage('Estatísticas carregadas com sucesso.', 'success'); // Mensagem de sucesso
     } catch (error: unknown) {
       console.error('Failed to fetch statistics:', error);
       showMessage('Falha ao carregar estatísticas.', 'error'); // Mensagem de erro

@@ -24,6 +24,7 @@ import { Tenant } from '../../types';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { useLoading } from '../context/LoadingContext';
 import { fetchTenants, updateTenant } from '../../services/tenantService';
+import { useMessage } from '../context/MessageContext';
 
 const TenantPage: React.FC = () => {
   const { setLoading, isLoading } = useLoading();
@@ -31,6 +32,7 @@ const TenantPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [editTenant, setEditTenant] = useState<Tenant | null>(null);
   const [activeTab, setActiveTab] = useState<number>(0);
+    const { showMessage } = useMessage();
 
   const loadTenants = async () => {
     const token = localStorage.getItem('token');
@@ -84,8 +86,10 @@ const TenantPage: React.FC = () => {
       await updateTenant(token, editTenant.id, tenantToSave);
       loadTenants();
       setEditTenant(null);
+      showMessage('Empresa atualizada', 'success');
     } catch (error) {
       setError('Failed to update tenant.');
+      showMessage('Falha na atualização da empresa', 'error');
     } finally {
       setLoading(false);
     }
