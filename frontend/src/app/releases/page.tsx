@@ -256,4 +256,4 @@ const ReleasePage: React.FC = () => {
   );
 };
 
-export default withAuth(ReleasePage);
+export default withAuth(ReleasePage, { requiredRole: 'admin' });

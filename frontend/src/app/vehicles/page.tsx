@@ -1,18 +1,40 @@
+// src/pages/VehiclesPage.tsx
+
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Select, MenuItem, InputLabel, FormControl, Box } from '@mui/material';
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+  Typography,
+  Container,
+  Button,
+  Paper,
+  TextField,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+  Box,
+} from '@mui/material';
+import { Delete, Edit } from '@mui/icons-material';
 import { Vehicle, Driver, Category } from '../../types';
 import withAuth from '../hoc/withAuth';
 import { fetchVehicles, addVehicle, updateVehicle, deleteVehicle } from '../../services/vehicleService';
 import { fetchDrivers } from '../../services/driverService';
 import { fetchCategories } from '../../services/categoryService';
-import { Delete, Edit } from '@mui/icons-material';
 import { useLoading } from '../context/LoadingContext';
 import SkeletonLoader from '../components/SkeletonLoader';
+import { useMessage } from '../context/MessageContext'; // Importar o contexto de mensagens
 
 const VehiclesPage: React.FC = () => {
   const { setLoading, isLoading } = useLoading();
+  const { showMessage } = useMessage(); // Hook para mensagens
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -21,53 +43,90 @@ const VehiclesPage: React.FC = () => {
   const [newVehicle, setNewVehicle] = useState<Partial<Vehicle>>({});
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
 
   const token = localStorage.getItem('token') || '';
 
-  const loadVehicles = async () => {
-    setLoading(true);
+  // Função para extrair o tenantId do token (se necessário)
+  const getTenantIdFromToken = (): string | null => {
     try {
-      const data = await fetchVehicles(token);
-      setVehicles(data);
-      setFilteredVehicles(data);
+      const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+      return tokenPayload.tenantId || null;
     } catch (error) {
-      setError('Failed to fetch vehicles.');
-    } finally {
-      setLoading(false);
+      console.error('Error extracting tenantId from token:', error);
+      return null;
     }
   };
 
-  const loadDrivers = async () => {
-    setLoading(true);
-    try {
-      const data = await fetchDrivers(token);
-      setDrivers(data);
-    } catch (error) {
-      setError('Failed to fetch drivers.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const tenantId = getTenantIdFromToken();
 
-  const loadCategories = async () => {
+  // Função para carregar veículos
+  const loadVehicles = useCallback(async () => {
+    if (!token) {
+      showMessage('Token de autenticação não encontrado.', 'error'); // Mensagem de erro
+      return;
+    }
+
     setLoading(true);
     try {
-      const data = await fetchCategories(token);
-      setCategories(data);
-    } catch (error) {
-      setError('Failed to fetch categories.');
+      const fetchedVehicles = await fetchVehicles(token);
+      setVehicles(Array.isArray(fetchedVehicles) ? fetchedVehicles : []);
+      setFilteredVehicles(Array.isArray(fetchedVehicles) ? fetchedVehicles : []);
+     // showMessage('Veículos carregados com sucesso.', 'success'); // Mensagem de sucesso
+    } catch (error: unknown) {
+      console.error('Failed to fetch vehicles:', error);
+      showMessage('Falha ao carregar veículos.', 'error'); // Mensagem de erro
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, setLoading, showMessage]);
+
+  // Função para carregar motoristas
+  const loadDrivers = useCallback(async () => {
+    if (!token) {
+      showMessage('Token de autenticação não encontrado.', 'error'); // Mensagem de erro
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const fetchedDrivers = await fetchDrivers(token);
+      setDrivers(Array.isArray(fetchedDrivers) ? fetchedDrivers : []);
+      showMessage('Motoristas carregados com sucesso.', 'success'); // Mensagem de sucesso
+    } catch (error: unknown) {
+      console.error('Failed to fetch drivers:', error);
+      showMessage('Falha ao carregar motoristas.', 'error'); // Mensagem de erro
+    } finally {
+      setLoading(false);
+    }
+  }, [token, setLoading, showMessage]);
+
+  // Função para carregar categorias
+  const loadCategories = useCallback(async () => {
+    if (!token) {
+      showMessage('Token de autenticação não encontrado.', 'error'); // Mensagem de erro
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const fetchedCategories = await fetchCategories(token);
+      setCategories(Array.isArray(fetchedCategories) ? fetchedCategories : []);
+      showMessage('Categorias carregadas com sucesso.', 'success'); // Mensagem de sucesso
+    } catch (error: unknown) {
+      console.error('Failed to fetch categories:', error);
+      showMessage('Falha ao carregar categorias.', 'error'); // Mensagem de erro
+    } finally {
+      setLoading(false);
+    }
+  }, [token, setLoading, showMessage]);
 
   useEffect(() => {
     loadVehicles();
     loadDrivers();
     loadCategories();
-  }, []);
+  }, [loadVehicles, loadDrivers, loadCategories]);
 
+  // Manipulador de busca
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
     const filtered = vehicles.filter(vehicle =>
@@ -76,60 +135,80 @@ const VehiclesPage: React.FC = () => {
     setFilteredVehicles(filtered);
   };
 
-  const handleAddVehicle = async () => {
+  // Manipulador de adicionar ou atualizar veículo
+  const handleAddOrUpdateVehicle = async () => {
+    if (!tenantId) {
+      showMessage('tenantId inválido.', 'error'); // Mensagem de erro
+      return;
+    }
+
+    const vehicleToSave = { ...newVehicle, tenantId } as Vehicle;
+
     try {
       if (selectedVehicle) {
-        await updateVehicle(token, selectedVehicle.id, newVehicle as Vehicle);
+        await updateVehicle(token, selectedVehicle.id, vehicleToSave);
+        showMessage('Veículo atualizado com sucesso.', 'success'); // Mensagem de sucesso
       } else {
-        await addVehicle(token, newVehicle as Vehicle);
+        await addVehicle(token, vehicleToSave);
+        showMessage('Veículo adicionado com sucesso.', 'success'); // Mensagem de sucesso
       }
       setNewVehicle({});
       setSelectedVehicle(null);
       setShowForm(false);
       loadVehicles();
-    } catch (error) {
-      setError('Failed to submit vehicle.');
+    } catch (error: unknown) {
+      console.error('Failed to submit vehicle:', error);
+      showMessage('Falha ao submeter veículo.', 'error'); // Mensagem de erro
     }
   };
 
+  // Manipulador de edição
   const handleEdit = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
     setNewVehicle(vehicle);
     setShowForm(true);
+    showMessage(`Editando o veículo: ${vehicle.model}`, 'info'); // Mensagem informativa
   };
 
+  // Manipulador de exclusão
   const handleDelete = async (id: string) => {
     try {
       await deleteVehicle(token, id);
+      showMessage('Veículo deletado com sucesso.', 'success'); // Mensagem de sucesso
       loadVehicles();
-    } catch (error) {
-      setError('Failed to delete vehicle.');
+    } catch (error: unknown) {
+      console.error('Failed to delete vehicle:', error);
+      showMessage('Falha ao deletar veículo.', 'error'); // Mensagem de erro
     }
   };
 
+  // Manipulador de fechamento do formulário
   const handleFormClose = () => {
     setSelectedVehicle(null);
     setNewVehicle({});
     setShowForm(false);
+    showMessage('Formulário fechado.', 'info'); // Mensagem informativa
   };
 
   return (
     <Container>
-      {error && <Typography color="error">{error}</Typography>}
+      {/* Removido: Exibição de mensagens de erro diretamente no JSX */}
+      {/* {error && <Typography color="error">{error}</Typography>} */}
       <TextField
-        label="Buscar"
+        label="Buscar Veículos"
         value={searchTerm}
         onChange={handleSearch}
         fullWidth
         margin="normal"
       />
       <Button variant="contained" color="primary" onClick={() => setShowForm(true)}>
-        Adicionar Veiculo
+        Adicionar Veículo
       </Button>
       {showForm && (
         <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
+          <Typography variant="h6">{selectedVehicle ? 'Atualizar Veículo' : 'Adicionar Veículo'}</Typography>
           <TextField
-            label="Veiculo Modelo"
+            label="Modelo do Veículo"
             value={newVehicle.model || ''}
             onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
             fullWidth
@@ -168,16 +247,25 @@ const VehiclesPage: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-          <Button variant="contained" color="primary" onClick={handleAddVehicle}>
-            {selectedVehicle ? 'Atualizar Veiculo' : 'Adicionar Veiculo'}
-          </Button>
-          <Button onClick={handleFormClose}>Cancelar</Button>
+          <Box style={{ marginTop: '16px' }}>
+            <Button variant="contained" color="primary" onClick={handleAddOrUpdateVehicle}>
+              {selectedVehicle ? 'Atualizar Veículo' : 'Adicionar Veículo'}
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleFormClose}
+              style={{ marginLeft: '8px' }}
+            >
+              Cancelar
+            </Button>
+          </Box>
         </Paper>
       )}
-      {isLoading ? (
-        <SkeletonLoader />
-      ) : (
-        <TableContainer component={Paper} style={{ marginTop: '16px' }}>
+      <TableContainer component={Paper} style={{ marginTop: '16px' }}>
+        {isLoading ? (
+          <SkeletonLoader />
+        ) : (
           <Table>
             <TableHead>
               <TableRow>
@@ -193,22 +281,29 @@ const VehiclesPage: React.FC = () => {
                 <TableRow key={vehicle.id}>
                   <TableCell>{vehicle.model}</TableCell>
                   <TableCell>{vehicle.plate}</TableCell>
-                  <TableCell>{drivers.find(driver => driver.id === vehicle.driverId)?.name}</TableCell>
-                  <TableCell>{categories.find(category => category.id === vehicle.categoryId)?.name}</TableCell>
+                  <TableCell>{drivers.find(driver => driver.id === vehicle.driverId)?.name || 'Sem Motorista'}</TableCell>
+                  <TableCell>{categories.find(category => category.id === vehicle.categoryId)?.name || 'Sem Categoria'}</TableCell>
                   <TableCell>
-                    <IconButton onClick={() => handleEdit(vehicle)}>
+                    <IconButton onClick={() => handleEdit(vehicle)} aria-label="editar">
                       <Edit />
                     </IconButton>
-                    <IconButton onClick={() => handleDelete(vehicle.id)}>
+                    <IconButton onClick={() => handleDelete(vehicle.id)} aria-label="deletar">
                       <Delete />
                     </IconButton>
                   </TableCell>
                 </TableRow>
               ))}
+              {filteredVehicles.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">
+                    Nenhum veículo encontrado.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
-        </TableContainer>
-      )}
+        )}
+      </TableContainer>
     </Container>
   );
 };

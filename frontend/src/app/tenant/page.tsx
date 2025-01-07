@@ -1,4 +1,5 @@
 // src/pages/TenantPage.tsx
+
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -145,7 +146,7 @@ const TenantPage: React.FC = () => {
                     <TableCell>{tenant.minValue}</TableCell>
                     <TableCell>{tenant.minPeso}</TableCell>
                     <TableCell>
-                      <IconButton onClick={() => handleEdit(tenant)}>
+                      <IconButton onClick={() => handleEdit(tenant)} aria-label="editar">
                         <Edit />
                       </IconButton>
                     </TableCell>
