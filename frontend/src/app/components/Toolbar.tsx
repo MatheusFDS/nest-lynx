@@ -210,19 +210,19 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
       case 'vehicles':
         return 'Veículos';
       case 'directions':
-        return 'Direções';
+        return 'Região';
       case 'deliveries':
-        return 'Entregas';
+        return 'Roteiros';
       case 'routing':
-        return 'Triagem';
+        return 'Formação';
       case 'orders':
-        return 'Documentos';
+        return 'Importação';
       case 'payments':
         return 'Pagamentos';
       case 'releases':
-        return 'Liberações';
+        return 'Liberação';
       case 'statistics':
-        return 'Dados';
+        return 'Dashboards';
       default:
         return 'Página Inicial';
     }
@@ -367,16 +367,21 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
           <Collapse in={openRotinas} timeout="auto" unmountOnExit>
             <List component="div" disablePadding>
               <ListItem button onClick={() => handleNavigation('/statistics')}>
-                <ListItemText primary="Dados" />
-              </ListItem>
-              <ListItem button onClick={() => handleNavigation('/deliveries')}>
-                <ListItemText primary="Entregas" />
-              </ListItem>
-              <ListItem button onClick={() => handleNavigation('/routing')}>
-                <ListItemText primary="Triagem" />
+                <ListItemText primary="Dashboards" />
               </ListItem>
               <ListItem button onClick={() => handleNavigation('/orders')}>
-                <ListItemText primary="Documentos" />
+                <ListItemText primary="Importação" />
+              </ListItem>
+              <ListItem button onClick={() => handleNavigation('/routing')}>
+                <ListItemText primary="Formação" />
+              </ListItem>
+              {userRole === 'admin' && (
+              <ListItem button onClick={() => handleNavigation('/releases')}>
+                <ListItemText primary="Liberação" />
+              </ListItem>
+                )}
+              <ListItem button onClick={() => handleNavigation('/deliveries')}>
+                <ListItemText primary="Roteiros" />
               </ListItem>
               <ListItem button onClick={() => handleNavigation('/payments')}>
                 <ListItemText primary="Pagamentos" />
