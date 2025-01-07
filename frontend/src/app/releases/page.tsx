@@ -64,7 +64,7 @@ const ReleasePage: React.FC = () => {
         (delivery: Delivery) => delivery.status === statusFilter
       );
       setDeliveries(filteredByStatus);
-      showMessage('Entregas carregadas com sucesso!', 'success'); // Mensagem de sucesso
+      //showMessage('Entregas carregadas com sucesso!', 'success'); // Mensagem de sucesso
     } catch (error: unknown) {
       console.error('Erro ao carregar entregas:', error);
       showMessage('Falha ao carregar entregas.', 'error'); // Mensagem de erro
@@ -111,7 +111,7 @@ const ReleasePage: React.FC = () => {
       await releaseDelivery(token, selectedDelivery.id);
       showMessage('Entrega liberada com sucesso!', 'success'); // Mensagem de sucesso
       handleDialogClose();
-      //loadDeliveries();
+      loadDeliveries();
     } catch (error: unknown) {
       console.error('Erro ao liberar entrega:', error);
       showMessage('Falha ao liberar entrega.', 'error'); // Mensagem de erro
@@ -132,7 +132,7 @@ const ReleasePage: React.FC = () => {
       await rejectRelease(token, selectedDelivery.id, rejectReason);
       showMessage('Entrega rejeitada com sucesso!', 'success'); // Mensagem de sucesso
       handleDialogClose();
-      //loadDeliveries();
+      loadDeliveries();
     } catch (error: unknown) {
       console.error('Erro ao rejeitar entrega:', error);
       showMessage('Falha ao rejeitar entrega.', 'error'); // Mensagem de erro
@@ -164,7 +164,7 @@ const ReleasePage: React.FC = () => {
   // Função para lidar com a filtragem por status
   const handleStatusFilterChange = (status: string) => {
     setStatusFilter(status);
-    //loadDeliveries();
+    loadDeliveries();
   };
 
   // Função para filtrar as entregas com base nos critérios

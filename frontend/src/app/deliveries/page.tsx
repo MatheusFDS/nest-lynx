@@ -108,7 +108,7 @@ const DeliveriesPage: React.FC = () => {
       setVehicles(vehiclesData);
       setCategories(categoriesData);
       setDirections(directionsData);
-      showMessage('Dados carregados com sucesso!', 'success'); // Mensagem de sucesso
+      //showMessage('Dados carregados com sucesso!', 'success'); // Mensagem de sucesso
     } catch (error: unknown) {
       setError('Falha ao carregar dados iniciais.');
       showMessage('Erro ao carregar os dados iniciais.', 'error'); // Mensagem de erro
@@ -224,7 +224,7 @@ const DeliveriesPage: React.FC = () => {
       await updateDelivery(token, currentDelivery.id, deliveryData);
       setDialogOpen(false);
       setCurrentDelivery(null);
-      //loadInitialData();
+      loadInitialData();
       showMessage('Entrega atualizada com sucesso!', 'success'); // Mensagem de sucesso
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -252,7 +252,7 @@ const DeliveriesPage: React.FC = () => {
     setConfirmDialogAction(() => async () => {
       try {
         await deleteDelivery(token, deliveryId);
-        //loadInitialData();
+        loadInitialData();
         showMessage('Entrega excluída com sucesso!', 'success'); // Mensagem de sucesso
       } catch (error: unknown) {
         if (error instanceof Error) {
@@ -290,7 +290,7 @@ const DeliveriesPage: React.FC = () => {
     setConfirmDialogAction(() => async () => {
       try {
         await removeOrderFromDelivery(token, deliveryId, orderId);
-        //loadInitialData();
+        loadInitialData();
         showMessage('Pedido removido da entrega com sucesso!', 'success'); // Mensagem de sucesso
       } catch (error: unknown) {
         if (error instanceof Error) {

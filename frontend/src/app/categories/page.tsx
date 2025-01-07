@@ -58,7 +58,7 @@ const CategoriesPage: React.FC = () => {
       const data = await fetchCategories(token);
       setCategories(data);
       setFilteredCategories(data);
-      showMessage('Categorias carregadas com sucesso!', 'success'); // Mensagem de sucesso
+     // showMessage('Categorias carregadas com sucesso!', 'success'); // Mensagem de sucesso
     } catch (error: unknown) {
       console.error('Erro ao buscar categorias:', error);
       setError('Falha ao buscar categorias.');
@@ -100,7 +100,7 @@ const CategoriesPage: React.FC = () => {
       setNewCategory({});
       setSelectedCategory(null);
       setShowForm(false);
-      //loadCategories();
+      loadCategories();
     } catch (error: unknown) {
       console.error('Erro ao adicionar/atualizar categoria:', error);
       setError('Falha ao submeter categoria.');
@@ -118,7 +118,7 @@ const CategoriesPage: React.FC = () => {
     try {
       await deleteCategory(token, id);
       showMessage('Categoria deletada com sucesso!', 'success'); // Mensagem de sucesso
-      //loadCategories();
+      loadCategories();
     } catch (error: unknown) {
       console.error('Erro ao deletar categoria:', error);
       setError('Falha ao deletar categoria.');

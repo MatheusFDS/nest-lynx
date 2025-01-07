@@ -74,7 +74,7 @@ const PaymentsPage: React.FC = () => {
       setPayments(paymentsData);
       filterPayments(searchTerm, startDate, endDate, grouped, paid, pending, paymentsData);
       setDirections(directionsData);
-      showMessage('Pagamentos carregados com sucesso!', 'success'); // Mensagem de sucesso
+     // showMessage('Pagamentos carregados com sucesso!', 'success'); // Mensagem de sucesso
     } catch (error: unknown) {
       console.error('Erro ao buscar pagamentos:', error);
       showMessage('Falha ao buscar pagamentos.', 'error'); // Mensagem de erro
@@ -179,7 +179,7 @@ const PaymentsPage: React.FC = () => {
     try {
       await groupPayments(token, selectedPayments);
       showMessage('Pagamentos agrupados com sucesso!', 'success'); // Mensagem de sucesso
-      //loadPayments();
+      loadPayments();
       setSelectedPayments([]);
     } catch (error: unknown) {
       console.error('Erro ao agrupar pagamentos:', error);
@@ -191,7 +191,7 @@ const PaymentsPage: React.FC = () => {
     try {
       await ungroupPayments(token, paymentId);
       showMessage('Pagamento desagrupado com sucesso!', 'success'); // Mensagem de sucesso
-      //loadPayments();
+      loadPayments();
     } catch (error: unknown) {
       console.error('Erro ao desagrupar pagamento:', error);
       showMessage('Falha ao desagrupar pagamento.', 'error'); // Mensagem de erro
@@ -202,7 +202,7 @@ const PaymentsPage: React.FC = () => {
     try {
       await updatePaymentStatus(token, paymentId, status);
       showMessage('Status do pagamento atualizado com sucesso!', 'success'); // Mensagem de sucesso
-      //loadPayments();
+      loadPayments();
     } catch (error: unknown) {
       console.error(`Erro ao atualizar status do pagamento:`, error);
       showMessage('Falha ao atualizar status do pagamento.', 'error'); // Mensagem de erro
