@@ -98,7 +98,7 @@ const DriversPage: React.FC = () => {
       setNewDriver({});
       setSelectedDriver(null);
       setShowForm(false);
-      await loadDrivers();
+      //await loadDrivers();
     } catch (error: unknown) {
       console.error('Erro ao submeter motorista:', error);
       showMessage('Falha ao submeter motorista.', 'error'); // Mensagem de erro
@@ -118,7 +118,7 @@ const DriversPage: React.FC = () => {
     try {
       await deleteDriver(token, id);
       showMessage('Motorista deletado com sucesso!', 'success'); // Mensagem de sucesso
-      await loadDrivers();
+      //await loadDrivers();
     } catch (error: unknown) {
       console.error('Erro ao deletar motorista:', error);
       showMessage('Falha ao deletar motorista.', 'error'); // Mensagem de erro

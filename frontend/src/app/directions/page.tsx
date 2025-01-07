@@ -133,7 +133,7 @@ const DirectionsPage: React.FC = () => {
       });
       setSelectedDirection(null);
       setShowForm(false);
-      loadDirections();
+      //loadDirections();
     } catch (error: unknown) {
       console.error('Erro ao enviar direção:', error);
       showMessage('Falha ao enviar direção.', 'error'); // Mensagem de erro
@@ -153,7 +153,7 @@ const DirectionsPage: React.FC = () => {
     try {
       await deleteDirection(token, id);
       showMessage('Direção deletada com sucesso!', 'success'); // Mensagem de sucesso
-      loadDirections();
+      //loadDirections();
     } catch (error: unknown) {
       console.error('Erro ao deletar direção:', error);
       showMessage('Falha ao deletar direção.', 'error'); // Mensagem de erro

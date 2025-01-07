@@ -100,7 +100,7 @@ const CategoriesPage: React.FC = () => {
       setNewCategory({});
       setSelectedCategory(null);
       setShowForm(false);
-      loadCategories();
+      //loadCategories();
     } catch (error: unknown) {
       console.error('Erro ao adicionar/atualizar categoria:', error);
       setError('Falha ao submeter categoria.');
@@ -118,7 +118,7 @@ const CategoriesPage: React.FC = () => {
     try {
       await deleteCategory(token, id);
       showMessage('Categoria deletada com sucesso!', 'success'); // Mensagem de sucesso
-      loadCategories();
+      //loadCategories();
     } catch (error: unknown) {
       console.error('Erro ao deletar categoria:', error);
       setError('Falha ao deletar categoria.');
