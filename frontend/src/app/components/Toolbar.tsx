@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   AppBar,
   Toolbar as MuiToolbar,
@@ -23,6 +23,7 @@ import {
   Button,
   Menu,
   MenuItem,
+  Backdrop, // Importação do Backdrop
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
@@ -228,6 +229,13 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
     }
   };
 
+  /**
+   * Função para fechar o Drawer ao clicar na sobreposição
+   */
+  const handleBackdropClick = () => {
+    setDrawerOpen(false);
+  };
+
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
@@ -390,6 +398,21 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
           </Collapse>
         </List>
       </Drawer>
+
+      {/* Backdrop para fechar o Drawer ao clicar fora */}
+      {drawerOpen && (
+        <Backdrop
+          open={drawerOpen}
+          onClick={handleBackdropClick}
+          sx={{
+            position: 'fixed',
+            top: 48, // Ajusta para ficar abaixo da AppBar
+            left: 0,
+            zIndex: (theme) => theme.zIndex.drawer - 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+          }}
+        />
+      )}
 
       {/* Conteúdo Principal */}
       <Box
