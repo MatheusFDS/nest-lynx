@@ -14,9 +14,26 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { SelectChangeEvent } from '@mui/material';
-import { fetchDeliveries, updateDelivery, removeOrderFromDelivery, deleteDelivery } from '../../services/deliveryService';
-import { fetchDrivers, fetchVehicles, fetchCategories, fetchDirections } from '../../services/auxiliaryService';
-import { Order, Driver, Vehicle, Category, Delivery, Direction } from '../../types';
+import {
+  fetchDeliveries,
+  updateDelivery,
+  removeOrderFromDelivery,
+  deleteDelivery,
+} from '../../services/deliveryService';
+import {
+  fetchDrivers,
+  fetchVehicles,
+  fetchCategories,
+  fetchDirections,
+} from '../../services/auxiliaryService';
+import {
+  Order,
+  Driver,
+  Vehicle,
+  Category,
+  Delivery,
+  Direction,
+} from '../../types';
 import withAuth from '../hoc/withAuth';
 import DeliveryTable from '../components/delivery/DeliveryTable';
 import EditDeliveryDialog from '../components/delivery/EditDeliveryDialog';
@@ -24,6 +41,7 @@ import ConsultOrder from '../components/delivery/ConsultOrder';
 import ConfirmDialog from '../components/delivery/ConfirmDialog';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { useLoading } from '../context/LoadingContext'; // Importar o LoadingContext
+import { useMessage } from '../context/MessageContext'; // Importar o contexto de mensagens
 
 const StyledButton = styled(Button)({
   margin: '8px',
@@ -46,24 +64,38 @@ const DeliveriesPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [error, setError] = useState<string>('');
-  const [currentDelivery, setCurrentDelivery] = useState<Delivery | null>(null);
+  const [currentDelivery, setCurrentDelivery] = useState<Delivery | null>(
+    null
+  );
   const [tabIndex, setTabIndex] = useState(0);
   const [tollValue, setTollValue] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [dateRange, setDateRange] = useState<{ startDate: string; endDate: string }>({ startDate: '', endDate: '' });
+  const [dateRange, setDateRange] = useState<{
+    startDate: string;
+    endDate: string;
+  }>({ startDate: '', endDate: '' });
   const [showFinalized, setShowFinalized] = useState<boolean>(false);
   const [showPending, setShowPending] = useState<boolean>(false);
   const [showToRelease, setShowToRelease] = useState<boolean>(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState<boolean>(false);
-  const [confirmDialogAction, setConfirmDialogAction] = useState<() => void>(() => {});
+  const [confirmDialogAction, setConfirmDialogAction] = useState<
+    () => void
+  >(() => {});
   const { isLoading, setLoading } = useLoading(); // Usar o contexto de carregamento
+  const { showMessage } = useMessage(); // Hook para mensagens
 
   const token = localStorage.getItem('token') || '';
 
   const loadInitialData = async () => {
     setLoading(true);
     try {
-      const [deliveriesData, driversData, vehiclesData, categoriesData, directionsData] = await Promise.all([
+      const [
+        deliveriesData,
+        driversData,
+        vehiclesData,
+        categoriesData,
+        directionsData,
+      ] = await Promise.all([
         fetchDeliveries(token),
         fetchDrivers(token),
         fetchVehicles(token),
@@ -76,8 +108,10 @@ const DeliveriesPage: React.FC = () => {
       setVehicles(vehiclesData);
       setCategories(categoriesData);
       setDirections(directionsData);
+      showMessage('Dados carregados com sucesso!', 'success'); // Mensagem de sucesso
     } catch (error: unknown) {
-      setError('Failed to load initial data.');
+      setError('Falha ao carregar dados iniciais.');
+      showMessage('Erro ao carregar os dados iniciais.', 'error'); // Mensagem de erro
     } finally {
       setLoading(false);
     }
@@ -85,10 +119,15 @@ const DeliveriesPage: React.FC = () => {
 
   useEffect(() => {
     loadInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleEditDelivery = (delivery: Delivery) => {
     if (delivery.status === 'A liberar' || delivery.status === 'Negado') {
+      showMessage(
+        'Não é possível editar entregas com status "A liberar" ou "Negado".',
+        'warning'
+      );
       return;
     }
 
@@ -120,7 +159,7 @@ const DeliveriesPage: React.FC = () => {
   const calculateTotalWeightAndValue = (orders: Order[]) => {
     let totalWeight = 0;
     let totalValue = 0;
-    orders.forEach(order => {
+    orders.forEach((order) => {
       totalWeight += order.peso;
       totalValue += order.valor;
     });
@@ -130,9 +169,11 @@ const DeliveriesPage: React.FC = () => {
   const handleDriverChange = (e: SelectChangeEvent<string>) => {
     const driverId = e.target.value;
     setSelectedDriver(driverId);
-    const driver = drivers.find(driver => driver.id === driverId);
+    const driver = drivers.find((driver) => driver.id === driverId);
     if (driver) {
-      const vehicle = vehicles.find(vehicle => vehicle.driverId === driver.id);
+      const vehicle = vehicles.find(
+        (vehicle) => vehicle.driverId === driver.id
+      );
       if (vehicle) {
         setSelectedVehicle(vehicle.id);
       } else {
@@ -147,9 +188,9 @@ const DeliveriesPage: React.FC = () => {
   };
 
   const getVehicleValue = (vehicleId: string) => {
-    const vehicle = vehicles.find(vehicle => vehicle.id === vehicleId);
+    const vehicle = vehicles.find((vehicle) => vehicle.id === vehicleId);
     if (vehicle) {
-      const category = categories.find(c => c.id === vehicle.categoryId);
+      const category = categories.find((c) => c.id === vehicle.categoryId);
       return category ? category.valor : 0;
     }
     return 0;
@@ -160,7 +201,9 @@ const DeliveriesPage: React.FC = () => {
 
     const ordersInDelivery: Order[] = currentDelivery.orders as Order[];
 
-    const { totalWeight, totalValue } = calculateTotalWeightAndValue(ordersInDelivery);
+    const { totalWeight, totalValue } = calculateTotalWeightAndValue(
+      ordersInDelivery
+    );
 
     const deliveryData = {
       motoristaId: selectedDriver,
@@ -182,13 +225,16 @@ const DeliveriesPage: React.FC = () => {
       setDialogOpen(false);
       setCurrentDelivery(null);
       loadInitialData();
+      showMessage('Entrega atualizada com sucesso!', 'success'); // Mensagem de sucesso
     } catch (error: unknown) {
       if (error instanceof Error) {
-        console.error('Failed to update delivery:', error.message);
+        console.error('Falha ao atualizar entrega:', error.message);
         setError(error.message);
+        showMessage('Erro ao atualizar a entrega.', 'error'); // Mensagem de erro
       } else {
-        console.error('Failed to update delivery:', error);
-        setError('Failed to update delivery.');
+        console.error('Falha ao atualizar entrega:', error);
+        setError('Falha ao atualizar entrega.');
+        showMessage('Erro ao atualizar a entrega.', 'error'); // Mensagem de erro
       }
     }
   };
@@ -199,7 +245,7 @@ const DeliveriesPage: React.FC = () => {
 
   const handleDateFilter = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setDateRange(prevState => ({ ...prevState, [name]: value }));
+    setDateRange((prevState) => ({ ...prevState, [name]: value }));
   };
 
   const handleDeleteDelivery = async (deliveryId: string) => {
@@ -207,13 +253,16 @@ const DeliveriesPage: React.FC = () => {
       try {
         await deleteDelivery(token, deliveryId);
         loadInitialData();
+        showMessage('Entrega excluída com sucesso!', 'success'); // Mensagem de sucesso
       } catch (error: unknown) {
         if (error instanceof Error) {
-          console.error('Failed to delete delivery:', error.message);
+          console.error('Falha ao deletar entrega:', error.message);
           setError(error.message);
+          showMessage('Erro ao excluir a entrega.', 'error'); // Mensagem de erro
         } else {
-          console.error('Failed to delete delivery:', error);
-          setError('Failed to delete delivery.');
+          console.error('Falha ao deletar entrega:', error);
+          setError('Falha ao deletar entrega.');
+          showMessage('Erro ao excluir a entrega.', 'error'); // Mensagem de erro
         }
       }
       setConfirmDialogOpen(false);
@@ -221,7 +270,9 @@ const DeliveriesPage: React.FC = () => {
     setConfirmDialogOpen(true);
   };
 
-  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleStatusFilterChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const { name, checked } = e.target;
     if (name === 'showFinalized') {
       setShowFinalized(checked);
@@ -232,18 +283,33 @@ const DeliveriesPage: React.FC = () => {
     }
   };
 
-  const handleRemoveOrderFromDelivery = async (deliveryId: string, orderId: string) => {
+  const handleRemoveOrderFromDelivery = async (
+    deliveryId: string,
+    orderId: string
+  ) => {
     setConfirmDialogAction(() => async () => {
       try {
         await removeOrderFromDelivery(token, deliveryId, orderId);
         loadInitialData();
+        showMessage('Pedido removido da entrega com sucesso!', 'success'); // Mensagem de sucesso
       } catch (error: unknown) {
         if (error instanceof Error) {
-          console.error('Failed to remove order from delivery:', error.message);
+          console.error(
+            'Falha ao remover pedido da entrega:',
+            error.message
+          );
           setError(error.message);
+          showMessage(
+            'Erro ao remover o pedido da entrega.',
+            'error'
+          ); // Mensagem de erro
         } else {
-          console.error('Failed to remove order from delivery:', error);
-          setError('Failed to remove order from delivery.');
+          console.error('Falha ao remover pedido da entrega:', error);
+          setError('Falha ao remover pedido da entrega.');
+          showMessage(
+            'Erro ao remover o pedido da entrega.',
+            'error'
+          ); // Mensagem de erro
         }
       }
       setConfirmDialogOpen(false);
@@ -251,49 +317,63 @@ const DeliveriesPage: React.FC = () => {
     setConfirmDialogOpen(true);
   };
 
-  const filteredDeliveries = deliveries.filter((delivery) => {
-    const { startDate, endDate } = dateRange;
-    if (searchTerm) {
-      return (
-        Object.values(delivery).some(value =>
-          value ? value.toString().toLowerCase().includes(searchTerm.toLowerCase()) : false
-        ) ||
-        delivery.orders.some(order =>
-          Object.values(order).some(value =>
-            value ? value.toString().toLowerCase().includes(searchTerm.toLowerCase()) : false
+  const filteredDeliveries = deliveries
+    .filter((delivery) => {
+      const { startDate, endDate } = dateRange;
+      if (searchTerm) {
+        return (
+          Object.values(delivery).some((value) =>
+            value
+              ? value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+              : false
+          ) ||
+          delivery.orders.some((order) =>
+            Object.values(order).some((value) =>
+              value
+                ? value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+                : false
+            )
           )
-        )
-      );
-    }
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const dataInicio = new Date(delivery.dataInicio);
-      return dataInicio >= start && dataInicio <= end;
-    }
-    return true;
-  }).filter(delivery => {
-    if (showFinalized && delivery.status === 'Finalizado') {
+        );
+      }
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const dataInicio = new Date(delivery.dataInicio);
+        return dataInicio >= start && dataInicio <= end;
+      }
       return true;
-    }
-    if (showPending && delivery.status === 'Em Rota') {
-      return true;
-    }
-    if (showToRelease && delivery.status === 'A liberar') {
-      return true;
-    }
-    return !showFinalized && !showPending && !showToRelease;
-  });
+    })
+    .filter((delivery) => {
+      if (showFinalized && delivery.status === 'Finalizado') {
+        return true;
+      }
+      if (showPending && delivery.status === 'Em Rota') {
+        return true;
+      }
+      if (showToRelease && delivery.status === 'A liberar') {
+        return true;
+      }
+      return !showFinalized && !showPending && !showToRelease;
+    });
 
   const getRegionName = (delivery: Delivery) => {
     const orderCep = delivery.orders[0]?.cep;
-    const direction = directions.find(dir => parseInt(orderCep) >= parseInt(dir.rangeInicio) && parseInt(orderCep) <= parseInt(dir.rangeFim));
+    const direction = directions.find(
+      (dir) =>
+        parseInt(orderCep) >= parseInt(dir.rangeInicio) &&
+        parseInt(orderCep) <= parseInt(dir.rangeFim)
+    );
     return direction ? direction.regiao : 'N/A';
   };
 
   return (
     <Container>
-      <Grid container spacing={2} style={{ marginTop: '16px', marginBottom: '16px' }}>
+      <Grid
+        container
+        spacing={2}
+        style={{ marginTop: '16px', marginBottom: '16px' }}
+      >
         <Grid item xs={12}>
           <TextField
             label="Buscar"
@@ -333,18 +413,41 @@ const DeliveriesPage: React.FC = () => {
         </Grid>
         <Grid item xs={12}>
           <FormControlLabel
-            control={<Checkbox checked={showFinalized} onChange={handleStatusFilterChange} name="showFinalized" />}
+            control={
+              <Checkbox
+                checked={showFinalized}
+                onChange={handleStatusFilterChange}
+                name="showFinalized"
+              />
+            }
             label="Finalizadas"
           />
           <FormControlLabel
-            control={<Checkbox checked={showPending} onChange={handleStatusFilterChange} name="showPending" />}
+            control={
+              <Checkbox
+                checked={showPending}
+                onChange={handleStatusFilterChange}
+                name="showPending"
+              />
+            }
             label="Em Rota"
           />
           <FormControlLabel
-            control={<Checkbox checked={showToRelease} onChange={handleStatusFilterChange} name="showToRelease" />}
+            control={
+              <Checkbox
+                checked={showToRelease}
+                onChange={handleStatusFilterChange}
+                name="showToRelease"
+              />
+            }
             label="A Liberar"
           />
-          <Badge badgeContent={filteredDeliveries.length} color="primary" showZero></Badge>
+          <Badge
+            badgeContent={filteredDeliveries.length}
+            color="primary"
+            showZero
+            style={{ marginLeft: '16px' }}
+          />
         </Grid>
       </Grid>
       <Paper elevation={3}>
