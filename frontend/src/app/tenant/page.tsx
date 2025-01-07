@@ -1,8 +1,6 @@
-// src/pages/TenantPage.tsx
-
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Typography, 
   Container, 
@@ -26,47 +24,37 @@ import { Tenant } from '../../types';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { useLoading } from '../context/LoadingContext';
 import { fetchTenants, updateTenant } from '../../services/tenantService';
-import { useMessage } from '../context/MessageContext'; // Importar o contexto de mensagens
 
 const TenantPage: React.FC = () => {
   const { setLoading, isLoading } = useLoading();
-  const { showMessage } = useMessage(); // Hook para mensagens
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [error, setError] = useState<string>('');
   const [editTenant, setEditTenant] = useState<Tenant | null>(null);
   const [activeTab, setActiveTab] = useState<number>(0);
 
-  // Função para carregar os tenants
-  const loadTenants = useCallback(async () => {
+  const loadTenants = async () => {
     const token = localStorage.getItem('token');
-    if (!token) {
-      showMessage('Token de autenticação não encontrado.', 'error'); // Mensagem de erro
-      return;
-    }
+    if (!token) return;
 
     setLoading(true);
     try {
-      const fetchedTenants = await fetchTenants(token);
-      setTenants(fetchedTenants);
-      //showMessage('Tenants carregados com sucesso.', 'success'); // Mensagem de sucesso
-    } catch (error: unknown) {
-      console.error('Failed to fetch tenants:', error);
-      showMessage('Falha ao carregar tenants.', 'error'); // Mensagem de erro
+      const tenants = await fetchTenants(token);
+      setTenants(tenants);
+    } catch (error) {
+      setError('Failed to fetch tenants.');
     } finally {
       setLoading(false);
     }
-  }, [setLoading, showMessage]);
+  };
 
   useEffect(() => {
     loadTenants();
-  }, [loadTenants]);
+  }, []);
 
-  // Função para abrir o modal de edição
   const handleEdit = (tenant: Tenant) => {
     setEditTenant(tenant);
-    showMessage(`Editando o tenant: ${tenant.name}`, 'info'); // Mensagem informativa
   };
 
-  // Função para lidar com mudanças nos campos de edição
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (editTenant) {
       const { name, value } = e.target;
@@ -77,15 +65,11 @@ const TenantPage: React.FC = () => {
     }
   };
 
-  // Função para salvar as alterações no tenant
   const handleSave = async () => {
     if (!editTenant) return;
 
     const token = localStorage.getItem('token');
-    if (!token) {
-      showMessage('Token de autenticação não encontrado.', 'error'); // Mensagem de erro
-      return;
-    }
+    if (!token) return;
 
     setLoading(true);
     try {
@@ -98,31 +82,26 @@ const TenantPage: React.FC = () => {
       };
 
       await updateTenant(token, editTenant.id, tenantToSave);
-      await loadTenants(); // Recarrega os tenants após a atualização
-      showMessage('Tenant atualizado com sucesso.', 'success'); // Mensagem de sucesso
+      loadTenants();
       setEditTenant(null);
-    } catch (error: unknown) {
-      console.error('Failed to update tenant:', error);
-      showMessage('Falha ao atualizar o tenant.', 'error'); // Mensagem de erro
+    } catch (error) {
+      setError('Failed to update tenant.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Função para lidar com a mudança de aba
   const handleTabChange = (event: React.ChangeEvent<{}>, newValue: number) => {
     setActiveTab(newValue);
   };
 
   return (
     <Container>
+      {error && <Typography color="error">{error}</Typography>}
       {isLoading ? (
         <SkeletonLoader />
       ) : (
         <>
-          {/* Removido: Exibição de mensagens de erro diretamente no JSX */}
-          {/* {error && <Typography color="error">{error}</Typography>} */}
-
           <TableContainer component={Paper} style={{ marginTop: '16px' }}>
             <Table>
               <TableHead>
@@ -146,7 +125,7 @@ const TenantPage: React.FC = () => {
                     <TableCell>{tenant.minValue}</TableCell>
                     <TableCell>{tenant.minPeso}</TableCell>
                     <TableCell>
-                      <IconButton onClick={() => handleEdit(tenant)} aria-label="editar">
+                      <IconButton onClick={() => handleEdit(tenant)}>
                         <Edit />
                       </IconButton>
                     </TableCell>
@@ -159,7 +138,7 @@ const TenantPage: React.FC = () => {
           {editTenant && (
             <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
               <Typography variant="h6">Editar</Typography>
-              <Tabs value={activeTab} onChange={handleTabChange} aria-label="tabs">
+              <Tabs value={activeTab} onChange={handleTabChange}>
                 <Tab label="Geral" />
                 <Tab label="Parâmetros" />
               </Tabs>
@@ -219,19 +198,12 @@ const TenantPage: React.FC = () => {
                   margin="normal"
                 />
               </Box>
-              <Box style={{ marginTop: '16px' }}>
-                <Button variant="contained" color="primary" onClick={handleSave}>
-                  Salvar
-                </Button>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  onClick={() => setEditTenant(null)}
-                  style={{ marginLeft: '8px' }}
-                >
-                  Cancelar
-                </Button>
-              </Box>
+              <Button variant="contained" color="primary" onClick={handleSave} style={{ marginTop: '16px' }}>
+                Salvar
+              </Button>
+              <Button variant="contained" color="secondary" onClick={() => setEditTenant(null)} style={{ marginTop: '16px', marginLeft: '8px' }}>
+                Cancelar
+              </Button>
             </Paper>
           )}
         </>
