@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Typography,
   Container,
@@ -20,7 +20,7 @@ import {
   MenuItem,
   InputLabel,
   FormControl,
-  Box
+  Box,
 } from '@mui/material';
 import { Delete, Edit } from '@mui/icons-material';
 import { User, Role } from '../../types';
@@ -56,49 +56,52 @@ const UsersPage: React.FC = () => {
   const tenantId = getTenantIdFromToken();
 
   // Função para carregar usuários
-  const loadUsers = useCallback(async () => {
-    if (!token) {
-      showMessage('Token de autenticação não encontrado.', 'error'); // Mensagem de erro
-      return;
-    }
+  useEffect(() => {
+    const loadUsers = async () => {
+      if (!token) {
+        showMessage('Token de autenticação não encontrado.', 'error'); // Mensagem de erro
+        return;
+      }
 
-    setLoading(true);
-    try {
-      const fetchedUsers = await fetchUsers(token);
-      setUsers(Array.isArray(fetchedUsers) ? fetchedUsers : []);
-      //showMessage('Usuários carregados com sucesso.', 'success'); // Mensagem de sucesso
-    } catch (error: unknown) {
-      console.error('Failed to fetch users:', error);
-      showMessage('Falha ao carregar usuários.', 'error'); // Mensagem de erro
-    } finally {
-      setLoading(false);
-    }
+      setLoading(true);
+      try {
+        const fetchedUsers = await fetchUsers(token);
+        setUsers(Array.isArray(fetchedUsers) ? fetchedUsers : []);
+        showMessage('Usuários carregados com sucesso.', 'success'); // Mensagem de sucesso
+      } catch (error: unknown) {
+        console.error('Failed to fetch users:', error);
+        showMessage('Falha ao carregar usuários.', 'error'); // Mensagem de erro
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUsers();
   }, [token, setLoading, showMessage]);
 
   // Função para carregar roles
-  const loadRoles = useCallback(async () => {
-    if (!token) {
-      showMessage('Token de autenticação não encontrado.', 'error'); // Mensagem de erro
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const fetchedRoles = await fetchRoles(token);
-      setRoles(Array.isArray(fetchedRoles) ? fetchedRoles : []);
-      showMessage('Roles carregados com sucesso.', 'success'); // Mensagem de sucesso
-    } catch (error: unknown) {
-      console.error('Failed to fetch roles:', error);
-      showMessage('Falha ao carregar roles.', 'error'); // Mensagem de erro
-    } finally {
-      setLoading(false);
-    }
-  }, [token, setLoading, showMessage]);
-
   useEffect(() => {
-    loadUsers();
+    const loadRoles = async () => {
+      if (!token) {
+        showMessage('Token de autenticação não encontrado.', 'error'); // Mensagem de erro
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const fetchedRoles = await fetchRoles(token);
+        setRoles(Array.isArray(fetchedRoles) ? fetchedRoles : []);
+        showMessage('Roles carregados com sucesso.', 'success'); // Mensagem de sucesso
+      } catch (error: unknown) {
+        console.error('Failed to fetch roles:', error);
+        showMessage('Falha ao carregar roles.', 'error'); // Mensagem de erro
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadRoles();
-  }, [loadUsers, loadRoles]);
+  }, [token, setLoading, showMessage]);
 
   // Manipulador de busca
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,7 +133,9 @@ const UsersPage: React.FC = () => {
       setNewUser({});
       setSelectedUser(null);
       setShowForm(false);
-      loadUsers();
+      // Recarrega os usuários após a operação
+      const fetchedUsers = await fetchUsers(token);
+      setUsers(Array.isArray(fetchedUsers) ? fetchedUsers : []);
     } catch (error: unknown) {
       console.error('Failed to submit user:', error);
       showMessage('Falha ao submeter usuário.', 'error'); // Mensagem de erro
@@ -150,7 +155,9 @@ const UsersPage: React.FC = () => {
     try {
       await deleteUser(token, id);
       showMessage('Usuário deletado com sucesso.', 'success'); // Mensagem de sucesso
-      loadUsers();
+      // Recarrega os usuários após a exclusão
+      const fetchedUsers = await fetchUsers(token);
+      setUsers(Array.isArray(fetchedUsers) ? fetchedUsers : []);
     } catch (error: unknown) {
       console.error('Failed to delete user:', error);
       showMessage('Falha ao deletar usuário.', 'error'); // Mensagem de erro
@@ -167,9 +174,7 @@ const UsersPage: React.FC = () => {
 
   return (
     <Container>
-      {/* Removido: Exibição de mensagens de erro diretamente no JSX */}
-      {/* {error && <Typography color="error">{error}</Typography>} */}
-
+      {/* Campo de Busca */}
       <TextField
         label="Buscar Usuários"
         value={searchTerm}
