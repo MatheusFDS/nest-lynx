@@ -1,17 +1,39 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Container, Typography, Grid, Button, Paper, TextField, FormControlLabel, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Badge } from '@mui/material';
+import {
+  Typography,
+  Container,
+  Grid,
+  Button,
+  Paper,
+  TextField,
+  FormControlLabel,
+  Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Badge,
+} from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { Payment, Delivery, Direction } from '../../types';
 import withAuth from '../hoc/withAuth';
-import { fetchPayments, updatePaymentStatus, groupPayments, ungroupPayments, fetchDeliveryDetails } from '../../services/paymentService';
+import {
+  fetchPayments,
+  updatePaymentStatus,
+  groupPayments,
+  ungroupPayments,
+  fetchDeliveryDetails,
+} from '../../services/paymentService';
 import { fetchDirections } from '../../services/auxiliaryService';
 import PaymentsTable from '../components/payments/PaymentsTable';
 import PaymentDetailsDialog from '../components/payments/PaymentDetailsDialog';
 import generateSummaryReport from '../components/payments/generateSummaryReport';
 import SkeletonLoader from '../components/SkeletonLoader';
-import { useLoading } from '../context/LoadingContext';
+import { useLoading } from '../context/LoadingContext'; // Importar o LoadingContext
+import { useMessage } from '../context/MessageContext'; // Importar o contexto de mensagens
 
 const StyledButton = styled(Button)({
   margin: '8px 0',
@@ -25,6 +47,8 @@ const StyledButton = styled(Button)({
 
 const PaymentsPage: React.FC = () => {
   const { setLoading, isLoading } = useLoading();
+  const { showMessage } = useMessage(); // Hook para mensagens
+
   const [payments, setPayments] = useState<Payment[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
   const [directions, setDirections] = useState<Direction[]>([]);
@@ -35,7 +59,6 @@ const PaymentsPage: React.FC = () => {
   const [paid, setPaid] = useState<boolean>(false);
   const [pending, setPending] = useState<boolean>(true);
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
-  const [error, setError] = useState<string>('');
   const [detailsOpen, setDetailsOpen] = useState<boolean>(false);
   const [selectedDeliveries, setSelectedDeliveries] = useState<Delivery[]>([]);
 
@@ -51,20 +74,24 @@ const PaymentsPage: React.FC = () => {
       setPayments(paymentsData);
       filterPayments(searchTerm, startDate, endDate, grouped, paid, pending, paymentsData);
       setDirections(directionsData);
-    } catch (error) {
-      handleError('Failed to fetch payments.');
+      showMessage('Pagamentos carregados com sucesso!', 'success'); // Mensagem de sucesso
+    } catch (error: unknown) {
+      console.error('Erro ao buscar pagamentos:', error);
+      showMessage('Falha ao buscar pagamentos.', 'error'); // Mensagem de erro
     } finally {
       setLoading(false);
     }
-  }, [token, searchTerm, startDate, endDate, grouped, paid, pending]);
+  }, [token, searchTerm, startDate, endDate, grouped, paid, pending, showMessage, setLoading]);
 
   useEffect(() => {
     loadPayments();
-  }, [loadPayments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    filterPayments(e.target.value, startDate, endDate, grouped, paid, pending, payments);
+    const term = e.target.value;
+    setSearchTerm(term);
+    filterPayments(term, startDate, endDate, grouped, paid, pending, payments);
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,26 +119,36 @@ const PaymentsPage: React.FC = () => {
     }
   };
 
-  const filterPayments = (searchTerm: string, startDate: string, endDate: string, grouped: boolean, paid: boolean, pending: boolean, paymentsData: Payment[]) => {
+  const filterPayments = (
+    searchTerm: string,
+    startDate: string,
+    endDate: string,
+    grouped: boolean,
+    paid: boolean,
+    pending: boolean,
+    paymentsData: Payment[]
+  ) => {
     let filtered = paymentsData;
 
     if (searchTerm) {
-      filtered = filtered.filter(payment =>
-        Object.values(payment).some(value =>
-          value ? value.toString().toLowerCase().includes(searchTerm.toLowerCase()) : false
+      filtered = filtered.filter((payment) =>
+        Object.values(payment).some((value) =>
+          value
+            ? value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+            : false
         )
       );
     }
 
     if (startDate && endDate) {
-      filtered = filtered.filter(payment => {
+      filtered = filtered.filter((payment) => {
         const paymentDate = new Date(payment.createdAt);
         return paymentDate >= new Date(startDate) && paymentDate <= new Date(endDate);
       });
     }
 
     if (grouped || paid || pending) {
-      filtered = filtered.filter(payment => {
+      filtered = filtered.filter((payment) => {
         return (
           (grouped && payment.isGroup === true) ||
           (paid && payment.status === 'Baixado') ||
@@ -126,54 +163,62 @@ const PaymentsPage: React.FC = () => {
   };
 
   const handlePaymentSelect = (paymentId: string) => {
-    setSelectedPayments(prevSelected =>
+    setSelectedPayments((prevSelected) =>
       prevSelected.includes(paymentId)
-        ? prevSelected.filter(id => id !== paymentId)
+        ? prevSelected.filter((id) => id !== paymentId)
         : [...prevSelected, paymentId]
     );
   };
 
   const handleGroupPayments = async () => {
     if (selectedPayments.length === 0) {
-      handleError('Nenhum pagamento selecionado para agrupar.');
+      showMessage('Nenhum pagamento selecionado para agrupar.', 'warning'); // Mensagem de aviso
       return;
     }
 
     try {
       await groupPayments(token, selectedPayments);
+      showMessage('Pagamentos agrupados com sucesso!', 'success'); // Mensagem de sucesso
       loadPayments();
       setSelectedPayments([]);
-    } catch (error) {
-      handleError('Failed to group payments.');
+    } catch (error: unknown) {
+      console.error('Erro ao agrupar pagamentos:', error);
+      showMessage('Falha ao agrupar pagamentos.', 'error'); // Mensagem de erro
     }
   };
 
   const handleUngroupPayments = async (paymentId: string) => {
     try {
       await ungroupPayments(token, paymentId);
+      showMessage('Pagamento desagrupado com sucesso!', 'success'); // Mensagem de sucesso
       loadPayments();
-    } catch (error) {
-      handleError('Failed to ungroup payment.');
+    } catch (error: unknown) {
+      console.error('Erro ao desagrupar pagamento:', error);
+      showMessage('Falha ao desagrupar pagamento.', 'error'); // Mensagem de erro
     }
   };
 
   const handlePaymentStatusChange = async (paymentId: string, status: string) => {
     try {
       await updatePaymentStatus(token, paymentId, status);
+      showMessage('Status do pagamento atualizado com sucesso!', 'success'); // Mensagem de sucesso
       loadPayments();
-    } catch (error) {
-      handleError(`Failed to update payment status: ${error}`);
+    } catch (error: unknown) {
+      console.error(`Erro ao atualizar status do pagamento:`, error);
+      showMessage('Falha ao atualizar status do pagamento.', 'error'); // Mensagem de erro
     }
   };
 
   const handleViewDetails = async (deliveryIds: string[]) => {
     try {
-      const detailsPromises = deliveryIds.map(id => fetchDeliveryDetails(token, id));
+      const detailsPromises = deliveryIds.map((id) => fetchDeliveryDetails(token, id));
       const details = await Promise.all(detailsPromises);
       setSelectedDeliveries(details);
       setDetailsOpen(true);
-    } catch (error) {
-      handleError('Failed to fetch delivery details.');
+      showMessage('Detalhes dos pagamentos carregados com sucesso!', 'success'); // Mensagem de sucesso
+    } catch (error: unknown) {
+      console.error('Erro ao buscar detalhes das entregas:', error);
+      showMessage('Falha ao buscar detalhes das entregas.', 'error'); // Mensagem de erro
     }
   };
 
@@ -182,18 +227,9 @@ const PaymentsPage: React.FC = () => {
     setSelectedDeliveries([]);
   };
 
-  const handleError = (message: string) => {
-    setError(message);
-    setDialogOpen(true);
-  };
-
-  const [dialogOpen, setDialogOpen] = useState<boolean>(false);
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
-  };
-
   return (
     <Container>
+      {/* Campo de Busca */}
       <Grid container spacing={2} style={{ marginTop: '16px', marginBottom: '16px' }}>
         <Grid item xs={12}>
           <TextField
@@ -234,41 +270,72 @@ const PaymentsPage: React.FC = () => {
         </Grid>
         <Grid item xs={12}>
           <FormControlLabel
-            control={<Checkbox checked={grouped} onChange={handleStatusFilterChange} name="grouped" />}
+            control={
+              <Checkbox
+                checked={grouped}
+                onChange={handleStatusFilterChange}
+                name="grouped"
+              />
+            }
             label="Agrupamentos"
           />
           <FormControlLabel
-            control={<Checkbox checked={paid} onChange={handleStatusFilterChange} name="paid" />}
+            control={
+              <Checkbox
+                checked={paid}
+                onChange={handleStatusFilterChange}
+                name="paid"
+              />
+            }
             label="Baixados"
           />
           <FormControlLabel
-            control={<Checkbox checked={pending} onChange={handleStatusFilterChange} name="pending" />}
+            control={
+              <Checkbox
+                checked={pending}
+                onChange={handleStatusFilterChange}
+                name="pending"
+              />
+            }
             label="Pendentes"
           />
-          <Badge badgeContent={filteredPayments.length} color="primary" showZero />
+          <Badge badgeContent={filteredPayments.length} color="primary" showZero style={{ marginLeft: '16px' }} />
         </Grid>
       </Grid>
+
       {isLoading ? (
         <SkeletonLoader />
       ) : filteredPayments.length > 0 ? (
         <>
+          {/* Botões de Agrupamento e Relatório */}
           <Grid container spacing={2} style={{ marginBottom: '16px' }}>
             <Grid item xs={12} sm={6}>
               <StyledButton
                 variant="contained"
                 color="primary"
                 onClick={handleGroupPayments}
-                disabled={selectedPayments.length === 0 || selectedPayments.some(id => payments.find(payment => payment.id === id)?.groupedPaymentId)}
+                disabled={
+                  selectedPayments.length === 0 ||
+                  selectedPayments.some(
+                    (id) => payments.find((payment) => payment.id === id)?.isGroup === true
+                  )
+                }
               >
                 Agrupar Selecionados
               </StyledButton>
             </Grid>
             <Grid item xs={12} sm={6} style={{ textAlign: 'right' }}>
-              <StyledButton variant="contained" color="primary" onClick={() => generateSummaryReport(filteredPayments, startDate, endDate)}>
+              <StyledButton
+                variant="contained"
+                color="primary"
+                onClick={() => generateSummaryReport(filteredPayments, startDate, endDate)}
+              >
                 Gerar Relatório Totalizador
               </StyledButton>
             </Grid>
           </Grid>
+
+          {/* Tabela de Pagamentos */}
           <Paper elevation={3}>
             <PaymentsTable
               payments={filteredPayments}
@@ -286,23 +353,16 @@ const PaymentsPage: React.FC = () => {
         </Typography>
       )}
 
+      {/* Diálogo de Detalhes dos Pagamentos */}
       <PaymentDetailsDialog
         open={detailsOpen}
         deliveries={selectedDeliveries}
         onClose={handleDetailsClose}
       />
 
-      <Dialog
-        open={dialogOpen}
-        onClose={handleCloseDialog}
-      >
-        <DialogTitle>Erro</DialogTitle>
-        <DialogContent>
-          <DialogContentText>{error}</DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog} color="primary">Fechar</Button>
-        </DialogActions>
+      {/* Diálogo de Erro */}
+      <Dialog open={false} onClose={() => {}}>
+        {/* Este diálogo foi removido, pois usamos showMessage para feedback */}
       </Dialog>
     </Container>
   );

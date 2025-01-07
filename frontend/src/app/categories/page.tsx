@@ -2,15 +2,42 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Typography, Container, Button, Paper, TextField, IconButton, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow
+  Typography,
+  Container,
+  Button,
+  Paper,
+  TextField,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { Category } from '../../types';
 import withAuth from '../hoc/withAuth';
-import { fetchCategories, addCategory, updateCategory, deleteCategory } from '../../services/categoryService';
+import {
+  fetchCategories,
+  addCategory,
+  updateCategory,
+  deleteCategory,
+} from '../../services/categoryService';
 import { Delete, Edit } from '@mui/icons-material';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { useLoading } from '../context/LoadingContext'; // Importar o LoadingContext
+import { useMessage } from '../context/MessageContext'; // Importar o contexto de mensagens
+
+const StyledButton = styled(Button)({
+  margin: '8px',
+  padding: '8px 16px',
+  backgroundColor: '#1976d2',
+  color: '#fff',
+  '&:hover': {
+    backgroundColor: '#115293',
+  },
+});
 
 const CategoriesPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -21,6 +48,7 @@ const CategoriesPage: React.FC = () => {
   const [showForm, setShowForm] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const { isLoading, setLoading } = useLoading(); // Usar o contexto de carregamento
+  const { showMessage } = useMessage(); // Hook para mensagens
 
   const token = localStorage.getItem('token') || '';
 
@@ -30,8 +58,11 @@ const CategoriesPage: React.FC = () => {
       const data = await fetchCategories(token);
       setCategories(data);
       setFilteredCategories(data);
-    } catch (error) {
-      setError('Failed to fetch categories.');
+      showMessage('Categorias carregadas com sucesso!', 'success'); // Mensagem de sucesso
+    } catch (error: unknown) {
+      console.error('Erro ao buscar categorias:', error);
+      setError('Falha ao buscar categorias.');
+      showMessage('Erro ao buscar categorias.', 'error'); // Mensagem de erro
     } finally {
       setLoading(false);
     }
@@ -39,12 +70,14 @@ const CategoriesPage: React.FC = () => {
 
   useEffect(() => {
     loadCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    const filtered = categories.filter(category =>
-      category.name.toLowerCase().includes(e.target.value.toLowerCase())
+    const term = e.target.value;
+    setSearchTerm(term);
+    const filtered = categories.filter((category) =>
+      category.name.toLowerCase().includes(term.toLowerCase())
     );
     setFilteredCategories(filtered);
   };
@@ -52,16 +85,26 @@ const CategoriesPage: React.FC = () => {
   const handleAddCategory = async () => {
     try {
       if (selectedCategory) {
-        await updateCategory(token, selectedCategory.id, newCategory as { name: string; valor: number });
+        await updateCategory(token, selectedCategory.id, {
+          name: newCategory.name!,
+          valor: newCategory.valor!,
+        });
+        showMessage('Categoria atualizada com sucesso!', 'success'); // Mensagem de sucesso
       } else {
-        await addCategory(token, newCategory as { name: string; valor: number });
+        await addCategory(token, {
+          name: newCategory.name!,
+          valor: newCategory.valor!,
+        });
+        showMessage('Categoria adicionada com sucesso!', 'success'); // Mensagem de sucesso
       }
       setNewCategory({});
       setSelectedCategory(null);
       setShowForm(false);
       loadCategories();
-    } catch (error) {
-      setError('Failed to submit category.');
+    } catch (error: unknown) {
+      console.error('Erro ao adicionar/atualizar categoria:', error);
+      setError('Falha ao submeter categoria.');
+      showMessage('Erro ao submeter categoria.', 'error'); // Mensagem de erro
     }
   };
 
@@ -74,9 +117,12 @@ const CategoriesPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await deleteCategory(token, id);
+      showMessage('Categoria deletada com sucesso!', 'success'); // Mensagem de sucesso
       loadCategories();
-    } catch (error) {
-      setError('Failed to delete category.');
+    } catch (error: unknown) {
+      console.error('Erro ao deletar categoria:', error);
+      setError('Falha ao deletar categoria.');
+      showMessage('Erro ao deletar categoria.', 'error'); // Mensagem de erro
     }
   };
 
@@ -88,7 +134,10 @@ const CategoriesPage: React.FC = () => {
 
   return (
     <Container>
+      {/* Exibição de Mensagem de Erro (opcional, já que usamos showMessage) */}
       {error && <Typography color="error">{error}</Typography>}
+
+      {/* Campo de Busca */}
       <TextField
         label="Buscar"
         value={searchTerm}
@@ -96,9 +145,13 @@ const CategoriesPage: React.FC = () => {
         fullWidth
         margin="normal"
       />
-      <Button variant="contained" color="primary" onClick={() => setShowForm(true)}>
+
+      {/* Botão para Adicionar Categoria */}
+      <StyledButton variant="contained" color="primary" onClick={() => setShowForm(true)}>
         Adicionar Categoria
-      </Button>
+      </StyledButton>
+
+      {/* Formulário de Adição/Atualização de Categoria */}
       {showForm && (
         <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
           <TextField
@@ -111,17 +164,26 @@ const CategoriesPage: React.FC = () => {
           <TextField
             label="Valor"
             value={newCategory.valor !== undefined ? newCategory.valor : ''}
-            onChange={(e) => setNewCategory({ ...newCategory, valor: parseFloat(e.target.value) })}
+            onChange={(e) =>
+              setNewCategory({
+                ...newCategory,
+                valor: parseFloat(e.target.value),
+              })
+            }
             type="number"
             fullWidth
             margin="normal"
           />
-          <Button variant="contained" color="primary" onClick={handleAddCategory}>
+          <Button variant="contained" color="primary" onClick={handleAddCategory} style={{ marginRight: '8px' }}>
             {selectedCategory ? 'Atualizar Categoria' : 'Adicionar Categoria'}
           </Button>
-          <Button onClick={handleFormClose}>Cancelar</Button>
+          <Button variant="outlined" onClick={handleFormClose}>
+            Cancelar
+          </Button>
         </Paper>
       )}
+
+      {/* Tabela de Categorias */}
       {isLoading ? (
         <SkeletonLoader />
       ) : (
@@ -140,15 +202,22 @@ const CategoriesPage: React.FC = () => {
                   <TableCell>{category.name}</TableCell>
                   <TableCell>{category.valor}</TableCell>
                   <TableCell>
-                    <IconButton onClick={() => handleEdit(category)}>
+                    <IconButton onClick={() => handleEdit(category)} aria-label="editar">
                       <Edit />
                     </IconButton>
-                    <IconButton onClick={() => handleDelete(category.id)}>
+                    <IconButton onClick={() => handleDelete(category.id)} aria-label="deletar">
                       <Delete />
                     </IconButton>
                   </TableCell>
                 </TableRow>
               ))}
+              {filteredCategories.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} align="center">
+                    Nenhuma categoria encontrada.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
