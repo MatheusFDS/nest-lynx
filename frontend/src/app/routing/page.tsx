@@ -167,7 +167,7 @@ const RoutingPage: React.FC = () => {
   };
 
   return (
-    <Container style={{ marginTop: '24px' }}>
+    <Container>
       {isLoading ? (
         <SkeletonLoader />
       ) : (
