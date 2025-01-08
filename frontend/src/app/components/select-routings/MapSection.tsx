@@ -26,7 +26,18 @@ const MapSection: React.FC<MapSectionProps> = ({
       onRequestClose={handleCloseMap}
       contentLabel="Mapa"
       ariaHideApp={false}
-
+      style={{
+        content: {
+          backgroundColor: isDarkMode ? '#121212' : '#fff',
+          color: isDarkMode ? '#fff' : '#000',
+          overflow: 'hidden',
+          padding: 5,
+          margin: 0,
+        },
+        overlay: {
+          backgroundColor: 'rgba(0, 0, 0, 0.75)'
+        },
+      }}
     >
       <MapboxComponent
         orders={ordersForMap}
