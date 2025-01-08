@@ -48,8 +48,7 @@ const MapSection: React.FC<MapSectionProps> = ({
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          zIndex: 9999, // garantir sobreposição máxima
+          backgroundColor: 'rgba(0, 0, 0, 0.75)'
         },
       }}
     >
