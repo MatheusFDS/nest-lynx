@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Modal from 'react-modal';
 import MapboxComponent from './map/MapboxComponent';
 import { Order } from '../../../types';
@@ -20,38 +20,47 @@ const MapSection: React.FC<MapSectionProps> = ({
   handleGenerateRouteFromMap,
   handleCloseMap,
 }) => {
+  useEffect(() => {
+    // Define o elemento raiz para acessibilidade
+    Modal.setAppElement('#root');
+  }, []);
+
+  // Definindo estilos diretamente no componente
+  const customStyles: Modal.Styles = {
+    content: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: isDarkMode ? '#121212' : '#fff',
+      color: isDarkMode ? '#fff' : '#000',
+      overflow: 'hidden',
+      padding: 0,
+      margin: 0,
+      border: 'none',
+      zIndex: 1001, // zIndex do conteúdo do modal
+    },
+    overlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      zIndex: 1000, // zIndex do overlay
+    },
+  };
+
   return (
     <Modal
       isOpen={showMap}
       onRequestClose={handleCloseMap}
       contentLabel="Mapa"
-      ariaHideApp={false}
-      style={{
-        content: {
-          // Ocupa 100% da largura e altura da tela
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: isDarkMode ? '#121212' : '#fff',
-          color: isDarkMode ? '#fff' : '#000',
-          overflow: 'hidden',
-          padding: 0,
-          margin: 0,
-          border: 'none',
-        },
-        overlay: {
-          // Ocupa também 100% da tela
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          zIndex: 9999, // garantir sobreposição máxima
-        },
-      }}
+      style={customStyles}
+      shouldCloseOnOverlayClick={true}
+      shouldCloseOnEsc={true}
+      ariaHideApp={false} // Já definimos com Modal.setAppElement
     >
       <MapboxComponent
         orders={ordersForMap}
