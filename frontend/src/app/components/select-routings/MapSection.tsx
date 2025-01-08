@@ -32,14 +32,8 @@ const MapSection: React.FC<MapSectionProps> = ({
           color: isDarkMode ? '#fff' : '#000',
           overflow: 'hidden',
           padding: 5,
+          paddingTop: 20,
           margin: 0,
-                    // Estilos para centralizar o modal
-          top: '50%',
-          left: '50%',
-          right: 'auto',
-          bottom: 'auto',
-          marginRight: '-50%',
-          transform: 'translate(-50%, -50%)'
         },
         overlay: {
           backgroundColor: 'rgba(0, 0, 0, 0.75)'
