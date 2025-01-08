@@ -32,6 +32,7 @@ const MapSection: React.FC<MapSectionProps> = ({
           position: 'absolute',
           backgroundColor: isDarkMode ? '#121212' : '#fff',
           color: isDarkMode ? '#fff' : '#000',
+          marginTop: 40
         },
         overlay: {
           backgroundColor: 'rgba(0, 0, 0, 0.75)'
