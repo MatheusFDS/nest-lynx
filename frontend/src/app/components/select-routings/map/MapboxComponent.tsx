@@ -24,15 +24,13 @@ interface MapboxComponentProps {
 
 const containerStyle = {
   width: '100%',
-  height: '100%',
   opacity: 1,
 };
 
 const panelStyle = {
   width: '100%',
   padding: '5px',
-  fontSize: '0.95em',
-  overflow: 'auto', // Adicionando overflow
+  fontSize: '0.95em'
 };
 
 const MapboxComponent: React.FC<MapboxComponentProps> = ({ tenantId, orders, onClose, onGenerateRoute }) => {
