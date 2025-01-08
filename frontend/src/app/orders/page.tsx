@@ -383,7 +383,7 @@ const OrdersPage: React.FC = () => {
   };
 
   return (
-    <Container sx={{ paddingTop: '60px' }}> {/* Adiciona padding para não sobrepor o MessageBanner */}
+    <Container> {/* Adiciona padding para não sobrepor o MessageBanner */}
       <Grid container spacing={2} sx={{ marginTop: '16px', marginBottom: '16px' }}>
         <Grid item xs={12}>
           <TextField
