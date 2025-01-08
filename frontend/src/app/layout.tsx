@@ -42,7 +42,7 @@ const Layout = ({ children }: LayoutProps) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Gera Rota</title>
       </head>
-      <body style={{ margin: 10,  display: 'flex', flexDirection: 'column' }}>
+      <body style={{ margin: 0,  display: 'flex', flexDirection: 'column' }}>
         <AuthProvider>
           <UserSettingsProvider>
             <LoadingProvider>
