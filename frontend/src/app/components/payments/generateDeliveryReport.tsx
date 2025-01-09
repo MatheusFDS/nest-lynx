@@ -31,13 +31,13 @@ const generateDeliveryReport = (delivery: Delivery) => {
   // Dados do Roteiro
   doc.setFontSize(10);
   doc.text(`ID da Rota: ${delivery.id}`, 10, y);
-  doc.text(`Motorista: ${delivery.Driver?.name || 'N/A'}`, 80, y);
+  doc.text(`Motorista: ${delivery.Driver?.name || 'N/A'}`, 150, y);
   doc.text(`Veículo: ${delivery.Vehicle?.model || 'N/A'}`, 10, y += 5);
-  doc.text(`Valor do Frete: R$ ${delivery.valorFrete.toFixed(2)}`, 80, y);
-  doc.text(`Total Peso: ${delivery.totalPeso.toFixed(2)} kg`, 10, y += 5);
-  doc.text(`Total Valor: R$ ${delivery.totalValor.toFixed(2)}`, 80, y);
+  doc.text(`Valor do Frete: R$ ${delivery.valorFrete.toFixed(2)}`, 150, y);
   doc.text(`Status: ${delivery.status}`, 10, y += 5);
-  doc.text(`Data Início: ${new Date(delivery.dataInicio).toLocaleString()}`, 80, y);
+  doc.text(`Total Valor: R$ ${delivery.totalValor.toFixed(2)}`, 150, y);
+  doc.text(`Data Início: ${new Date(delivery.dataInicio).toLocaleString()}`, 10, y += 5);
+  doc.text(`Total Peso: ${delivery.totalPeso.toFixed(2)} kg`, 150, y);
   doc.text(`Data Fim: ${delivery.dataFim ? new Date(delivery.dataFim).toLocaleString() : 'N/A'}`, 10, y += 5);
 
   // Divider
@@ -54,7 +54,7 @@ const generateDeliveryReport = (delivery: Delivery) => {
     y = checkPageLimit(y);
     doc.setFontSize(8);
     doc.text(`ID Pedido: ${order.id}`, 10, y);
-    doc.text(`Cliente: ${order.cliente}`, 60, y);
+    doc.text(`Cliente: ${order.cliente}`, 150, y);
     y += 5;
     doc.text(`Endereço: ${order.endereco}`, 10, y);
     y += 5;
@@ -62,12 +62,12 @@ const generateDeliveryReport = (delivery: Delivery) => {
     doc.text(`UF: ${order.uf}`, 80, y);
     doc.text(`CEP: ${order.cep}`, 100, y);
     y += 5;
-    doc.text(`Valor: R$ ${order.valor.toFixed(2)}`, 10, y);
+    doc.text(`Status: ${order.status}`, 10, y);
     doc.text(`Peso: ${order.peso.toFixed(2)} kg`, 80, y);
     doc.text(`Volume: ${order.volume}`, 100, y);
     y += 5;
-    doc.text(`Status: ${order.status}`, 10, y);
-    doc.text(`Data de Criação: ${new Date(order.createdAt).toLocaleString()}`, 60, y);
+    doc.text(`Data de Criação: ${new Date(order.createdAt).toLocaleString()}`, 10, y);
+    doc.text(`Valor: R$ ${order.valor.toFixed(2)}`, 60, y);
     y += 5;
     doc.text(`Data de Atualização: ${new Date(order.updatedAt).toLocaleString()}`, 10, y);
     y += 10;

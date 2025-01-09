@@ -54,13 +54,13 @@ const generateSummaryReport = (filteredPayments: Payment[], startDate: string, e
     y = checkPageLimit(y);
     doc.setFontSize(8);
     doc.text(`ID Pagamento: ${payment.id}`, 10, y);
-    doc.text(`ID Roteiros: ${payment.paymentDeliveries.map(pd => pd.delivery.id).join(', ')}`, 80, y);
+    doc.text(`ID Roteiros: ${payment.paymentDeliveries.map(pd => pd.delivery.id).join(', ')}`, 120, y);
     y += 5;
     doc.text(`Valor: R$ ${payment.amount.toFixed(2)}`, 10, y);
-    doc.text(`Data Criação: ${new Date(payment.createdAt).toLocaleString()}`, 80, y);
+    doc.text(`Data Criação: ${new Date(payment.createdAt).toLocaleString()}`, 120, y);
     y += 5;
     doc.text(`Data Baixa: ${payment.status === 'Baixado' ? new Date(payment.updatedAt).toLocaleString() : 'N/A'}`, 10, y);
-    doc.text(`Nome Motorista: ${payment.Driver?.name || 'N/A'}`, 80, y);
+    doc.text(`Nome Motorista: ${payment.Driver?.name || 'N/A'}`, 120, y);
     y += 10;
   });
 
