@@ -42,7 +42,7 @@ const generateSummaryReport = (filteredPayments: Payment[], startDate: string, e
   doc.text(`Total de Pagamentos: ${totalPayments}`, 10, y);
   doc.text(`Valor Total: R$ ${totalAmount}`, 80, y);
   y += 5;
-  doc.text(`Peso Total: ${totalWeight} kg`, 10, y);
+  doc.text(`Peso Total: ${totalWeight} kg`, 80, y);
   y += 10;
 
   // Detalhes dos Pagamentos

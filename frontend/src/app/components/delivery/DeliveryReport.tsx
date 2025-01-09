@@ -102,7 +102,7 @@ export const generatePDF = (
   doc.text('TOTALIZADORES', 10, y);
   y += 5;
   doc.setFontSize(8);
-  doc.text(`Total Peso: ${totalWeight.toFixed(2)} kg`, 10, y);
+  doc.text(`Total Peso: ${totalWeight.toFixed(2)} kg`, 20, y);
   doc.text(`Total Valor: R$ ${totalValue.toFixed(2)}`, 80, y);
   y += 5;
   doc.text('Assinatura do Motorista: ____________________', 10, y);

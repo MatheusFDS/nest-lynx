@@ -63,8 +63,8 @@ const generateDeliveryReport = (delivery: Delivery) => {
     doc.text(`CEP: ${order.cep}`, 120, y);
     y += 5;
     doc.text(`Status: ${order.status}`, 10, y);
-    doc.text(`Peso: ${order.peso.toFixed(2)} kg`, 80, y);
-    doc.text(`Volume: ${order.volume}`, 100, y);
+    doc.text(`Peso: ${order.peso.toFixed(2)} kg`, 100, y);
+    doc.text(`Volume: ${order.volume}`, 120, y);
     y += 5;
     doc.text(`Data de Criação: ${new Date(order.createdAt).toLocaleString()}`, 10, y);
     doc.text(`Valor: R$ ${order.valor.toFixed(2)}`, 100, y);
