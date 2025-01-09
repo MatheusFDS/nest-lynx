@@ -49,12 +49,12 @@ export const generatePDF = (
   // Dados do Roteiro
   doc.setFontSize(10);
   doc.text(`ID da Ordem de Carga: ${delivery.id}`, 10, y);
-  doc.text(`Motorista: ${driver?.name || 'N/A'}`, 80, y);
+  doc.text(`Motorista: ${driver?.name || 'N/A'}`, 100, y);
   doc.text(`Transportadora: ${driver?.name || 'N/A'}`, 10, y += 5);
-  doc.text(`Veículo: ${vehicle?.model || 'N/A'}`, 80, y);
+  doc.text(`Veículo: ${vehicle?.model || 'N/A'}`, 100, y);
   doc.text(`Data Início: ${delivery.dataInicio ? new Date(delivery.dataInicio).toLocaleString() : 'N/A'}`, 10, y += 5);
-  doc.text(`Data Finalização: ${delivery.dataFim ? new Date(delivery.dataFim).toLocaleString() : 'N/A'}`, 80, y);
-  doc.text(`Região: ${regionName}`, 10, y += 5);
+  doc.text(`Região: ${regionName}`, 100, y);
+  doc.text(`Data Finalização: ${delivery.dataFim ? new Date(delivery.dataFim).toLocaleString() : 'N/A'}`, 10, y += 5);
 
   // Divider
   y += 5;
