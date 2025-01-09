@@ -307,7 +307,7 @@ const PaymentsPage: React.FC = () => {
       {isLoading ? (
         <SkeletonLoader />
       ) : filteredPayments.length > 0 ? (
-        <Grid style={{ width: '100%' }}>
+        <>
           {/* Botões de Agrupamento e Relatório */}
           <Grid container spacing={2} style={{ marginBottom: '16px' }}>
             <Grid item xs={12} sm={6}>
@@ -347,15 +347,15 @@ const PaymentsPage: React.FC = () => {
               handleUngroupPayments={handleUngroupPayments}
             />
           </Paper>
-        </Grid>
+        </>
       ) : (
         <Paper elevation={3}>
-        <Typography align="center" style={{ padding: '16px' }}>
-          Nenhum pagamento encontrado. Use os filtros para buscar pagamentos.
-        </Typography>
+          <Typography align="center" style={{ padding: '16px' }}>
+            Nenhum pagamento encontrado. Use os filtros para buscar pagamentos.
+          </Typography>
         </Paper>
-
       )}
+
   
       {/* Diálogo de Detalhes dos Pagamentos */}
       <PaymentDetailsDialog
