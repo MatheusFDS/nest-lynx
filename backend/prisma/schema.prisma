@@ -1,242 +1,272 @@
+// datasource db define a conexão com o banco de dados.
+// "postgresql" é o provedor, e a URL vem de uma variável de ambiente.
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+// generator client especifica que queremos gerar o Prisma Client para JavaScript/TypeScript.
 generator client {
   provider = "prisma-client-js"
 }
 
+// Modelo para Usuários do sistema.
+// Pode ser um administrador da plataforma ou um usuário dentro de um tenant.
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
+  id        String  @id @default(uuid())
+  isActive Boolean   @default(true)
+  email     String  @unique
   password  String
   name      String
-  role      Role     @relation(fields: [roleId], references: [id])
+  role      Role    @relation(fields: [roleId], references: [id])
   roleId    String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  tenantId  String
+  // tenantId e tenant são opcionais. Se null, o usuário é um administrador da plataforma.
+  // Se preenchido, o usuário pertence ao tenant especificado.
+  tenant    Tenant? @relation(fields: [tenantId], references: [id])
+  tenantId  String?
   settings  UserSettings?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  Approval  Approval[]
+  Approval  Approval[] // Relação com aprovações feitas pelo usuário.
 }
 
+// Modelo para Roles (Papéis/Funções) dos usuários.
+// Define os diferentes níveis de acesso e permissões.
 model Role {
-  id    String @id @default(uuid())
-  name  String @unique
-  users User[]
+  id             String    @id @default(uuid())
+  name           String    @unique // Nome único da role (ex: "PLATFORM_ADMIN", "TENANT_ADMIN")
+  description    String?   // Descrição opcional da role.
+  // isPlatformRole indica se a role é para administradores da plataforma (true)
+  // ou para usuários dentro de um tenant (false).
+  isPlatformRole Boolean   @default(false)
+  users          User[]    // Lista de usuários que possuem esta role.
 }
 
+// Modelo para Tenants (Inquilinos/Clientes).
+// Cada tenant representa uma organização ou cliente isolado no sistema.
 model Tenant {
-  id                   String            @id @default(uuid())
-  name                 String            @unique
-  minDeliveryPercentage Float?           // Alterado para porcentagem
-  address              String?           // Endereço do tenant
-  minValue             Float?
-  minOrders            Float?
-  minPeso              Float?
-  users                User[]
-  drivers              Driver[]
-  vehicles             Vehicle[]
-  orders               Order[]
-  directions           Directions[]
-  deliveries           Delivery[]
-  categories           Category[]
-  accountsPayable      AccountsPayable[]
-  paymentDeliveries    PaymentDelivery[]
-  deliveryProofs       DeliveryProof[]
-  payments             Payment[]
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @default(now())
+  id                    String            @id @default(uuid())
+  isActive Boolean   @default(true)
+  name                  String            @unique
+  minDeliveryPercentage Float?            // Porcentagem mínima de entrega.
+  address               String?           // Endereço do tenant.
+  minValue              Float?            // Valor mínimo para alguma operação (especificar).
+  minOrders             Float?            // Número mínimo de pedidos (especificar).
+  minPeso               Float?            // Peso mínimo (especificar).
+  users                 User[]            // Usuários pertencentes a este tenant.
+  drivers               Driver[]          // Motoristas pertencentes a este tenant.
+  vehicles              Vehicle[]         // Veículos pertencentes a este tenant.
+  orders                Order[]           // Pedidos pertencentes a este tenant.
+  directions            Directions[]      // Direções/Regiões de CEP pertencentes a este tenant.
+  deliveries            Delivery[]        // Entregas pertencentes a este tenant.
+  categories            Category[]        // Categorias (de veículos/serviços) pertencentes a este tenant.
+  accountsPayable       AccountsPayable[] // Contas a pagar pertencentes a este tenant.
+  paymentDeliveries     PaymentDelivery[] // Relação com pagamentos de entregas do tenant.
+  deliveryProofs        DeliveryProof[]   // Comprovantes de entrega do tenant.
+  payments              Payment[]         // Pagamentos (gerais) do tenant.
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt // Prisma não atualiza automaticamente, mas @updatedAt é um marcador.
 
-  Approval Approval[]
+  Approval              Approval[]        // Relação com aprovações no contexto deste tenant.
 }
 
+// Modelo para Configurações Específicas do Usuário.
 model UserSettings {
   id        String   @id @default(uuid())
-  userId    String   @unique
+  userId    String   @unique // Chave estrangeira para User.
   user      User     @relation(fields: [userId], references: [id])
-  settings  Json
+  settings  Json     // Campo JSON para armazenar configurações flexíveis.
   createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
+// Modelo para Motoristas.
 model Driver {
-  id            String   @id @default(uuid())
-  name          String
-  license       String
-  cpf           String
-  tenantId      String
-  Tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  vehicles      Vehicle[]
-  deliveries    Delivery[]
-  orders        Order[]
-  accountsPayable AccountsPayable[]
-  deliveryProofs DeliveryProof[]
-  payments      Payment[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now())
+  id              String            @id @default(uuid())
+  name            String
+  license         String            // Número da CNH.
+  cpf             String            // CPF do motorista.
+  tenantId        String            // Chave estrangeira para Tenant.
+  Tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  vehicles        Vehicle[]         // Veículos associados a este motorista.
+  deliveries      Delivery[]        // Entregas realizadas por este motorista.
+  orders          Order[]           // Pedidos atribuídos a este motorista.
+  accountsPayable AccountsPayable[] // Contas a pagar para este motorista.
+  deliveryProofs  DeliveryProof[]   // Comprovantes de entrega enviados por este motorista.
+  payments        Payment[]         // Pagamentos feitos a este motorista.
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
-  @@unique([cpf, tenantId])
+  @@unique([cpf, tenantId]) // Garante que o CPF é único dentro de um tenant.
 }
 
+// Modelo para Veículos.
 model Vehicle {
   id         String   @id @default(uuid())
-  model      String
-  plate      String
-  driverId   String
-  tenantId   String
-  categoryId String
+  model      String   // Modelo do veículo.
+  plate      String   // Placa do veículo.
+  driverId   String   // Chave estrangeira para Driver.
+  tenantId   String   // Chave estrangeira para Tenant.
+  categoryId String   // Chave estrangeira para Category (tipo de veículo).
   Driver     Driver   @relation(fields: [driverId], references: [id])
   Tenant     Tenant   @relation(fields: [tenantId], references: [id])
   Category   Category @relation(fields: [categoryId], references: [id])
-  deliveries Delivery[]
+  deliveries Delivery[] // Entregas realizadas com este veículo.
   createdAt  DateTime @default(now())
-  updatedAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  @@unique([plate, tenantId])
+  @@unique([plate, tenantId]) // Garante que a placa é única dentro de um tenant.
 }
 
+// Modelo para Pedidos (Ordens de Entrega).
 model Order {
-  id                String   @id @default(uuid())
-  numero            String
-  data              DateTime
-  idCliente         String
-  cliente           String
-  endereco          String
+  id                String          @id @default(uuid())
+  numero            String          // Número identificador do pedido.
+  data              DateTime        // Data do pedido.
+  idCliente         String          // ID do cliente final (do sistema do tenant).
+  cliente           String          // Nome do cliente final.
+  endereco          String          // Endereço de entrega.
   cidade            String
   uf                String
   peso              Float
   volume            Int
-  prazo             String?
+  prazo             String?         // Prazo de entrega.
   prioridade        String
   telefone          String
   email             String
   bairro            String
-  valor             Float
+  valor             Float           // Valor do pedido/mercadoria.
   instrucoesEntrega String?
-  nomeContato       String
-  cpfCnpj           String
+  nomeContato       String          // Nome do contato no local de entrega.
+  cpfCnpj           String          // CPF/CNPJ do destinatário.
   cep               String
-  status            String
-  deliveryId        String?
-  tenantId          String
-  driverId          String?
-  Tenant            Tenant   @relation(fields: [tenantId], references: [id])
-  Delivery          Delivery? @relation(fields: [deliveryId], references: [id])
-  Driver            Driver?   @relation(fields: [driverId], references: [id])
-  sorting           Int?
-  startedAt         DateTime?
-  completedAt       DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  deliveryProofs    DeliveryProof[]
+  status            String          // Status atual do pedido.
+  deliveryId        String?         // Chave estrangeira opcional para Delivery (se o pedido está em uma entrega).
+  tenantId          String          // Chave estrangeira para Tenant.
+  driverId          String?         // Chave estrangeira opcional para Driver (se atribuído diretamente).
+  Tenant            Tenant          @relation(fields: [tenantId], references: [id])
+  Delivery          Delivery?       @relation(fields: [deliveryId], references: [id])
+  Driver            Driver?         @relation(fields: [driverId], references: [id])
+  sorting           Int?            // Ordem de classificação/entrega.
+  startedAt         DateTime?       // Data/hora de início da entrega do pedido.
+  completedAt       DateTime?       // Data/hora de conclusão da entrega do pedido.
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  deliveryProofs    DeliveryProof[] // Comprovantes de entrega para este pedido.
 }
 
+// Modelo para Direções/Regiões de CEP (usado para roteirização ou precificação).
 model Directions {
-  id            String   @id @default(uuid())
-  rangeInicio   String
-  rangeFim      String
-  valorDirecao  Int
-  regiao        String
-  tenantId      String
-  Tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now())
-}
-
-model Delivery {
-  id                      String           @id @default(uuid())
-  motoristaId             String
-  veiculoId               String
-  valorFrete              Float
-  totalPeso               Float
-  totalValor              Float
-  dataInicio              DateTime        @default(now())
-  dataFim                 DateTime?
-  status                  String
-  tenantId                String
-  liberacoes              Approval[]
-  dataLiberacao           DateTime?
-  createdAt               DateTime       @default(now())
-  updatedAt               DateTime       @default(now())
-  Tenant                  Tenant        @relation(fields: [tenantId], references: [id])
-  orders                  Order[]
-  Driver                  Driver        @relation(fields: [motoristaId], references: [id])
-  Vehicle                 Vehicle       @relation(fields: [veiculoId], references: [id])
-  paymentDeliveries       PaymentDelivery[] @relation("DeliveryToPaymentDeliveries")
-}
-
-model Approval {
   id             String   @id @default(uuid())
-  deliveryId     String
-  tenantId       String
-  action         String
-  motivo         String?
-  userId         String
-  createdAt      DateTime @default(now())
-  Delivery       Delivery @relation(fields: [deliveryId], references: [id])
+  rangeInicio    String   // Faixa inicial de CEP.
+  rangeFim       String   // Faixa final de CEP.
+  valorDirecao   Int      // Pode ser um valor, um fator, etc., dependendo da lógica.
+  regiao         String   // Nome da região.
+  tenantId       String   // Chave estrangeira para Tenant.
   Tenant         Tenant   @relation(fields: [tenantId], references: [id])
-  User           User     @relation(fields: [userId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
+// Modelo para Entregas (agrupamento de Pedidos para um Motorista/Veículo).
+model Delivery {
+  id                String            @id @default(uuid())
+  motoristaId       String            // Chave estrangeira para Driver.
+  veiculoId         String            // Chave estrangeira para Vehicle.
+  valorFrete        Float             // Valor total do frete da entrega.
+  totalPeso         Float             // Peso total da carga da entrega.
+  totalValor        Float             // Valor total da mercadoria na entrega.
+  dataInicio        DateTime          @default(now()) // Data de início planejada/real da entrega.
+  dataFim           DateTime?         // Data de fim real da entrega.
+  status            String            // Status da entrega (ex: "Planejada", "Em Rota", "Concluída").
+  tenantId          String            // Chave estrangeira para Tenant.
+  liberacoes        Approval[]        // Aprovações relacionadas a esta entrega.
+  dataLiberacao     DateTime?         // Data da última liberação/aprovação.
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  Tenant            Tenant            @relation(fields: [tenantId], references: [id])
+  orders            Order[]           // Pedidos incluídos nesta entrega.
+  Driver            Driver            @relation(fields: [motoristaId], references: [id])
+  Vehicle           Vehicle           @relation(fields: [veiculoId], references: [id])
+  paymentDeliveries PaymentDelivery[] @relation("DeliveryToPaymentDeliveries") // Relação com a tabela de junção para pagamentos.
+}
+
+// Modelo para Aprovações (ex: aprovação de uma entrega, liberação financeira).
+model Approval {
+  id         String   @id @default(uuid())
+  deliveryId String   // Chave estrangeira para Delivery.
+  tenantId   String   // Chave estrangeira para Tenant.
+  action     String   // Ação realizada (ex: "APROVADO", "REJEITADO").
+  motivo     String?  // Motivo, caso necessário.
+  userId     String   // Chave estrangeira para User (quem realizou a aprovação).
+  createdAt  DateTime @default(now())
+  Delivery   Delivery @relation(fields: [deliveryId], references: [id])
+  Tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  User       User     @relation(fields: [userId], references: [id])
+}
+
+// Modelo para Categorias (ex: tipo de veículo, tipo de serviço).
 model Category {
-  id        String   @id @default(uuid())
-  name      String
-  valor     Float
-  tenantId  String
-  Tenant    Tenant  @relation(fields: [tenantId], references: [id])
-  vehicles  Vehicle[]
+  id       String    @id @default(uuid())
+  name     String    // Nome da categoria.
+  valor    Float     // Valor associado à categoria (pode ser tarifa, custo, etc.).
+  tenantId String    // Chave estrangeira para Tenant.
+  Tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  vehicles Vehicle[] // Veículos pertencentes a esta categoria.
 }
 
+// Modelo para Contas a Pagar (geralmente para motoristas/terceiros).
 model AccountsPayable {
-  id                String   @id @default(uuid())
-  amount            Float
-  status            String
-  tenantId          String
-  motoristaId       String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @default(now())
-  groupedPaymentId  String? // Alterado para UUID
-  isGroup           Boolean  @default(false)
-
-  Tenant            Tenant   @relation(fields: [tenantId], references: [id])
-  Driver            Driver   @relation(fields: [motoristaId], references: [id])
-  paymentDeliveries PaymentDelivery[] @relation("PaymentToPaymentDeliveries")
+  id               String            @id @default(uuid())
+  amount           Float             // Valor da conta a pagar.
+  status           String            // Status (ex: "Pendente", "Pago").
+  tenantId         String            // Chave estrangeira para Tenant.
+  motoristaId      String            // Chave estrangeira para Driver (a quem se deve pagar).
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  groupedPaymentId String?           // Se esta conta faz parte de um pagamento agrupado.
+  isGroup          Boolean           @default(false) // Indica se este registro é um agrupador de pagamentos.
+  Tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  Driver           Driver            @relation(fields: [motoristaId], references: [id])
+  paymentDeliveries PaymentDelivery[] @relation("PaymentToPaymentDeliveries") // Relação com a tabela de junção para entregas pagas.
 }
 
+// Tabela de Junção para relacionar Pagamentos (AccountsPayable) com Entregas (Delivery).
+// Indica quais entregas estão sendo pagas em uma determinada "Conta a Pagar".
 model PaymentDelivery {
-  paymentId         String
-  deliveryId        String
-  tenantId          String
-  Tenant            Tenant           @relation(fields: [tenantId], references: [id])
-  accountsPayable   AccountsPayable  @relation(fields: [paymentId], references: [id], onDelete: Cascade, name: "PaymentToPaymentDeliveries")
-  delivery          Delivery         @relation(fields: [deliveryId], references: [id], onDelete: Cascade, name: "DeliveryToPaymentDeliveries")
+  paymentId String // Chave estrangeira para AccountsPayable (id da conta/pagamento).
+  deliveryId String // Chave estrangeira para Delivery (id da entrega).
+  tenantId String // Chave estrangeira para Tenant.
+  Tenant          Tenant          @relation(fields: [tenantId], references: [id])
+  accountsPayable AccountsPayable @relation(fields: [paymentId], references: [id], onDelete: Cascade, name: "PaymentToPaymentDeliveries")
+  delivery        Delivery        @relation(fields: [deliveryId], references: [id], onDelete: Cascade, name: "DeliveryToPaymentDeliveries")
 
-  @@id([paymentId, deliveryId])
+  @@id([paymentId, deliveryId]) // Chave primária composta.
 }
 
+// Modelo para Pagamentos (registros de pagamentos efetuados).
+// Pode ser usado para registrar pagamentos individuais ou agrupados.
 model Payment {
   id        String   @id @default(uuid())
-  amount    Float
-  driverId  String
+  amount    Float    // Valor do pagamento.
+  driverId  String   // Chave estrangeira para Driver (quem recebeu o pagamento).
   Driver    Driver   @relation(fields: [driverId], references: [id])
-  tenantId  String
+  tenantId  String   // Chave estrangeira para Tenant.
   Tenant    Tenant   @relation(fields: [tenantId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+// Modelo para Comprovantes de Entrega.
 model DeliveryProof {
   id        String   @id @default(uuid())
-  orderId   String
+  orderId   String   // Chave estrangeira para Order.
   Order     Order    @relation(fields: [orderId], references: [id])
-  driverId  String
+  driverId  String   // Chave estrangeira para Driver (quem coletou o comprovante).
   Driver    Driver   @relation(fields: [driverId], references: [id])
-  tenantId  String
+  tenantId  String   // Chave estrangeira para Tenant.
   Tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  proofUrl  String
+  proofUrl  String   // URL da imagem/documento do comprovante.
   createdAt DateTime @default(now())
 }

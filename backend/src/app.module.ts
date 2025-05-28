@@ -14,6 +14,7 @@ import { UserSettingsModule } from './user-settings/user-settings.module';
 import { TenantModule } from './tenant/tenant.module';
 import { MetadataModule } from './meta/metadata.module';
 import { RolesModule } from './roles/roles.module';
+import { PlatformAdminModule } from './platform-admin/platform-admin.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { RolesModule } from './roles/roles.module';
     UserSettingsModule,
     MetadataModule,
     RolesModule,
+    PlatformAdminModule,
   ],
 })
 export class AppModule {}

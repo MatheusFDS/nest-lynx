@@ -8,7 +8,7 @@ export class CreateUserDto {
   password: string;
 
   @IsString()
-  name: string; // Incluindo o campo name
+  name: string; 
 
   @IsUUID()
   tenantId: string;
