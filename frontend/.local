@@ -1,5 +1,0 @@
-NEXT_PUBLIC_MAPBOX_API_KEY="pk.eyJ1IjoibWF0aGV1c2ZkcyIsImEiOiJjbHlpdHB3dDYwamZuMmtvZnVjdTNzbjI3In0.hVf9wJoZ_7mRM_iy09cdWg"
-#NEXT_PUBLIC_API_URL="http://44.220.138.25:80"
-
-
-NEXT_PUBLIC_API_URL="http://localhost:4000"
