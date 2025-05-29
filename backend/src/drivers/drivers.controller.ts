@@ -26,6 +26,12 @@ export class DriversController {
     return this.driversService.findAll(tenantId);
   }
 
+  @Get('available-users')
+  getAvailableUsers(@Req() req: Request) {
+    const tenantId = req.user.tenantId;
+    return this.driversService.getAvailableUsers(tenantId);
+  }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateDriverDto: UpdateDriverDto, @Req() req: Request) {
     const tenantId = req.user.tenantId;

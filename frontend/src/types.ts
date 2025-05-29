@@ -49,8 +49,20 @@ export interface Driver {
   license: string;
   cpf: string;
   tenantId: string;
-  createdAt: string;
-  updatedAt: string;
+  userId?: string; // ID do usuário relacionado (opcional)
+  User?: {         // Dados do usuário relacionado (quando incluído na consulta)
+    id: string;
+    name: string;
+    email: string;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AvailableUser {
+  id: string;
+  name: string;
+  email: string;
 }
 
 export interface Column {
@@ -110,10 +122,10 @@ export interface Approval {
   deliveryId: string;
   tenantId: string;
   action: string; // 'approved' ou 'rejected'
-  motivo?: string; // Campo opcional para motivo de rejeição
+  motivo?: string;
   userId: string;
   createdAt: string;
-  userName?: string; // Adicionado para exibir o nome do usuário
+  User?: UserSummary; // <<< SUBSTITUA OU ADICIONE ESTA LINHA (usando UserSummary ou seu tipo User completo)
 }
 
 export interface Payment {
@@ -160,6 +172,7 @@ export interface Tenant {
   minPeso:             number;
 }
 
+
 export interface Vehicle {
   id: string;
   model: string;
@@ -167,7 +180,53 @@ export interface Vehicle {
   driverId: string;
   tenantId: string;
   categoryId: string;
+  Category?: Category; // <<< ADICIONE ESTA LINHA (usando sua interface Category existente)
   createdAt: string;
   updatedAt: string;
-  valor: number; // Adicionado o valor do veículo
+  valor: number; // Este é o valor do próprio veículo, diferente do valor da categoria para frete.
+}
+
+// Componente de Estatística
+export interface StatsCardProps {
+  icon: React.ReactElement;
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  trend?: number;
+  color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple' |  'primary' | 'success' | 'warning' | 'error' | 'secondary';
+}
+
+export interface AlertCardProps {
+  icon: React.ReactNode;
+  title: string;
+  count: number;
+  subtitle: string;
+  color?: 'warning' | 'error' | 'success' | 'info';
+  urgent?: boolean;
+  onClick?: () => void;
+}
+
+export interface OrderHistoryEvent {
+  id: string;
+  timestamp: string;
+  eventType: string;
+  description: string;
+  user?: string;
+  details?: {
+    oldStatus?: string;
+    newStatus?: string;
+    reason?: string;
+    proofUrl?: string;
+    deliveryId?: string;    // Adicionado
+    driverName?: string;    // Adicionado
+    vehiclePlate?: string;  // Adicionado
+    finalStatus?: string;   // Adicionado
+    deliveryStatus?: string; // Adicionado
+  };
+}
+
+export interface UserSummary {
+  id: string;
+  name: string;
+  email?: string; // Opcional, se relevante
 }

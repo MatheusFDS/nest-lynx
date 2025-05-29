@@ -11,14 +11,24 @@ const port = process.env.PORT || 4000;
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Definição das origens permitidas
-  const allowedOrigins = [
+const allowedOrigins = [
     'https://gerarota.vercel.app',
     'https://gerarota-matheusfds-projects.vercel.app',
     'https://gerarota-git-master-matheusfds-projects.vercel.app',
-    'http://localhost:3000', // Ajuste a porta conforme necessário
+    'http://localhost:3000',
+    'http://localhost:8081',
+    'http://localhost:8081/',
+    'http://localhost:8081/login',
+    'exp://localhost:8081',
+    'exp://192.168.1.100:8081',
+    'http://192.168.1.100:8081',
+    'capacitor://localhost',
+    'ionic://localhost',
+    'http://localhost',
+    'http://127.0.0.1:8081',
+    'exp://127.0.0.1:8081',
   ];
-
+  
   const corsOptions: CorsOptions = {
     origin: function (origin, callback) {
       // Permite requisições sem origin (como mobile apps ou CURL)

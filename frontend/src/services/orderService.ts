@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Order } from '../types';
+import { Order, OrderHistoryEvent } from '../types';
 import { getApiUrl } from './utils/apiUtils';
 
 export const fetchOrders = async (token: string): Promise<Order[]> => {
@@ -42,4 +42,17 @@ export const updateUserSettings = async (token: string, settings: any): Promise<
       Authorization: `Bearer ${token}`,
     },
   });
+};
+
+
+export const fetchOrderHistory = async (token: string, orderId: string): Promise<OrderHistoryEvent[]> => {
+  // Este endpoint é um EXEMPLO, você precisará criá-lo no seu backend
+  const API_URL = `${getApiUrl()}/orders/${orderId}/history`;
+
+  const response = await axios.get(API_URL, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return response.data; // Espera-se que o backend retorne um array de OrderHistoryEvent
 };

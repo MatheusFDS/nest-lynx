@@ -14,20 +14,27 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  SelectChangeEvent,
+  Chip,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { Delete, Edit } from '@mui/icons-material';
+import { Delete, Edit, Person } from '@mui/icons-material';
 import withAuth from '../hoc/withAuth';
 import {
   fetchDrivers,
   addDriver,
   updateDriver,
   deleteDriver,
+  fetchAvailableUsers,
 } from '../../services/driverService';
 import SkeletonLoader from '../components/SkeletonLoader';
-import { useLoading } from '../context/LoadingContext'; // Importar o LoadingContext
-import { useMessage } from '../context/MessageContext'; // Importar o contexto de mensagens
-import { Driver } from '../../types';
+import { useLoading } from '../context/LoadingContext';
+import { useMessage } from '../context/MessageContext';
+import { Driver, AvailableUser } from '../../types';
 
 const StyledButton = styled(Button)({
   margin: '8px',
@@ -46,8 +53,9 @@ const DriversPage: React.FC = () => {
   const [newDriver, setNewDriver] = useState<Partial<Driver>>({});
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
-  const { isLoading, setLoading } = useLoading(); // Usar o contexto de carregamento
-  const { showMessage } = useMessage(); // Hook para mensagens
+  const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
+  const { isLoading, setLoading } = useLoading();
+  const { showMessage } = useMessage();
 
   const token = localStorage.getItem('token') || '';
 
@@ -57,17 +65,27 @@ const DriversPage: React.FC = () => {
       const data = await fetchDrivers(token);
       setDrivers(data);
       setFilteredDrivers(data);
-      //showMessage('Motoristas carregados com sucesso!', 'success'); // Mensagem de sucesso
     } catch (error: unknown) {
       console.error('Erro ao buscar motoristas:', error);
-      showMessage('Falha ao buscar motoristas.', 'error'); // Mensagem de erro
+      showMessage('Falha ao buscar motoristas.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  const loadAvailableUsers = async () => {
+    try {
+      const users = await fetchAvailableUsers(token);
+      setAvailableUsers(users);
+    } catch (error: unknown) {
+      console.error('Erro ao buscar usuários disponíveis:', error);
+      showMessage('Falha ao buscar usuários disponíveis.', 'error');
+    }
+  };
+
   useEffect(() => {
     loadDrivers();
+    loadAvailableUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -75,37 +93,51 @@ const DriversPage: React.FC = () => {
     const term = e.target.value;
     setSearchTerm(term);
     const filtered = drivers.filter((driver) =>
-      driver.name.toLowerCase().includes(term.toLowerCase())
+      driver.name.toLowerCase().includes(term.toLowerCase()) ||
+      driver.cpf.toLowerCase().includes(term.toLowerCase()) ||
+      driver.license.toLowerCase().includes(term.toLowerCase()) ||
+      (driver.User?.name.toLowerCase().includes(term.toLowerCase()) ?? false) ||
+      (driver.User?.email.toLowerCase().includes(term.toLowerCase()) ?? false)
     );
     setFilteredDrivers(filtered);
   };
 
-  const handleAddDriver = async () => {
-    if (!newDriver.name || !newDriver.license || !newDriver.cpf) {
-      showMessage('Por favor, preencha todos os campos.', 'warning'); // Mensagem de aviso
-      return;
-    }
+const handleAddDriver = async () => {
+  if (!newDriver.name || !newDriver.license || !newDriver.cpf) {
+    showMessage('Por favor, preencha todos os campos obrigatórios.', 'warning');
+    return;
+  }
 
-    setLoading(true);
-    try {
-      if (selectedDriver) {
-        await updateDriver(token, selectedDriver.id, newDriver as Driver);
-        showMessage('Motorista atualizado com sucesso!', 'success'); // Mensagem de sucesso
-      } else {
-        await addDriver(token, newDriver as Driver);
-        showMessage('Motorista adicionado com sucesso!', 'success'); // Mensagem de sucesso
-      }
-      setNewDriver({});
-      setSelectedDriver(null);
-      setShowForm(false);
-      await loadDrivers();
-    } catch (error: unknown) {
-      console.error('Erro ao submeter motorista:', error);
-      showMessage('Falha ao submeter motorista.', 'error'); // Mensagem de erro
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  try {
+    // Criar objeto apenas com campos permitidos para evitar envio de dados desnecessários
+    const driverData = {
+      name: newDriver.name,
+      license: newDriver.license,
+      cpf: newDriver.cpf,
+      userId: newDriver.userId || undefined, // Enviar undefined se não selecionado
+    };
+
+    if (selectedDriver) {
+      await updateDriver(token, selectedDriver.id, driverData);
+      showMessage('Motorista atualizado com sucesso!', 'success');
+    } else {
+      await addDriver(token, driverData);
+      showMessage('Motorista adicionado com sucesso!', 'success');
     }
-  };
+    
+    setNewDriver({});
+    setSelectedDriver(null);
+    setShowForm(false);
+    await loadDrivers();
+    await loadAvailableUsers();
+  } catch (error: unknown) {
+    console.error('Erro ao submeter motorista:', error);
+    showMessage('Falha ao submeter motorista.', 'error');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleEdit = (driver: Driver) => {
     setSelectedDriver(driver);
@@ -117,11 +149,12 @@ const DriversPage: React.FC = () => {
     setLoading(true);
     try {
       await deleteDriver(token, id);
-      showMessage('Motorista deletado com sucesso!', 'success'); // Mensagem de sucesso
+      showMessage('Motorista deletado com sucesso!', 'success');
       await loadDrivers();
+      await loadAvailableUsers(); // Recarregar usuários disponíveis
     } catch (error: unknown) {
       console.error('Erro ao deletar motorista:', error);
-      showMessage('Falha ao deletar motorista.', 'error'); // Mensagem de erro
+      showMessage('Falha ao deletar motorista.', 'error');
     } finally {
       setLoading(false);
     }
@@ -133,8 +166,17 @@ const DriversPage: React.FC = () => {
     setShowForm(false);
   };
 
+  const handleUserSelect = (event: SelectChangeEvent<string>) => {
+    const userId = event.target.value;
+    setNewDriver({ ...newDriver, userId: userId || undefined });
+  };
+
   return (
     <Container>
+      <Typography variant="h4" gutterBottom>
+        Gerenciar Motoristas
+      </Typography>
+
       {/* Campo de Busca */}
       <TextField
         label="Buscar Motoristas"
@@ -142,6 +184,7 @@ const DriversPage: React.FC = () => {
         onChange={handleSearch}
         fullWidth
         margin="normal"
+        placeholder="Busque por nome, CPF, CNH, usuário relacionado..."
       />
 
       {/* Botão para Adicionar Motorista */}
@@ -156,44 +199,81 @@ const DriversPage: React.FC = () => {
       {/* Formulário de Adição/Atualização de Motorista */}
       {showForm && (
         <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
+          <Typography variant="h6" gutterBottom>
+            {selectedDriver ? 'Editar Motorista' : 'Adicionar Motorista'}
+          </Typography>
+          
           <TextField
-            label="Nome do Motorista"
+            label="Nome do Motorista *"
             value={newDriver.name || ''}
             onChange={(e) =>
               setNewDriver({ ...newDriver, name: e.target.value })
             }
             fullWidth
             margin="normal"
+            required
           />
+          
           <TextField
-            label="CNH"
+            label="CNH *"
             value={newDriver.license || ''}
             onChange={(e) =>
               setNewDriver({ ...newDriver, license: e.target.value })
             }
             fullWidth
             margin="normal"
+            required
           />
+          
           <TextField
-            label="CPF"
+            label="CPF *"
             value={newDriver.cpf || ''}
             onChange={(e) =>
               setNewDriver({ ...newDriver, cpf: e.target.value })
             }
             fullWidth
             margin="normal"
+            required
           />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleAddDriver}
-            style={{ marginRight: '8px' }}
-          >
-            {selectedDriver ? 'Atualizar Motorista' : 'Adicionar Motorista'}
-          </Button>
-          <Button variant="outlined" onClick={handleFormClose}>
-            Cancelar
-          </Button>
+
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="user-select-label">Usuário Relacionado (Opcional)</InputLabel>
+            <Select
+              labelId="user-select-label"
+              value={newDriver.userId || ''}
+              onChange={handleUserSelect}
+              label="Usuário Relacionado (Opcional)"
+            >
+              <MenuItem value="">
+                <em>Nenhum usuário selecionado</em>
+              </MenuItem>
+              {availableUsers.map((user) => (
+                <MenuItem key={user.id} value={user.id}>
+                  {user.name} - {user.email}
+                </MenuItem>
+              ))}
+              {/* Se estiver editando e o motorista já tem um usuário, incluir na lista */}
+              {selectedDriver?.User && !availableUsers.find(u => u.id === selectedDriver.User?.id) && (
+                <MenuItem key={selectedDriver.User.id} value={selectedDriver.User.id}>
+                  {selectedDriver.User.name} - {selectedDriver.User.email} (Atual)
+                </MenuItem>
+              )}
+            </Select>
+          </FormControl>
+
+          <div style={{ marginTop: '16px' }}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleAddDriver}
+              style={{ marginRight: '8px' }}
+            >
+              {selectedDriver ? 'Atualizar Motorista' : 'Adicionar Motorista'}
+            </Button>
+            <Button variant="outlined" onClick={handleFormClose}>
+              Cancelar
+            </Button>
+          </div>
         </Paper>
       )}
 
@@ -208,6 +288,7 @@ const DriversPage: React.FC = () => {
                 <TableCell>Nome</TableCell>
                 <TableCell>CNH</TableCell>
                 <TableCell>CPF</TableCell>
+                <TableCell>Usuário Relacionado</TableCell>
                 <TableCell>Ações</TableCell>
               </TableRow>
             </TableHead>
@@ -218,15 +299,35 @@ const DriversPage: React.FC = () => {
                   <TableCell>{driver.license}</TableCell>
                   <TableCell>{driver.cpf}</TableCell>
                   <TableCell>
+                    {driver.User ? (
+                      <Chip
+                        icon={<Person />}
+                        label={`${driver.User.name} (${driver.User.email})`}
+                        color="primary"
+                        variant="outlined"
+                        size="small"
+                      />
+                    ) : (
+                      <Chip
+                        label="Nenhum usuário"
+                        color="default"
+                        variant="outlined"
+                        size="small"
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <IconButton
                       onClick={() => handleEdit(driver)}
                       aria-label="editar"
+                      title="Editar"
                     >
                       <Edit />
                     </IconButton>
                     <IconButton
                       onClick={() => handleDelete(driver.id)}
                       aria-label="deletar"
+                      title="Deletar"
                     >
                       <Delete />
                     </IconButton>
@@ -235,7 +336,7 @@ const DriversPage: React.FC = () => {
               ))}
               {filteredDrivers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} align="center">
+                  <TableCell colSpan={5} align="center">
                     Nenhum motorista encontrado.
                   </TableCell>
                 </TableRow>

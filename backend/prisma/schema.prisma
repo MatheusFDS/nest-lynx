@@ -25,6 +25,7 @@ model User {
   tenant    Tenant? @relation(fields: [tenantId], references: [id])
   tenantId  String?
   settings  UserSettings?
+  driver    Driver? // Relação opcional com Driver - um usuário pode ser um motorista
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -88,7 +89,9 @@ model Driver {
   license         String            // Número da CNH.
   cpf             String            // CPF do motorista.
   tenantId        String            // Chave estrangeira para Tenant.
+  userId          String?           @unique // Chave estrangeira opcional para User - relaciona motorista com usuário
   Tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  User            User?             @relation(fields: [userId], references: [id]) // Relação opcional com User
   vehicles        Vehicle[]         // Veículos associados a este motorista.
   deliveries      Delivery[]        // Entregas realizadas por este motorista.
   orders          Order[]           // Pedidos atribuídos a este motorista.

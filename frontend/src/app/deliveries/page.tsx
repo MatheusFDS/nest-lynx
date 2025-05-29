@@ -1,504 +1,303 @@
+// src/app/deliveries/page.tsx
 'use client';
-
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Container,
-  Typography,
-  Grid,
-  TextField,
-  FormControlLabel,
-  Checkbox,
-  Button,
-  Paper,
-  Badge,
+  Container, Typography, Paper, Grid, TextField, Button, Chip, IconButton, Tooltip, Box,
+  Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, Divider,
+  CircularProgress,
+  TableContainer, // Para a tabela dentro do Modal
+  Table,          // Para a tabela dentro do Modal
+  TableCell,      // Para a tabela dentro do Modal
+  TableHead,      // Para a tabela dentro do Modal
+  TableRow,       // Para a tabela dentro do Modal
+  TableBody,      // Para a tabela dentro do Modal
+  Card,
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import { SelectChangeEvent } from '@mui/material';
-import {
-  fetchDeliveries,
-  updateDelivery,
-  removeOrderFromDelivery,
-  deleteDelivery,
-} from '../../services/deliveryService';
-import {
-  fetchDrivers,
-  fetchVehicles,
-  fetchCategories,
-  fetchDirections,
-} from '../../services/auxiliaryService';
-import {
-  Order,
-  Driver,
-  Vehicle,
-  Category,
-  Delivery,
-  Direction,
-} from '../../types';
-import withAuth from '../hoc/withAuth';
-import DeliveryTable from '../components/delivery/DeliveryTable';
-import EditDeliveryDialog from '../components/delivery/EditDeliveryDialog';
-import ConsultOrder from '../components/delivery/ConsultOrder';
-import ConfirmDialog from '../components/delivery/ConfirmDialog';
-import SkeletonLoader from '../components/SkeletonLoader';
-import { useLoading } from '../context/LoadingContext'; // Importar o LoadingContext
-import { useMessage } from '../context/MessageContext'; // Importar o contexto de mensagens
+import { styled, Theme } from '@mui/material/styles';
+import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import InfoIcon from '@mui/icons-material/Info';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import CloseIcon from '@mui/icons-material/Close';
 
-const StyledButton = styled(Button)({
-  margin: '8px',
-  padding: '8px 16px',
-  backgroundColor: '#1976d2',
-  color: '#fff',
-  '&:hover': {
-    backgroundColor: '#115293',
-  },
-});
+// Seus imports de serviço, tipos, etc.
+import { fetchDeliveries } from '../../services/deliveryService'; // Ajuste o caminho
+import { Delivery, Approval, Order as AppOrder, Driver, Vehicle, Category } from '../../types';
+import { useLoading } from '../context/LoadingContext'; // Ajuste o caminho
+import { useMessage } from '../context/MessageContext'; // Ajuste o caminho
+import { getStoredToken } from '../../services/authService'; // Ajuste o caminho
+import withAuth from '../hoc/withAuth'; // Ajuste o caminho
+import Link from 'next/link';
+
+// Componentes Estilizados
+const StyledButton = styled(Button)(({ theme }: { theme: Theme }) => ({
+  marginRight: theme.spacing(1),
+}));
 
 const DeliveriesPage: React.FC = () => {
+  const [token, setToken] = useState<string | null>(null);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [directions, setDirections] = useState<Direction[]>([]);
-  const [selectedDriver, setSelectedDriver] = useState<string>('');
-  const [selectedVehicle, setSelectedVehicle] = useState<string>('');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [error, setError] = useState<string>('');
-  const [currentDelivery, setCurrentDelivery] = useState<Delivery | null>(
-    null
-  );
-  const [tabIndex, setTabIndex] = useState(0);
-  const [tollValue, setTollValue] = useState<number>(0);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [dateRange, setDateRange] = useState<{
-    startDate: string;
-    endDate: string;
-  }>({ startDate: '', endDate: '' });
-  const [showFinalized, setShowFinalized] = useState<boolean>(false);
-  const [showPending, setShowPending] = useState<boolean>(false);
-  const [showToRelease, setShowToRelease] = useState<boolean>(false);
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState<boolean>(false);
-  const [confirmDialogAction, setConfirmDialogAction] = useState<
-    () => void
-  >(() => {});
-  const { isLoading, setLoading } = useLoading(); // Usar o contexto de carregamento
-  const { showMessage } = useMessage(); // Hook para mensagens
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
 
-  const token = localStorage.getItem('token') || '';
+  const { isLoading, setLoading } = useLoading();
+  const { showMessage } = useMessage();
 
-  const loadInitialData = async () => {
+  const handleApiError = useCallback((error: unknown, defaultMessage: string) => {
+    console.error(defaultMessage, error);
+    const errorMessage = error instanceof Error ? error.message : defaultMessage;
+    showMessage(errorMessage, 'error');
+  }, [showMessage]);
+
+  const loadDeliveries = useCallback(async () => {
+    if (!token) return;
     setLoading(true);
     try {
-      const [
-        deliveriesData,
-        driversData,
-        vehiclesData,
-        categoriesData,
-        directionsData,
-      ] = await Promise.all([
-        fetchDeliveries(token),
-        fetchDrivers(token),
-        fetchVehicles(token),
-        fetchCategories(token),
-        fetchDirections(token),
-      ]);
-
-      setDeliveries(deliveriesData);
-      setDrivers(driversData);
-      setVehicles(vehiclesData);
-      setCategories(categoriesData);
-      setDirections(directionsData);
-      //showMessage('Dados carregados com sucesso!', 'success'); // Mensagem de sucesso
-    } catch (error: unknown) {
-      setError('Falha ao carregar dados iniciais.');
-      showMessage('Erro ao carregar os dados iniciais.', 'error'); // Mensagem de erro
+      const data = await fetchDeliveries(token);
+      const validData = Array.isArray(data) ? data.filter(item => item != null) : [];
+      setDeliveries(validData);
+    } catch (error) {
+      handleApiError(error, 'Falha ao buscar roteiros.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, setLoading, handleApiError]);
 
   useEffect(() => {
-    loadInitialData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleEditDelivery = (delivery: Delivery) => {
-    if (delivery.status === 'A liberar' || delivery.status === 'Negado') {
-      showMessage(
-        'Não é possível editar entregas com status "A liberar" ou "Negado".',
-        'warning'
-      );
-      return;
+    const t = getStoredToken();
+    if (t) {
+        setToken(t);
+    } else {
+        showMessage('Token não encontrado. Faça login novamente.', 'error');
     }
+  }, [showMessage]);
 
-    setCurrentDelivery({
-      ...delivery,
-      status: delivery.status || 'Em Rota',
-    });
-    setSelectedDriver(delivery.motoristaId);
-    setSelectedVehicle(delivery.veiculoId);
-    setTollValue(delivery.valorFrete - getVehicleValue(delivery.veiculoId));
-    setDialogOpen(true);
-  };
+  useEffect(() => {
+    if (token) {
+      loadDeliveries();
+    }
+  }, [token, loadDeliveries]);
 
-  const handleDialogClose = () => {
-    setDialogOpen(false);
-    setCurrentDelivery(null);
-  };
-
-  const handleDetailsDialogOpen = (delivery: Delivery) => {
-    setCurrentDelivery(delivery);
-    setDetailsDialogOpen(true);
-  };
-
-  const handleDetailsDialogClose = () => {
-    setDetailsDialogOpen(false);
-    setCurrentDelivery(null);
-  };
-
-  const calculateTotalWeightAndValue = (orders: Order[]) => {
-    let totalWeight = 0;
-    let totalValue = 0;
-    orders.forEach((order) => {
-      totalWeight += order.peso;
-      totalValue += order.valor;
-    });
-    return { totalWeight, totalValue };
-  };
-
-  const handleDriverChange = (e: SelectChangeEvent<string>) => {
-    const driverId = e.target.value;
-    setSelectedDriver(driverId);
-    const driver = drivers.find((driver) => driver.id === driverId);
-    if (driver) {
-      const vehicle = vehicles.find(
-        (vehicle) => vehicle.driverId === driver.id
-      );
-      if (vehicle) {
-        setSelectedVehicle(vehicle.id);
-      } else {
-        setSelectedVehicle('');
-      }
+  const handleViewDetails = (delivery: Delivery | undefined) => {
+    if (delivery) {
+      setSelectedDelivery(delivery);
+      setDetailModalOpen(true);
+    } else {
+      console.warn("Tentativa de ver detalhes de um roteiro indefinido.");
     }
   };
-
-  const handleVehicleChange = (e: SelectChangeEvent<string>) => {
-    const vehicleId = e.target.value;
-    setSelectedVehicle(vehicleId);
+  const handleCloseDetailModal = () => {
+    setDetailModalOpen(false);
+    setSelectedDelivery(null);
   };
 
-  const getVehicleValue = (vehicleId: string) => {
-    const vehicle = vehicles.find((vehicle) => vehicle.id === vehicleId);
-    if (vehicle) {
-      const category = categories.find((c) => c.id === vehicle.categoryId);
-      return category ? category.valor : 0;
-    }
-    return 0;
-  };
-
-  const handleConfirmDelivery = async () => {
-    if (!currentDelivery) return;
-
-    const ordersInDelivery: Order[] = currentDelivery.orders as Order[];
-
-    const { totalWeight, totalValue } = calculateTotalWeightAndValue(
-      ordersInDelivery
-    );
-
-    const deliveryData = {
-      motoristaId: selectedDriver,
-      veiculoId: selectedVehicle,
-      valorFrete: getVehicleValue(selectedVehicle) + tollValue,
-      totalPeso: totalWeight,
-      totalValor: totalValue,
-      status: currentDelivery.status,
-      dataInicio: currentDelivery.dataInicio,
-      dataFim: currentDelivery.dataFim,
-      orders: ordersInDelivery.map((order, index) => ({
-        ...order,
-        sorting: index + 1,
-      })),
-    };
-
-    try {
-      await updateDelivery(token, currentDelivery.id, deliveryData);
-      setDialogOpen(false);
-      setCurrentDelivery(null);
-      loadInitialData();
-      showMessage('Entrega atualizada com sucesso!', 'success'); // Mensagem de sucesso
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error('Falha ao atualizar entrega:', error.message);
-        setError(error.message);
-        showMessage('Erro ao atualizar a entrega.', 'error'); // Mensagem de erro
-      } else {
-        console.error('Falha ao atualizar entrega:', error);
-        setError('Falha ao atualizar entrega.');
-        showMessage('Erro ao atualizar a entrega.', 'error'); // Mensagem de erro
-      }
-    }
-  };
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const handleDateFilter = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setDateRange((prevState) => ({ ...prevState, [name]: value }));
-  };
-
-  const handleDeleteDelivery = async (deliveryId: string) => {
-    setConfirmDialogAction(() => async () => {
-      try {
-        await deleteDelivery(token, deliveryId);
-        loadInitialData();
-        showMessage('Entrega excluída com sucesso!', 'success'); // Mensagem de sucesso
-      } catch (error: unknown) {
-        if (error instanceof Error) {
-          console.error('Falha ao deletar entrega:', error.message);
-          setError(error.message);
-          showMessage('Erro ao excluir a entrega.', 'error'); // Mensagem de erro
-        } else {
-          console.error('Falha ao deletar entrega:', error);
-          setError('Falha ao deletar entrega.');
-          showMessage('Erro ao excluir a entrega.', 'error'); // Mensagem de erro
-        }
-      }
-      setConfirmDialogOpen(false);
-    });
-    setConfirmDialogOpen(true);
-  };
-
-  const handleStatusFilterChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const { name, checked } = e.target;
-    if (name === 'showFinalized') {
-      setShowFinalized(checked);
-    } else if (name === 'showPending') {
-      setShowPending(checked);
-    } else if (name === 'showToRelease') {
-      setShowToRelease(checked);
-    }
-  };
-
-  const handleRemoveOrderFromDelivery = async (
-    deliveryId: string,
-    orderId: string
-  ) => {
-    setConfirmDialogAction(() => async () => {
-      try {
-        await removeOrderFromDelivery(token, deliveryId, orderId);
-        loadInitialData();
-        showMessage('Pedido removido da entrega com sucesso!', 'success'); // Mensagem de sucesso
-      } catch (error: unknown) {
-        if (error instanceof Error) {
-          console.error(
-            'Falha ao remover pedido da entrega:',
-            error.message
-          );
-          setError(error.message);
-          showMessage(
-            'Erro ao remover o pedido da entrega.',
-            'error'
-          ); // Mensagem de erro
-        } else {
-          console.error('Falha ao remover pedido da entrega:', error);
-          setError('Falha ao remover pedido da entrega.');
-          showMessage(
-            'Erro ao remover o pedido da entrega.',
-            'error'
-          ); // Mensagem de erro
-        }
-      }
-      setConfirmDialogOpen(false);
-    });
-    setConfirmDialogOpen(true);
-  };
-
-  const filteredDeliveries = deliveries
-    .filter((delivery) => {
-      const { startDate, endDate } = dateRange;
-      if (searchTerm) {
-        return (
-          Object.values(delivery).some((value) =>
-            value
-              ? value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-              : false
-          ) ||
-          delivery.orders.some((order) =>
-            Object.values(order).some((value) =>
-              value
-                ? value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-                : false
-            )
-          )
-        );
-      }
-      if (startDate && endDate) {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const dataInicio = new Date(delivery.dataInicio);
-        return dataInicio >= start && dataInicio <= end;
-      }
-      return true;
-    })
-    .filter((delivery) => {
-      if (showFinalized && delivery.status === 'Finalizado') {
-        return true;
-      }
-      if (showPending && delivery.status === 'Em Rota') {
-        return true;
-      }
-      if (showToRelease && delivery.status === 'A liberar') {
-        return true;
-      }
-      return !showFinalized && !showPending && !showToRelease;
-    });
-
-  const getRegionName = (delivery: Delivery) => {
-    const orderCep = delivery.orders[0]?.cep;
-    const direction = directions.find(
-      (dir) =>
-        parseInt(orderCep) >= parseInt(dir.rangeInicio) &&
-        parseInt(orderCep) <= parseInt(dir.rangeFim)
-    );
-    return direction ? direction.regiao : 'N/A';
-  };
+  const columns: GridColDef<Delivery>[] = [
+    {
+      field: 'id',
+      headerName: 'ID Rota',
+      width: 130,
+      // CORRIGIDO: Assinatura do valueGetter alterada
+      valueGetter: (_value: any, row: Delivery | undefined) => row?.id ? row.id.substring(0, 8) + '...' : '',
+    },
+    {
+      field: 'driverName',
+      headerName: 'Motorista',
+      width: 200,
+      // CORRIGIDO
+      valueGetter: (_value: any, row: Delivery | undefined) => row?.Driver?.name || 'N/A',
+    },
+    {
+      field: 'vehicleInfo',
+      headerName: 'Veículo',
+      width: 180,
+      // CORRIGIDO
+      valueGetter: (_value: any, row: Delivery | undefined) => row?.Vehicle ? `${row.Vehicle.model} - ${row.Vehicle.plate}` : 'N/A',
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      width: 150,
+      renderCell: (params: GridRenderCellParams<Delivery>) => (
+        <Chip
+          label={params.row?.status || 'Desconhecido'}
+          size="small"
+          color={
+            params.row?.status === 'A liberar' ? 'warning' :
+            params.row?.status === 'Pendente' ? 'default' :
+            params.row?.status === 'Em Andamento' || params.row?.status === 'Em rota' ? 'info' :
+            params.row?.status === 'Finalizado' ? 'success' :
+            params.row?.status === 'Cancelado' ? 'error' : 'default'
+          }
+        />
+      ),
+    },
+    {
+      field: 'orderCount',
+      headerName: 'Nº Pedidos',
+      type: 'number',
+      width: 110,
+      // CORRIGIDO
+      valueGetter: (_value: any, row: Delivery | undefined) => row?.orders?.length || 0,
+    },
+    {
+      field: 'dataInicio', // Linha que estava dando erro
+      headerName: 'Data Criação',
+      width: 170,
+      type: 'dateTime',
+      // CORRIGIDO
+      valueGetter: (_value: any, row: Delivery | undefined) => row?.dataInicio ? new Date(row.dataInicio) : null,
+      renderCell: (params: GridRenderCellParams<Delivery, Date | null>) =>
+        params.value ? new Date(params.value).toLocaleString('pt-BR') : 'N/A'
+    },
+    {
+        field: 'totalValor',
+        headerName: 'Valor Pedidos (R$)',
+        type: 'number',
+        width: 150,
+        // CORRIGIDO
+        valueGetter: (_value: any, row: Delivery | undefined) => row?.totalValor || 0,
+        renderCell: (params: GridRenderCellParams<Delivery, number>) =>
+         `R$ ${Number(params.value || 0).toFixed(2)}`
+    },
+    {
+      field: 'actions',
+      headerName: 'Ações',
+      width: 100,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<Delivery>) => (
+        <Tooltip title="Ver Detalhes">
+          <IconButton onClick={() => handleViewDetails(params.row)} disabled={!params.row}>
+            <InfoIcon />
+          </IconButton>
+        </Tooltip>
+      ),
+    },
+  ];
 
   return (
-    <Container>
-      <Grid
-        container
-        spacing={2}
-        style={{ marginTop: '16px', marginBottom: '16px' }}
-      >
-        <Grid item xs={12}>
-          <TextField
-            label="Buscar"
-            fullWidth
-            value={searchTerm}
-            onChange={handleSearch}
-            variant="outlined"
-            size="small"
-            placeholder="Pesquisar por qualquer campo"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            label="Data Início"
-            type="datetime-local"
-            fullWidth
-            value={dateRange.startDate}
-            onChange={handleDateFilter}
-            name="startDate"
-            InputLabelProps={{ shrink: true }}
-            size="small"
-            variant="outlined"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            label="Data Fim"
-            type="datetime-local"
-            fullWidth
-            value={dateRange.endDate}
-            onChange={handleDateFilter}
-            name="endDate"
-            InputLabelProps={{ shrink: true }}
-            size="small"
-            variant="outlined"
-          />
-        </Grid>
-        <Grid item xs={12}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={showFinalized}
-                onChange={handleStatusFilterChange}
-                name="showFinalized"
-              />
+    <Container maxWidth="xl" sx={{mt: 2, mb: 2}}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', my: 3 }}>
+        <Typography variant="h4" component="h1">Gestão de Roteiros</Typography>
+        <Box>
+            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadDeliveries} sx={{mr:1}} disabled={isLoading}>
+                {isLoading ? <CircularProgress size={20}/> : "Atualizar"}
+            </Button>
+            <Link href="/routing" passHref>
+                <StyledButton variant="contained" startIcon={<AddCircleOutlineIcon />}>Novo Roteiro</StyledButton>
+            </Link>
+        </Box>
+      </Box>
+
+      <Paper sx={{ height: '70vh', width: '100%' }}>
+        <DataGrid
+          rows={deliveries}
+          columns={columns}
+          loading={isLoading}
+          pageSizeOptions={[10, 25, 50, 100]}
+          initialState={{
+            pagination: {
+              paginationModel: { pageSize: 10, page: 0 },
+            },
+            sorting: {
+                sortModel: [{ field: 'dataInicio', sort: 'desc' }],
+            },
+          }}
+          density="compact"
+          slots={{
+            loadingOverlay: () => <Box sx={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><CircularProgress /></Box>,
+            noRowsOverlay: () => <Box sx={{p:2, textAlign:'center'}}>Nenhum roteiro encontrado.</Box>
+          }}
+          sx={{
+            '& .MuiDataGrid-columnHeaderTitle': {
+                fontWeight: 'bold',
             }
-            label="Finalizadas"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={showPending}
-                onChange={handleStatusFilterChange}
-                name="showPending"
-              />
-            }
-            label="Em Rota"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={showToRelease}
-                onChange={handleStatusFilterChange}
-                name="showToRelease"
-              />
-            }
-            label="A Liberar"
-          />
-          <Badge
-            badgeContent={filteredDeliveries.length}
-            color="primary"
-            showZero
-            style={{ marginLeft: '16px' }}
-          />
-        </Grid>
-      </Grid>
-      <Paper elevation={3}>
-        {isLoading ? (
-          <SkeletonLoader />
-        ) : filteredDeliveries.length > 0 ? (
-          <DeliveryTable
-            deliveries={filteredDeliveries}
-            drivers={drivers}
-            vehicles={vehicles}
-            calculateTotalWeightAndValue={calculateTotalWeightAndValue}
-            getRegionName={getRegionName}
-            handleEditDelivery={handleEditDelivery}
-            handleDeleteDelivery={handleDeleteDelivery}
-            handleViewOrders={handleDetailsDialogOpen}
-          />
-        ) : (
-          <Typography align="center" style={{ padding: '16px' }}>
-            Nenhuma entrega encontrada. Use os filtros para buscar entregas.
-          </Typography>
-        )}
+          }}
+        />
       </Paper>
-      <EditDeliveryDialog
-        dialogOpen={dialogOpen}
-        handleDialogClose={handleDialogClose}
-        currentDelivery={currentDelivery}
-        setCurrentDelivery={setCurrentDelivery}
-        drivers={drivers}
-        selectedDriver={selectedDriver}
-        handleDriverChange={handleDriverChange}
-        vehicles={vehicles}
-        selectedVehicle={selectedVehicle}
-        handleVehicleChange={handleVehicleChange}
-        tollValue={tollValue}
-        setTollValue={setTollValue}
-        handleConfirmDelivery={handleConfirmDelivery}
-        tabIndex={tabIndex}
-        setTabIndex={setTabIndex}
-        calculateTotalWeightAndValue={calculateTotalWeightAndValue}
-        handleRemoveOrderFromDelivery={handleRemoveOrderFromDelivery}
-      />
-      <ConsultOrder
-        detailsDialogOpen={detailsDialogOpen}
-        handleDetailsDialogClose={handleDetailsDialogClose}
-        orders={currentDelivery ? currentDelivery.orders : []}
-      />
-      <ConfirmDialog
-        confirmDialogOpen={confirmDialogOpen}
-        setConfirmDialogOpen={setConfirmDialogOpen}
-        confirmDialogAction={confirmDialogAction}
-      />
+
+      {selectedDelivery && (
+        <Dialog open={detailModalOpen} onClose={handleCloseDetailModal} maxWidth="lg" fullWidth scroll="paper">
+            <DialogTitle sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                Detalhes do Roteiro: {selectedDelivery?.id ? selectedDelivery.id.substring(0, 8) : 'N/A'}
+                <IconButton aria-label="close" onClick={handleCloseDetailModal}><CloseIcon /></IconButton>
+            </DialogTitle>
+            <DialogContent dividers>
+                <Grid container spacing={3}>
+                    <Grid item xs={12} md={4}>
+                        <Typography variant="h6" gutterBottom>Motorista</Typography>
+                        <Typography>Nome: {selectedDelivery.Driver?.name || 'N/A'}</Typography>
+                        <Typography variant="caption" display="block">CNH: {selectedDelivery.Driver?.license || 'N/A'}</Typography>
+                        <Typography variant="caption" display="block">CPF: {selectedDelivery.Driver?.cpf || 'N/A'}</Typography>
+
+                        <Typography variant="h6" sx={{mt:2}} gutterBottom>Veículo</Typography>
+                        <Typography>Modelo: {selectedDelivery.Vehicle?.model || 'N/A'}</Typography>
+                        <Typography>Placa: {selectedDelivery.Vehicle?.plate || 'N/A'}</Typography>
+                        <Typography variant="caption" display="block">
+                            Categoria: {selectedDelivery.Vehicle?.Category?.name || 'N/A'}
+                            {selectedDelivery.Vehicle?.Category?.valor ? ` (Valor: R$ ${Number(selectedDelivery.Vehicle.Category.valor).toFixed(2)})` : ''}
+                        </Typography>
+
+                        <Typography variant="h6" sx={{mt:2}} gutterBottom>Informações Gerais do Roteiro</Typography>
+                        <List dense disablePadding>
+                            <ListItem><ListItemText primary="Status:" secondary={selectedDelivery.status} /></ListItem>
+                            <ListItem><ListItemText primary="Data de Início:" secondary={selectedDelivery.dataInicio ? new Date(selectedDelivery.dataInicio).toLocaleString('pt-BR') : 'N/A'} /></ListItem>
+                            <ListItem><ListItemText primary="Data de Fim:" secondary={selectedDelivery.dataFim ? new Date(selectedDelivery.dataFim).toLocaleString('pt-BR') : 'N/A'} /></ListItem>
+                            <ListItem><ListItemText primary="Data de Liberação:" secondary={selectedDelivery.dataLiberacao ? new Date(selectedDelivery.dataLiberacao).toLocaleString('pt-BR') : 'N/A'} /></ListItem>
+                            <ListItem><ListItemText primary="Valor do Frete (Motorista):" secondaryTypographyProps={{fontWeight:'bold', color:'primary.main'}} secondary={`R$ ${Number(selectedDelivery.valorFrete || 0).toFixed(2)}`} /></ListItem>
+                            <ListItem><ListItemText primary="Peso Total Carga:" secondary={`${Number(selectedDelivery.totalPeso || 0).toFixed(2)} Kg`} /></ListItem>
+                            <ListItem><ListItemText primary="Valor Total Mercadoria:" secondary={`R$ ${Number(selectedDelivery.totalValor || 0).toFixed(2)}`} /></ListItem>
+                        </List>
+                    </Grid>
+                    <Grid item xs={12} md={8}>
+                        <Typography variant="h6" gutterBottom>Pedidos no Roteiro ({selectedDelivery.orders?.length || 0})</Typography>
+                        <TableContainer component={Paper} sx={{ maxHeight: 300, mb:2, border: '1px solid #eee' }}>
+                            <Table size="small" stickyHeader>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell sx={{fontWeight:'bold'}}>Seq.</TableCell>
+                                        <TableCell sx={{fontWeight:'bold'}}>Número</TableCell>
+                                        <TableCell sx={{fontWeight:'bold'}}>Cliente</TableCell>
+                                        <TableCell sx={{fontWeight:'bold'}}>Endereço</TableCell>
+                                        <TableCell sx={{fontWeight:'bold'}}>Status</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                {selectedDelivery.orders?.sort((a,b) => (a.sorting || 0) - (b.sorting || 0)).map((order, index) => (
+                                    <TableRow key={order.id} hover>
+                                        <TableCell>{order.sorting || index + 1}</TableCell>
+                                        <TableCell>{order.numero}</TableCell>
+                                        <TableCell>{order.cliente}</TableCell>
+                                        <TableCell>{order.endereco}, {order.cidade}</TableCell>
+                                        <TableCell><Chip label={order.status} size="small" /></TableCell>
+                                    </TableRow>
+                                ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+
+                        <Typography variant="h6" sx={{mt:1}} gutterBottom>Histórico de Liberações</Typography>
+                        {selectedDelivery.liberacoes && selectedDelivery.liberacoes.length > 0 ? (
+                            <List dense sx={{maxHeight: 150, overflow: 'auto',  border: '1px solid #eee', borderRadius:1, p:1}}>
+                                {selectedDelivery.liberacoes.map(lib => (
+                                    <ListItem key={lib.id} divider sx={{ '&:last-child': { borderBottom: 0 }}}>
+                                        <ListItemText
+                                            primaryTypographyProps={{variant:'body2', color: lib.action === 'approved' ? 'success.main' : 'error.main'}}
+                                            secondaryTypographyProps={{variant:'caption'}}
+                                            primary={`${lib.action === 'approved' ? 'APROVADO' : 'REJEITADO'} por ${lib.User?.name || 'Usuário desconhecido'}`}
+                                            secondary={`Em: ${new Date(lib.createdAt).toLocaleString('pt-BR')} ${lib.motivo ? ` - Motivo: ${lib.motivo}` : ''}`} />
+                                    </ListItem>
+                                ))}
+                            </List>
+                        ) : <Typography variant="body2" color="textSecondary">Nenhuma liberação/rejeição registrada.</Typography>}
+                    </Grid>
+                </Grid>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={handleCloseDetailModal}>Fechar</Button>
+            </DialogActions>
+        </Dialog>
+      )}
     </Container>
   );
 };

@@ -1,34 +1,44 @@
-import { IsString, IsNumber, IsArray, ValidateNested, IsNotEmpty } from 'class-validator';
+// Proposta para: src/delivery/dto/create-delivery.dto.ts (Backend)
+import {
+  IsString,
+  IsNotEmpty,
+  IsArray,
+  ValidateNested,
+  ArrayMinSize,
+  IsOptional,
+  IsNumber,
+} from 'class-validator';
 import { Type } from 'class-transformer';
-import { OrderDto } from '../../orders/dto/order.dto';
+
+class OrderReferenceDto {
+  @IsString()
+  @IsNotEmpty()
+  id: string;
+
+  @IsNumber()
+  @IsOptional()
+  sorting?: number;
+}
 
 export class CreateDeliveryDto {
-  @IsNotEmpty()
   @IsString()
+  @IsNotEmpty()
   motoristaId: string;
 
-  @IsNotEmpty()
   @IsString()
+  @IsNotEmpty()
   veiculoId: string;
-
-  @IsNotEmpty()
-  @IsNumber()
-  valorFrete: number;
-
-  @IsNotEmpty()
-  @IsNumber()
-  totalPeso: number;
-
-  @IsNotEmpty()
-  @IsNumber()
-  totalValor: number;
-
-  @IsNotEmpty()
-  @IsString()
-  tenantId: string;
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => OrderDto)
-  orders: OrderDto[];
+  @ArrayMinSize(1)
+  @Type(() => OrderReferenceDto)
+  orders: OrderReferenceDto[]; // Agora espera apenas {id, sorting}
+
+  @IsString()
+  @IsOptional()
+  observacao?: string;
+
+  // Os campos valorFrete, totalPeso, totalValor e tenantId
+  // foram removidos, pois serão tratados pelo backend.
 }
