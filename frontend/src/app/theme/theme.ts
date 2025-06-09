@@ -54,7 +54,6 @@ const commonComponents = {
   MuiButton: {
     styleOverrides: {
       root: {
-        borderRadius: 12,
         boxShadow: 'none',
         padding: '10px 24px',
         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -83,7 +82,6 @@ const commonComponents = {
   MuiCard: {
     styleOverrides: {
       root: {
-        borderRadius: 16,
         border: '1px solid rgba(255, 255, 255, 0.1)',
         backdropFilter: 'blur(10px)',
         background: 'rgba(255, 255, 255, 0.05)',
@@ -99,8 +97,7 @@ const commonComponents = {
     styleOverrides: {
       root: {
         '& .MuiOutlinedInput-root': {
-          borderRadius: 12,
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          backgroundColor: 'rgba(2, 1, 1, 0.05)',
           backdropFilter: 'blur(10px)',
           transition: 'all 0.2s ease',
           '&:hover': {
@@ -117,7 +114,6 @@ const commonComponents = {
   MuiPaper: {
     styleOverrides: {
       root: {
-        borderRadius: 16,
         backdropFilter: 'blur(20px)',
         background: 'rgba(255, 255, 255, 0.08)',
         border: '1px solid rgba(255, 255, 255, 0.12)',
@@ -193,7 +189,6 @@ const lightTheme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
           border: '1px solid rgba(30, 41, 59, 0.2)',
           background: 'rgba(255, 255, 255, 0.9)',
           backdropFilter: 'blur(10px)',
@@ -210,7 +205,6 @@ const lightTheme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: 12,
             backgroundColor: 'rgba(30, 41, 59, 0.08)',
             border: '1px solid rgba(30, 41, 59, 0.2)',
             transition: 'all 0.2s ease',
@@ -230,7 +224,6 @@ const lightTheme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
           background: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(20px)',
           border: '1px solid rgba(30, 41, 59, 0.15)',
@@ -274,7 +267,6 @@ const darkTheme = createTheme({
   },
   typography: commonTypography,
   shape: {
-    borderRadius: 12,
   },
   components: commonComponents,
 });

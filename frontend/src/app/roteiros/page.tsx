@@ -1,17 +1,15 @@
-// src/app/deliveries/page.tsx
 'use client';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Container, Typography, Paper, Grid, TextField, Button, Chip, IconButton, Tooltip, Box,
-  Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, Divider,
+  Container, Typography, Paper, Grid, Button, Chip, IconButton, Tooltip, Box,
+  Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText,
   CircularProgress,
-  TableContainer, // Para a tabela dentro do Modal
-  Table,          // Para a tabela dentro do Modal
-  TableCell,      // Para a tabela dentro do Modal
-  TableHead,      // Para a tabela dentro do Modal
-  TableRow,       // Para a tabela dentro do Modal
-  TableBody,      // Para a tabela dentro do Modal
-  Card,
+  TableContainer,
+  Table,
+  TableCell,
+  TableHead,
+  TableRow,
+  TableBody,
 } from '@mui/material';
 import { styled, Theme } from '@mui/material/styles';
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
@@ -20,16 +18,14 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CloseIcon from '@mui/icons-material/Close';
 
-// Seus imports de serviço, tipos, etc.
-import { fetchDeliveries } from '../../services/deliveryService'; // Ajuste o caminho
+import { fetchDeliveries } from '../../services/deliveryService';
 import { Delivery, Approval, Order as AppOrder, Driver, Vehicle, Category } from '../../types';
-import { useLoading } from '../context/LoadingContext'; // Ajuste o caminho
-import { useMessage } from '../context/MessageContext'; // Ajuste o caminho
-import { getStoredToken } from '../../services/authService'; // Ajuste o caminho
-import withAuth from '../hoc/withAuth'; // Ajuste o caminho
+import { useLoading } from '../context/LoadingContext';
+import { useMessage } from '../context/MessageContext';
+import { getStoredToken } from '../../services/authService';
+import withAuth from '../hoc/withAuth';
 import Link from 'next/link';
 
-// Componentes Estilizados
 const StyledButton = styled(Button)(({ theme }: { theme: Theme }) => ({
   marginRight: theme.spacing(1),
 }));
@@ -96,21 +92,18 @@ const DeliveriesPage: React.FC = () => {
       field: 'id',
       headerName: 'ID Rota',
       width: 130,
-      // CORRIGIDO: Assinatura do valueGetter alterada
       valueGetter: (_value: any, row: Delivery | undefined) => row?.id ? row.id.substring(0, 8) + '...' : '',
     },
     {
       field: 'driverName',
       headerName: 'Motorista',
       width: 200,
-      // CORRIGIDO
       valueGetter: (_value: any, row: Delivery | undefined) => row?.Driver?.name || 'N/A',
     },
     {
       field: 'vehicleInfo',
       headerName: 'Veículo',
       width: 180,
-      // CORRIGIDO
       valueGetter: (_value: any, row: Delivery | undefined) => row?.Vehicle ? `${row.Vehicle.model} - ${row.Vehicle.plate}` : 'N/A',
     },
     {
@@ -124,8 +117,9 @@ const DeliveriesPage: React.FC = () => {
           color={
             params.row?.status === 'A liberar' ? 'warning' :
             params.row?.status === 'Pendente' ? 'default' :
-            params.row?.status === 'Em Andamento' || params.row?.status === 'Em rota' ? 'info' :
+            params.row?.status === 'Iniciado' || params.row?.status === 'Em rota' ? 'info' :
             params.row?.status === 'Finalizado' ? 'success' :
+            params.row?.status === 'Rejeitado' ? 'error' :
             params.row?.status === 'Cancelado' ? 'error' : 'default'
           }
         />
@@ -136,15 +130,13 @@ const DeliveriesPage: React.FC = () => {
       headerName: 'Nº Pedidos',
       type: 'number',
       width: 110,
-      // CORRIGIDO
       valueGetter: (_value: any, row: Delivery | undefined) => row?.orders?.length || 0,
     },
     {
-      field: 'dataInicio', // Linha que estava dando erro
+      field: 'dataInicio',
       headerName: 'Data Criação',
       width: 170,
       type: 'dateTime',
-      // CORRIGIDO
       valueGetter: (_value: any, row: Delivery | undefined) => row?.dataInicio ? new Date(row.dataInicio) : null,
       renderCell: (params: GridRenderCellParams<Delivery, Date | null>) =>
         params.value ? new Date(params.value).toLocaleString('pt-BR') : 'N/A'
@@ -154,7 +146,6 @@ const DeliveriesPage: React.FC = () => {
         headerName: 'Valor Pedidos (R$)',
         type: 'number',
         width: 150,
-        // CORRIGIDO
         valueGetter: (_value: any, row: Delivery | undefined) => row?.totalValor || 0,
         renderCell: (params: GridRenderCellParams<Delivery, number>) =>
          `R$ ${Number(params.value || 0).toFixed(2)}`
@@ -263,7 +254,10 @@ const DeliveriesPage: React.FC = () => {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                {selectedDelivery.orders?.sort((a,b) => (a.sorting || 0) - (b.sorting || 0)).map((order, index) => (
+                                {(selectedDelivery.orders || [])
+                                    .slice()
+                                    .sort((a: AppOrder, b: AppOrder) => (a.sorting || 0) - (b.sorting || 0))
+                                    .map((order: AppOrder, index: number) => (
                                     <TableRow key={order.id} hover>
                                         <TableCell>{order.sorting || index + 1}</TableCell>
                                         <TableCell>{order.numero}</TableCell>
@@ -272,19 +266,24 @@ const DeliveriesPage: React.FC = () => {
                                         <TableCell><Chip label={order.status} size="small" /></TableCell>
                                     </TableRow>
                                 ))}
+                                {(!selectedDelivery.orders || selectedDelivery.orders.length === 0) && (
+                                    <TableRow>
+                                        <TableCell colSpan={5} align="center">Nenhum pedido neste roteiro.</TableCell>
+                                    </TableRow>
+                                )}
                                 </TableBody>
                             </Table>
                         </TableContainer>
 
                         <Typography variant="h6" sx={{mt:1}} gutterBottom>Histórico de Liberações</Typography>
-                        {selectedDelivery.liberacoes && selectedDelivery.liberacoes.length > 0 ? (
+                        {selectedDelivery.approvals && selectedDelivery.approvals.length > 0 ? (
                             <List dense sx={{maxHeight: 150, overflow: 'auto',  border: '1px solid #eee', borderRadius:1, p:1}}>
-                                {selectedDelivery.liberacoes.map(lib => (
+                                {selectedDelivery.approvals.map((lib: Approval) => (
                                     <ListItem key={lib.id} divider sx={{ '&:last-child': { borderBottom: 0 }}}>
                                         <ListItemText
-                                            primaryTypographyProps={{variant:'body2', color: lib.action === 'approved' ? 'success.main' : 'error.main'}}
+                                            primaryTypographyProps={{variant:'body2', color: lib.action === 'approved' || lib.action === 'APPROVED' ? 'success.main' : 'error.main'}}
                                             secondaryTypographyProps={{variant:'caption'}}
-                                            primary={`${lib.action === 'approved' ? 'APROVADO' : 'REJEITADO'} por ${lib.User?.name || 'Usuário desconhecido'}`}
+                                            primary={`${lib.action === 'approved' || lib.action === 'APPROVED' ? 'APROVADO' : lib.action === 'rejected' || lib.action === 'REJECTED' ? 'REJEITADO' : String(lib.action).toUpperCase()} por ${lib.User?.name || lib.userName || 'Usuário desconhecido'}`}
                                             secondary={`Em: ${new Date(lib.createdAt).toLocaleString('pt-BR')} ${lib.motivo ? ` - Motivo: ${lib.motivo}` : ''}`} />
                                     </ListItem>
                                 ))}

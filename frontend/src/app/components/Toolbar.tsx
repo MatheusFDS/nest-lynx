@@ -1,5 +1,4 @@
 // src/components/Toolbar.tsx
-
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -10,7 +9,7 @@ import {
   IconButton,
   Drawer,
   List,
-  ListItem,
+  ListItemButton,
   ListItemText,
   ListItemIcon,
   Collapse,
@@ -28,6 +27,7 @@ import {
   Avatar,
   Divider,
   Chip,
+  useTheme,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
@@ -45,10 +45,15 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import RouteIcon from '@mui/icons-material/Route';
 import PaymentIcon from '@mui/icons-material/Payment';
-import ReleaseIcon from '@mui/icons-material/CheckCircle';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
 import LogoutIcon from '@mui/icons-material/Logout';
 import EditIcon from '@mui/icons-material/Edit';
 import CloseIcon from '@mui/icons-material/Close';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import LockPersonIcon from '@mui/icons-material/LockPerson';
+import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
+import CorporateFareIcon from '@mui/icons-material/CorporateFare';
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme as useCustomTheme } from '../context/ThemeContext';
@@ -56,445 +61,277 @@ import { useAuth } from '../context/AuthContext';
 import { fetchCurrentUser, updateUser } from '../../services/userService';
 import { User } from '../../types';
 
-// Importações para React Hook Form e Yup
 import { useForm, SubmitHandler, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 
-interface ToolbarProps {
-  title: string;
-}
+const DRAWER_WIDTH = 260;
+export const APP_BAR_HEIGHT = 56;
 
-const drawerWidth = 280;
-
-// Definição do esquema de validação com Yup
-const schema = yup.object({
+const userProfileSchema = yup.object({
   name: yup.string().required('Nome é obrigatório'),
   email: yup.string().email('Email inválido').required('Email é obrigatório'),
-  newPassword: yup
-    .string()
-    .min(6, 'Senha deve ter pelo menos 6 caracteres')
-    .notRequired(),
+  newPassword: yup.string().min(6, 'A nova senha deve ter pelo menos 6 caracteres').notRequired().default(''),
   confirmPassword: yup
     .string()
     .oneOf([yup.ref('newPassword')], 'As senhas devem coincidir')
-    .when('newPassword', (newPassword, schema) => {
-      return newPassword
-        ? schema.required('Confirmação de senha é obrigatória')
-        : schema.notRequired();
-    }),
+    .when('newPassword', (newPasswordValues, schema) => {
+        const newPassword = Array.isArray(newPasswordValues) ? newPasswordValues[0] : newPasswordValues;
+        return newPassword && newPassword.length > 0
+          ? schema.required('A confirmação da nova senha é obrigatória')
+          : schema.notRequired();
+      }
+    ).default(''),
 }).required();
 
-type FormData = yup.InferType<typeof schema>;
+type UserProfileFormData = yup.InferType<typeof userProfileSchema>;
 
-const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
+interface NavItemConfig {
+  path: string;
+  text: string;
+  icon: React.ReactElement;
+}
+
+interface NavGroupConfig {
+    key: string;
+    text: string;
+    icon: React.ReactElement;
+    items: NavItemConfig[];
+    adminOnly?: boolean;
+    superAdminOnly?: boolean;
+}
+
+const Toolbar: React.FC<{ title: string; }> = ({ title }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const muiTheme = useTheme();
   const { isDarkMode, toggleTheme } = useCustomTheme();
   const { isLoggedIn, userRole, logout, token } = useAuth();
 
-  // Controle do Drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
-
-  // Seções colapsáveis
-  const [openConfig, setOpenConfig] = useState(false);
-  const [openCadastros, setOpenCadastros] = useState(false);
-  const [openRotinas, setOpenRotinas] = useState(false);
-
-  // Estado do modal de edição do usuário
-  const [user, setUser] = useState<User | null>(null);
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
-
-  // Menu ancorado (para o nome do usuário)
   const [userMenuAnchorEl, setUserMenuAnchorEl] = useState<null | HTMLElement>(null);
 
-  /**
-   * Carrega os dados do usuário, se logado
-   */
   useEffect(() => {
     const loadUser = async () => {
       if (token) {
         try {
-          const currentUser = await fetchCurrentUser(token);
-          setUser(currentUser);
-        } catch (error: any) {
+          const fetchedUser = await fetchCurrentUser(token);
+          setCurrentUser(fetchedUser);
+        } catch (error) {
           console.error('Erro ao carregar usuário atual:', error);
         }
       }
     };
     if (isLoggedIn) {
       loadUser();
+    } else {
+      setCurrentUser(null);
     }
   }, [isLoggedIn, token]);
 
-  /**
-   * Funções de abrir/fechar Drawer e colapsáveis
-   */
   const toggleDrawer = () => setDrawerOpen(!drawerOpen);
-  const toggleConfigMenu = () => setOpenConfig((prev) => !prev);
-  const toggleCadastrosMenu = () => setOpenCadastros((prev) => !prev);
-  const toggleRotinasMenu = () => setOpenRotinas((prev) => !prev);
+  const handleMenuClick = (menuKey: string) => setOpenMenus((prev) => ({ ...prev, [menuKey]: !prev[menuKey] }));
+  const handleNavigation = (path: string) => { router.push(path); setDrawerOpen(false); };
+  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => setUserMenuAnchorEl(event.currentTarget);
+  const handleCloseUserMenu = () => setUserMenuAnchorEl(null);
+  const openEditModal = () => { handleCloseUserMenu(); setEditModalOpen(true); };
+  const closeEditModal = () => setEditModalOpen(false);
 
-  /**
-   * Navegar para outra rota
-   */
-  const handleNavigation = (path: string) => {
-    router.push(path);
-    setDrawerOpen(false); // Fecha o drawer ao navegar
-  };
-
-  /**
-   * Menu do usuário (nome clicável)
-   */
-  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setUserMenuAnchorEl(event.currentTarget);
-  };
-  const handleCloseUserMenu = () => {
-    setUserMenuAnchorEl(null);
-  };
-
-  const openEditModal = () => {
-    handleCloseUserMenu();
-    setEditModalOpen(true);
-  };
-  const closeEditModal = () => {
-    setEditModalOpen(false);
-  };
-
-  /**
-   * Configuração do React Hook Form
-   */
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    watch,
-  } = useForm<FormData>({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      name: '',
-      email: '',
-      newPassword: '',
-      confirmPassword: '',
-    },
+  const { control, handleSubmit, formState: { errors }, reset } = useForm<UserProfileFormData>({
+    resolver: yupResolver(userProfileSchema),
+    defaultValues: { name: '', email: '', newPassword: '', confirmPassword: '' },
   });
 
-  /**
-   * Quando o modal abrir, preencha o formulário com os dados do usuário
-   */
   useEffect(() => {
-    if (isEditModalOpen && user) {
-      reset({
-        name: user.name,
-        email: user.email,
-        newPassword: '',
-        confirmPassword: '',
-      });
+    if (isEditModalOpen && currentUser) {
+      reset({ name: currentUser.name, email: currentUser.email, newPassword: '', confirmPassword: '' });
     }
-  }, [isEditModalOpen, user, reset]);
+  }, [isEditModalOpen, currentUser, reset]);
 
-  const onSubmit: SubmitHandler<FormData> = async (data) => {
+  const onSubmitUserProfile: SubmitHandler<UserProfileFormData> = async (data) => {
     try {
-      const updatedUser: Partial<User> = {
-        name: data.name,
-        email: data.email,
-        ...(data.newPassword ? { password: data.newPassword } : {}),
-      };
-      if (token && user?.id) {
-        const response = await updateUser(token, user.id, updatedUser);
-        alert('Usuário atualizado com sucesso!');
-        setUser(response);
+      const payload: Partial<User> = { name: data.name, email: data.email };
+      if (data.newPassword) payload.password = data.newPassword;
+      if (token && currentUser?.id) {
+        const response = await updateUser(token, currentUser.id, payload);
+        alert('Perfil atualizado com sucesso!');
+        setCurrentUser(response);
         closeEditModal();
       }
-    } catch (error: any) {
-      console.error('Erro ao atualizar o usuário:', error);
-      alert('Erro ao atualizar o usuário.');
+    } catch (error) {
+      console.error('Erro ao atualizar o perfil:', error);
+      alert('Erro ao atualizar o perfil.');
     }
   };
 
-  /**
-   * Título de rota conforme path
-   */
-  const getCurrentPageName = () => {
-    const route = pathname.split('/').pop();
-    switch (route) {
-      case 'users':
-        return 'Usuários';
-      case 'tenant':
-        return 'Empresa';
-      case 'categories':
-        return 'Categorias';
-      case 'drivers':
-        return 'Motoristas';
-      case 'vehicles':
-        return 'Veículos';
-      case 'directions':
-        return 'Região';
-      case 'deliveries':
-        return 'Roteiros';
-      case 'routing':
-        return 'Formação';
-      case 'orders':
-        return 'Entregas';
-      case 'payments':
-        return 'Pagamentos';
-      case 'releases':
-        return 'Liberação';
-      case 'statistics':
-        return 'Dashboards';
-      default:
-        return 'Página Inicial';
+  const menuStructure: NavGroupConfig[] = [
+    { key: 'geral', text: 'Geral', icon: <DashboardIcon />, items: [
+        { path: '/estatisticas', text: 'Estatísticas', icon: <DashboardIcon /> },
+    ]},
+    { key: 'roteirizacao', text: 'Roteirização', icon: <RouteIcon />, items: [
+        { path: '/roteiros/criar', text: 'Criar Roteiro', icon: <AddCircleOutlineIcon /> },
+        { path: '/roteiros', text: 'Consultar Roteiros', icon: <LocalShippingIcon /> },
+        { path: '/pedidos', text: 'Consultar Pedidos', icon: <AssignmentIcon /> },
+        { path: '/importar', text: 'Importar Dados', icon: <FileUploadIcon /> },
+        { path: '/roteiros/liberar', text: 'Liberar Roteiros', icon: <CheckCircleOutlineIcon /> },
+    ]},
+    { key: 'cadastros', text: 'Cadastros Base', icon: <CategoryIcon />, items: [
+        { path: '/motoristas', text: 'Motoristas', icon: <PeopleIcon /> },
+        { path: '/veiculos', text: 'Veículos', icon: <DirectionsCarIcon /> },
+        { path: '/categorias-veiculo', text: 'Categorias de Veículo', icon: <CategoryIcon /> },
+        { path: '/regioes', text: 'Regiões e CEPs', icon: <MapIcon /> },
+    ]},
+    { key: 'financeiro', text: 'Financeiro', icon: <PaymentIcon />, items: [
+        { path: '/pagamentos', text: 'Pagamentos', icon: <PaymentIcon /> },
+    ]},
+    { key: 'adminTenant', text: 'Admin do Tenant', icon: <SettingsIcon />, adminOnly: true, items: [
+        { path: '/tenant-usuarios', text: 'Usuários do Tenant', icon: <PeopleIcon /> },
+        { path: '/tenant-config', text: 'Configurações do Tenant', icon: <BusinessIcon /> },
+    ]},
+    { key: 'superAdmin', text: 'Admin da Plataforma', icon: <SupervisorAccountIcon />, superAdminOnly: true, items: [
+        { path: '/plataforma/tenants', text: 'Gerenciar Tenants', icon: <CorporateFareIcon /> },
+        { path: '/plataforma/usuarios', text: 'Gerenciar Usuários Globais', icon: <SupervisorAccountIcon /> },
+        { path: '/plataforma/roles', text: 'Gerenciar Roles', icon: <LockPersonIcon /> },
+    ]},
+  ];
+
+  const getCurrentPageName = useCallback(() => {
+    for (const group of menuStructure) {
+      for (const item of group.items) {
+        if (pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path + '/'))) {
+          return item.text;
+        }
+      }
     }
-  };
+    if (pathname === '/') return 'Início';
+    if (pathname.startsWith('/plataforma')) return 'Admin da Plataforma';
+    return title;
+  }, [pathname, title, menuStructure]);
 
-  /**
-   * Função para fechar o Drawer ao clicar na sobreposição
-   */
-  const handleBackdropClick = () => {
-    setDrawerOpen(false);
-  };
+  const drawerContent = (
+    <Box>
+      <MuiToolbar sx={{ minHeight: `${APP_BAR_HEIGHT}px !important` }} />
+      <Box sx={{ p: 2, borderBottom: `1px solid ${muiTheme.palette.divider}` }}>
+        <Typography variant="h6" align="center" color="primary">Menu Principal</Typography>
+      </Box>
+      <List component="nav" sx={{ padding: '8px' }}>
+        {menuStructure.map((group) => {
+          if (group.adminOnly && userRole !== 'admin' && userRole !== 'superadmin') return null;
+          if (group.superAdminOnly && userRole !== 'superadmin') return null;
 
-  const MenuItemWithIcon = ({ icon, text, onClick, isActive = false }: {
-    icon: React.ReactNode;
-    text: string;
-    onClick: () => void;
-    isActive?: boolean;
-  }) => (
-    <ListItem
-      button
-      onClick={onClick}
-      sx={{
-        borderRadius: '12px',
-        margin: '4px 8px',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        backgroundColor: isActive ? 'rgba(102, 126, 234, 0.15)' : 'transparent',
-        '&:hover': {
-          backgroundColor: 'rgba(102, 126, 234, 0.1)',
-          transform: 'translateX(4px)',
-        },
-      }}
-    >
-      <ListItemIcon
-        sx={{
-          color: isActive ? 'primary.main' : 'text.secondary',
-          minWidth: '40px',
-          transition: 'color 0.3s ease',
-        }}
-      >
-        {icon}
-      </ListItemIcon>
-      <ListItemText
-        primary={text}
-        sx={{
-          '& .MuiListItemText-primary': {
-            color: isActive ? 'primary.main' : 'text.primary',
-            fontWeight: isActive ? 600 : 400,
-            fontSize: '0.875rem',
-          },
-        }}
-      />
-    </ListItem>
+          const isRoteirizacaoGroup = group.key === 'roteirizacao';
+
+          return (
+            <React.Fragment key={group.key}>
+              <ListItemButton onClick={() => handleMenuClick(group.key)} sx={{ margin: '4px 8px', '&:hover': { backgroundColor: muiTheme.palette.action.hover }}}> {/* borderRadius removido */}
+                <ListItemIcon sx={{ minWidth: 36, color: muiTheme.palette.text.secondary }}>{group.icon}</ListItemIcon>
+                <ListItemText primary={group.text} primaryTypographyProps={{fontSize: '0.9rem', fontWeight: 500, color: muiTheme.palette.text.primary}}/>
+                {openMenus[group.key] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </ListItemButton>
+              <Collapse in={openMenus[group.key]} timeout="auto" unmountOnExit>
+                <List component="div" disablePadding sx={{ pl: 2 }}>
+                  {group.items.map((item) => {
+                    if (isRoteirizacaoGroup && item.path === '/roteiros/liberar' && userRole !== 'admin' && userRole !== 'superadmin') {
+                        return null;
+                    }
+                    const isActive = pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path + '/'));
+                    return (
+                      <ListItemButton
+                        key={item.path}
+                        onClick={() => handleNavigation(item.path)}
+                        selected={isActive}
+                        sx={{
+                            margin: '2px 4px',
+                            pl: 2,
+                            backgroundColor: isActive ? muiTheme.palette.action.selected : 'transparent',
+                            '&:hover': { backgroundColor: muiTheme.palette.action.hover },
+                            // borderRadius removido
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 32, color: isActive ? muiTheme.palette.primary.main : muiTheme.palette.text.secondary }}>{item.icon}</ListItemIcon>
+                        <ListItemText primary={item.text} primaryTypographyProps={{fontSize: '0.875rem', fontWeight: isActive ? 600 : 400, color: isActive ? muiTheme.palette.primary.main : muiTheme.palette.text.primary}}/>
+                      </ListItemButton>
+                    );
+                  })}
+                </List>
+              </Collapse>
+            </React.Fragment>
+          );
+        })}
+      </List>
+    </Box>
   );
+
+  if (!isLoggedIn) return null;
 
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-
-      {/* Barra Superior Moderna */}
       <AppBar
         position="fixed"
+        elevation={0}
         sx={{
-          height: 64,
+          height: APP_BAR_HEIGHT,
           zIndex: (theme) => theme.zIndex.drawer + 1,
-          background: (theme) => 
-            theme.palette.mode === 'dark' 
-              ? 'rgba(15, 23, 42, 0.95)' 
-              : 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(20px)',
-          border: 'none',
-          boxShadow: (theme) => 
-            theme.palette.mode === 'dark'
-              ? '0 1px 3px rgba(0, 0, 0, 0.3)'
-              : '0 1px 3px rgba(0, 0, 0, 0.1)',
-          borderBottom: (theme) => 
-            theme.palette.mode === 'dark'
-              ? '1px solid rgba(148, 163, 184, 0.2)'
-              : '1px solid rgba(30, 41, 59, 0.1)',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          backgroundColor: muiTheme.palette.mode === 'dark' ? 'rgba(17, 24, 39, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(12px)',
+          borderBottom: `1px solid ${muiTheme.palette.divider}`,
+          // borderRadius: 0, // AppBar geralmente não tem borderRadius por padrão
         }}
       >
-        <MuiToolbar
-          sx={{
-            height: 64,
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 24px',
-          }}
-        >
-          {/* Ícone de menu hambúrguer moderno */}
+        <MuiToolbar variant="dense" sx={{ height: APP_BAR_HEIGHT, minHeight: `${APP_BAR_HEIGHT}px !important`, paddingLeft: muiTheme.spacing(2), paddingRight: muiTheme.spacing(2) }}>
           <IconButton
             color="inherit"
+            aria-label="open drawer"
+            edge="start"
             onClick={toggleDrawer}
-            sx={{
-              mr: 2,
-              borderRadius: '12px',
-              padding: '8px',
-              color: (theme) => theme.palette.text.primary,
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                backgroundColor: (theme) => 
-                  theme.palette.mode === 'dark' 
-                    ? 'rgba(102, 126, 234, 0.15)' 
-                    : 'rgba(102, 126, 234, 0.1)',
-                transform: 'rotate(90deg)',
-              },
-            }}
+            sx={{ mr: 1, color: muiTheme.palette.text.primary, '&:hover': {backgroundColor: muiTheme.palette.action.hover} }}
           >
             <MenuIcon />
           </IconButton>
-
-          {/* Título com gradiente */}
-          <Typography
-            variant="h6"
-            noWrap
-            sx={{
-              flexGrow: 1,
-              background: 'linear-gradient(135deg, #00d4ff 0%, #8b5cf6 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              fontWeight: 700,
-              fontSize: '1.1rem',
-            }}
-          >
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, color: muiTheme.palette.text.primary, fontSize: '1.05rem', fontWeight: 600 }}>
             {title}
           </Typography>
-
-          {/* Chip da página atual */}
-          <Chip
-            label={getCurrentPageName()}
-            size="small"
-            sx={{
-              mr: 2,
-              backgroundColor: 'rgba(102, 126, 234, 0.2)',
-              color: 'primary.main',
-              border: '1px solid rgba(102, 126, 234, 0.3)',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-            }}
-          />
-
-          {/* Botão de tema com animação */}
-          <IconButton
-            color="inherit"
-            onClick={toggleTheme}
-            sx={{
-              mr: 2,
-              borderRadius: '12px',
-              color: (theme) => theme.palette.text.primary,
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                backgroundColor: (theme) => 
-                  theme.palette.mode === 'dark' 
-                    ? 'rgba(102, 126, 234, 0.15)' 
-                    : 'rgba(102, 126, 234, 0.1)',
-                transform: 'scale(1.1)',
-              },
-            }}
-          >
-            {isDarkMode ? <Brightness7Icon /> : <Brightness4Icon />}
+          <Chip label={getCurrentPageName()} size="small" sx={{ mr: 1.5, backgroundColor: muiTheme.palette.action.hover, color: muiTheme.palette.text.secondary, fontWeight: 500 /* borderRadius: muiTheme.shape.borderRadius  Chip tem seu próprio estilo de borda arredondada, manter se desejado */ }}/>
+          <IconButton onClick={toggleTheme} color="inherit" sx={{ mr: 1, color: muiTheme.palette.text.primary, '&:hover': {backgroundColor: muiTheme.palette.action.hover} }}>
+            {isDarkMode ? <Brightness7Icon fontSize="small"/> : <Brightness4Icon fontSize="small"/>}
           </IconButton>
-
-          {/* Perfil do usuário */}
-          {isLoggedIn && user && (
+          {currentUser && (
             <>
               <Button
                 color="inherit"
                 onClick={handleOpenUserMenu}
-                startIcon={
-                  <Avatar
-                    sx={{
-                      width: 32,
-                      height: 32,
-                      background: 'linear-gradient(135deg, #00d4ff 0%, #8b5cf6 100%)',
-                      fontSize: '0.875rem',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {user.name.charAt(0).toUpperCase()}
-                  </Avatar>
-                }
-                sx={{
-                  borderRadius: '12px',
-                  padding: '8px 16px',
-                  textTransform: 'none',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  color: (theme) => theme.palette.text.primary,
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    backgroundColor: (theme) => 
-                      theme.palette.mode === 'dark' 
-                        ? 'rgba(102, 126, 234, 0.15)' 
-                        : 'rgba(102, 126, 234, 0.1)',
-                  },
-                }}
+                startIcon={<Avatar sx={{ width: 32, height: 32, fontSize: '0.875rem', bgcolor: muiTheme.palette.primary.main, color: muiTheme.palette.primary.contrastText }}>{currentUser.name.charAt(0).toUpperCase()}</Avatar>}
+                sx={{ textTransform: 'none', color: muiTheme.palette.text.primary, fontWeight: 500, fontSize: '0.875rem', /* borderRadius: '8px', */ '&:hover': {backgroundColor: muiTheme.palette.action.hover} }}
               >
-                {user.name}
+                {currentUser.name.split(' ')[0]}
               </Button>
               <Menu
                 anchorEl={userMenuAnchorEl}
                 open={Boolean(userMenuAnchorEl)}
                 onClose={handleCloseUserMenu}
-                PaperProps={{
-                  sx: {
-                    borderRadius: '12px',
-                    minWidth: 200,
-                    background: (theme) => 
-                      theme.palette.mode === 'dark' 
-                        ? 'rgba(15, 23, 42, 0.95)' 
-                        : 'rgba(255, 255, 255, 0.95)',
-                    backdropFilter: 'blur(20px)',
-                    border: (theme) => 
-                      theme.palette.mode === 'dark'
-                        ? '1px solid rgba(148, 163, 184, 0.2)'
-                        : '1px solid rgba(30, 41, 59, 0.1)',
-                    mt: 1,
-                  },
-                }}
+                PaperProps={{ sx: { 
+                    /* borderRadius: '12px', */ mt: 1, minWidth: 180, 
+                    boxShadow: muiTheme.shadows[3],
+                    backgroundColor: muiTheme.palette.mode === 'dark' ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid ${muiTheme.palette.divider}`
+                }}}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
               >
-                <MenuItem
-                  onClick={openEditModal}
-                  sx={{
-                    borderRadius: '8px',
-                    margin: '4px',
-                    '&:hover': { backgroundColor: 'rgba(102, 126, 234, 0.1)' },
-                  }}
-                >
-                  <EditIcon sx={{ mr: 2, fontSize: '1.2rem' }} />
-                  Editar Perfil
+                <MenuItem onClick={openEditModal} sx={{fontSize: '0.875rem', '&:hover': {backgroundColor: muiTheme.palette.action.hover /* borderRadius: '6px' */}, m: '4px'}}>
+                  <EditIcon sx={{ mr: 1.5, fontSize: '1.1rem' }} /> Editar Perfil
                 </MenuItem>
-                <Divider sx={{ 
-                  margin: '4px 0', 
-                  borderColor: (theme) => 
-                    theme.palette.mode === 'dark'
-                      ? 'rgba(148, 163, 184, 0.2)'
-                      : 'rgba(30, 41, 59, 0.1)'
-                }} />
+                <Divider sx={{ my: '4px' }} />
                 <MenuItem
-                  onClick={() => {
-                    handleCloseUserMenu();
-                    logout();
-                  }}
-                  sx={{
-                    borderRadius: '8px',
-                    margin: '4px',
-                    color: 'error.main',
-                    '&:hover': { backgroundColor: 'rgba(248, 113, 113, 0.1)' },
-                  }}
+                  onClick={() => { handleCloseUserMenu(); logout(); }}
+                  sx={{ color: muiTheme.palette.error.main, fontSize: '0.875rem', '&:hover': {backgroundColor: muiTheme.palette.mode === 'dark' ? 'rgba(244, 67, 54, 0.2)' : 'rgba(244, 67, 54, 0.1)' /* borderRadius: '6px' */}, m: '4px' }}
                 >
-                  <LogoutIcon sx={{ mr: 2, fontSize: '1.2rem' }} />
-                  Sair
+                  <LogoutIcon sx={{ mr: 1.5, fontSize: '1.1rem' }} /> Sair
                 </MenuItem>
               </Menu>
             </>
@@ -502,369 +339,57 @@ const Toolbar: React.FC<ToolbarProps> = ({ title }) => {
         </MuiToolbar>
       </AppBar>
 
-      {/* Drawer Lateral Moderno */}
       <Drawer
         variant="persistent"
         anchor="left"
         open={drawerOpen}
         sx={{
-          width: drawerWidth,
+          width: DRAWER_WIDTH,
           flexShrink: 0,
-          '& .MuiDrawer-paper': { 
-            width: drawerWidth, 
+          '& .MuiDrawer-paper': {
+            width: DRAWER_WIDTH,
             boxSizing: 'border-box',
-            top: 64,
-            background: (theme) => 
-              theme.palette.mode === 'dark' 
-                ? 'rgba(15, 23, 42, 0.95)' 
-                : 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(20px)',
-            border: 'none',
-            borderRight: (theme) => 
-              theme.palette.mode === 'dark'
-                ? '1px solid rgba(148, 163, 184, 0.2)'
-                : '1px solid rgba(30, 41, 59, 0.1)',
+            borderRight: `1px solid ${muiTheme.palette.divider}`,
+            backgroundColor: muiTheme.palette.mode === 'dark' ? 'rgba(17, 24, 39, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            top: `${APP_BAR_HEIGHT}px`,
+            height: `calc(100vh - ${APP_BAR_HEIGHT}px)`,
+            // borderRadius: 0, // Drawer paper geralmente não tem borderRadius por padrão
           },
         }}
       >
-        <Box sx={{ p: 3, borderBottom: (theme) => 
-          theme.palette.mode === 'dark'
-            ? '1px solid rgba(148, 163, 184, 0.2)'
-            : '1px solid rgba(30, 41, 59, 0.1)'
-        }}>
-          <Typography
-            variant="h6"
-            sx={{
-              background: 'linear-gradient(135deg, #00d4ff 0%, #8b5cf6 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              fontWeight: 700,
-              textAlign: 'center',
-            }}
-          >
-            Menu Principal
-          </Typography>
-        </Box>
-
-        <List sx={{ padding: '8px' }}>
-          {/* Configurações (admin) */}
-          {userRole === 'admin' && (
-            <>
-              <ListItem
-                button
-                onClick={toggleConfigMenu}
-                sx={{
-                  borderRadius: '12px',
-                  margin: '4px 8px',
-                  '&:hover': { backgroundColor: 'rgba(102, 126, 234, 0.1)' },
-                }}
-              >
-                <ListItemIcon sx={{ color: 'text.secondary', minWidth: '40px' }}>
-                  <SettingsIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Configurações"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: '0.875rem', fontWeight: 500 } }}
-                />
-                {openConfig ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-              </ListItem>
-              <Collapse in={openConfig} timeout="auto" unmountOnExit>
-                <List component="div" disablePadding sx={{ ml: 2 }}>
-                  <MenuItemWithIcon
-                    icon={<PeopleIcon />}
-                    text="Usuários"
-                    onClick={() => handleNavigation('/users')}
-                    isActive={pathname === '/users'}
-                  />
-                  <MenuItemWithIcon
-                    icon={<BusinessIcon />}
-                    text="Empresa"
-                    onClick={() => handleNavigation('/tenant')}
-                    isActive={pathname === '/tenant'}
-                  />
-                </List>
-              </Collapse>
-            </>
-          )}
-
-          {/* Cadastros */}
-          <ListItem
-            button
-            onClick={toggleCadastrosMenu}
-            sx={{
-              borderRadius: '12px',
-              margin: '4px 8px',
-              '&:hover': { backgroundColor: 'rgba(102, 126, 234, 0.1)' },
-            }}
-          >
-            <ListItemIcon sx={{ color: 'text.secondary', minWidth: '40px' }}>
-              <CategoryIcon />
-            </ListItemIcon>
-            <ListItemText
-              primary="Cadastros"
-              sx={{ '& .MuiListItemText-primary': { fontSize: '0.875rem', fontWeight: 500 } }}
-            />
-            {openCadastros ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          </ListItem>
-          <Collapse in={openCadastros} timeout="auto" unmountOnExit>
-            <List component="div" disablePadding sx={{ ml: 2 }}>
-              <MenuItemWithIcon
-                icon={<CategoryIcon />}
-                text="Categorias"
-                onClick={() => handleNavigation('/categories')}
-                isActive={pathname === '/categories'}
-              />
-              <MenuItemWithIcon
-                icon={<PeopleIcon />}
-                text="Motoristas"
-                onClick={() => handleNavigation('/drivers')}
-                isActive={pathname === '/drivers'}
-              />
-              <MenuItemWithIcon
-                icon={<DirectionsCarIcon />}
-                text="Veículos"
-                onClick={() => handleNavigation('/vehicles')}
-                isActive={pathname === '/vehicles'}
-              />
-              <MenuItemWithIcon
-                icon={<MapIcon />}
-                text="Direções"
-                onClick={() => handleNavigation('/directions')}
-                isActive={pathname === '/directions'}
-              />
-            </List>
-          </Collapse>
-
-          {/* Rotinas */}
-          <ListItem
-            button
-            onClick={toggleRotinasMenu}
-            sx={{
-              borderRadius: '12px',
-              margin: '4px 8px',
-              '&:hover': { backgroundColor: 'rgba(102, 126, 234, 0.1)' },
-            }}
-          >
-            <ListItemIcon sx={{ color: 'text.secondary', minWidth: '40px' }}>
-              <RouteIcon />
-            </ListItemIcon>
-            <ListItemText
-              primary="Rotinas"
-              sx={{ '& .MuiListItemText-primary': { fontSize: '0.875rem', fontWeight: 500 } }}
-            />
-            {openRotinas ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          </ListItem>
-          <Collapse in={openRotinas} timeout="auto" unmountOnExit>
-            <List component="div" disablePadding sx={{ ml: 2 }}>
-              <MenuItemWithIcon
-                icon={<DashboardIcon />}
-                text="Dashboards"
-                onClick={() => handleNavigation('/statistics')}
-                isActive={pathname === '/statistics'}
-              />
-              <MenuItemWithIcon
-                icon={<AssignmentIcon />}
-                text="Entregas"
-                onClick={() => handleNavigation('/orders')}
-                isActive={pathname === '/orders'}
-              />
-              <MenuItemWithIcon
-                icon={<RouteIcon />}
-                text="Formação"
-                onClick={() => handleNavigation('/routing')}
-                isActive={pathname === '/routing'}
-              />
-              {userRole === 'admin' && (
-                <MenuItemWithIcon
-                  icon={<ReleaseIcon />}
-                  text="Liberação"
-                  onClick={() => handleNavigation('/releases')}
-                  isActive={pathname === '/releases'}
-                />
-              )}
-              <MenuItemWithIcon
-                icon={<LocalShippingIcon />}
-                text="Roteiros"
-                onClick={() => handleNavigation('/deliveries')}
-                isActive={pathname === '/deliveries'}
-              />
-              <MenuItemWithIcon
-                icon={<PaymentIcon />}
-                text="Pagamentos"
-                onClick={() => handleNavigation('/payments')}
-                isActive={pathname === '/payments'}
-              />
-            </List>
-          </Collapse>
-        </List>
+        {drawerContent}
       </Drawer>
 
-      {/* Backdrop moderno */}
       {drawerOpen && (
         <Backdrop
           open={drawerOpen}
-          onClick={handleBackdropClick}
+          onClick={toggleDrawer}
           sx={{
-            position: 'fixed',
-            top: 64,
-            left: 0,
-            zIndex: (theme) => theme.zIndex.drawer - 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            backdropFilter: 'blur(4px)',
+            zIndex: (theme) => theme.zIndex.drawer -1,
+            top: `${APP_BAR_HEIGHT}px`,
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            backdropFilter: 'blur(2px)'
           }}
         />
       )}
-
-      {/* Conteúdo Principal */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          width: `calc(100% - ${drawerOpen ? drawerWidth : 0}px)`,
-          marginLeft: drawerOpen ? `${drawerWidth}px` : 0,
-          transition: (theme) =>
-            theme.transitions.create(['margin', 'width'], {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.leavingScreen,
-            }),
-        }}
-      >
-        <MuiToolbar sx={{ minHeight: 64 }} />
-      </Box>
-
-      {/* Modal de Edição Moderno */}
-      <Dialog
-        open={isEditModalOpen}
-        onClose={closeEditModal}
-        PaperProps={{
-          sx: {
-            borderRadius: '20px',
-            background: (theme) => 
-              theme.palette.mode === 'dark' 
-                ? 'rgba(15, 23, 42, 0.95)' 
-                : 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(20px)',
-            border: (theme) => 
-              theme.palette.mode === 'dark'
-                ? '1px solid rgba(148, 163, 184, 0.2)'
-                : '1px solid rgba(30, 41, 59, 0.1)',
-            minWidth: 400,
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            pb: 2,
-          }}
-        >
-          <Typography
-            variant="h6"
-            sx={{
-              background: 'linear-gradient(135deg, #00d4ff 0%, #8b5cf6 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              fontWeight: 700,
-            }}
-          >
-            Editar Perfil
-          </Typography>
-          <IconButton
-            onClick={closeEditModal}
-            sx={{
-              borderRadius: '8px',
-              '&:hover': { backgroundColor: 'rgba(248, 113, 113, 0.1)' },
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
+      
+      <Dialog open={isEditModalOpen} onClose={closeEditModal} maxWidth="xs" fullWidth PaperProps={{sx: { /* borderRadius: '16px' */ }}}>
+        <DialogTitle sx={{display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom: `1px solid ${muiTheme.palette.divider}`}}>
+          <Typography variant="h6">Editar Perfil</Typography>
+          <IconButton onClick={closeEditModal}><CloseIcon /></IconButton>
         </DialogTitle>
-        <DialogContent sx={{ pb: 3 }}>
-          <form onSubmit={handleSubmit(onSubmit)} id="edit-user-form">
-            <Controller
-              name="name"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  margin="dense"
-                  label="Nome"
-                  type="text"
-                  fullWidth
-                  error={!!errors.name}
-                  helperText={errors.name ? errors.name.message : ''}
-                  sx={{ mb: 2 }}
-                />
-              )}
-            />
-            <Controller
-              name="email"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  margin="dense"
-                  label="E-mail"
-                  type="email"
-                  fullWidth
-                  error={!!errors.email}
-                  helperText={errors.email ? errors.email.message : ''}
-                  sx={{ mb: 2 }}
-                />
-              )}
-            />
-            <Controller
-              name="newPassword"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  margin="dense"
-                  label="Nova Senha"
-                  type="password"
-                  fullWidth
-                  error={!!errors.newPassword}
-                  helperText={errors.newPassword ? errors.newPassword.message : ''}
-                  sx={{ mb: 2 }}
-                />
-              )}
-            />
-            <Controller
-              name="confirmPassword"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  margin="dense"
-                  label="Confirmar Nova Senha"
-                  type="password"
-                  fullWidth
-                  error={!!errors.confirmPassword}
-                  helperText={errors.confirmPassword ? errors.confirmPassword.message : ''}
-                />
-              )}
-            />
+        <DialogContent sx={{pt: 2.5}}>
+          <form onSubmit={handleSubmit(onSubmitUserProfile)} id="edit-user-profile-form">
+            <Controller name="name" control={control} render={({ field }) => ( <TextField {...field} margin="dense" label="Nome" type="text" fullWidth error={!!errors.name} helperText={errors.name?.message || ''} sx={{ mb: 2 }}/> )}/>
+            <Controller name="email" control={control} render={({ field }) => ( <TextField {...field} margin="dense" label="E-mail" type="email" fullWidth error={!!errors.email} helperText={errors.email?.message || ''} sx={{ mb: 2 }} /> )}/>
+            <Controller name="newPassword" control={control} render={({ field }) => ( <TextField {...field} margin="dense" label="Nova Senha (deixe em branco para não alterar)" type="password" fullWidth error={!!errors.newPassword} helperText={errors.newPassword?.message || ''} sx={{ mb: 2 }} /> )}/>
+            <Controller name="confirmPassword" control={control} render={({ field }) => ( <TextField {...field} margin="dense" label="Confirmar Nova Senha" type="password" fullWidth error={!!errors.confirmPassword} helperText={errors.confirmPassword?.message || ''} /> )}/>
           </form>
         </DialogContent>
-        <DialogActions sx={{ p: 3, pt: 0 }}>
-          <Button
-            onClick={closeEditModal}
-            variant="outlined"
-            sx={{ borderRadius: '12px', mr: 2 }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            form="edit-user-form"
-            variant="contained"
-            sx={{ borderRadius: '12px' }}
-          >
-            Salvar Alterações
-          </Button>
+        <DialogActions sx={{ p: 2, borderTop: `1px solid ${muiTheme.palette.divider}` }}>
+          <Button onClick={closeEditModal} variant="outlined" sx={{ /* borderRadius: '8px' */ }}>Cancelar</Button>
+          <Button type="submit" form="edit-user-profile-form" variant="contained" sx={{ /* borderRadius: '8px' */ }}>Salvar</Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -5,6 +5,12 @@ import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 
 @Injectable()
 export class VehiclesService {
+  findByCategory(categoryId: string, tenantId: any) {
+    throw new Error('Method not implemented.');
+  }
+  findByDriver(driverId: string, tenantId: any) {
+    throw new Error('Method not implemented.');
+  }
   constructor(private prisma: PrismaService) {}
 
   async create(createVehicleDto: CreateVehicleDto, tenantId: string) {

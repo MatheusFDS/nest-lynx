@@ -1,63 +1,73 @@
+// Conteúdo para: status.enum.ts
+
 // Status dos PEDIDOS INDIVIDUAIS (Orders)
 export enum OrderStatus {
-  PENDENTE = 'Pendente',                    // Quando a order não tem roteiro
-  EM_ROTA = 'Em rota',                     // Quando tem um roteiro
-  ENTREGA_INICIADA = 'Entrega Iniciada',   // Quando o motorista sinaliza que está indo
-  ENTREGA_FINALIZADA = 'Entrega Finalizada', // Quando deu tudo certo
-  ENTREGA_RETORNADA = 'Entrega Retornada'  // Quando houve problema
+  SEM_ROTA = 'Sem rota',                                  // Pedido não atribuído a um roteiro
+  EM_ROTA_AGUARDANDO_LIBERACAO = 'Em rota, aguardando liberação', // Pedido em roteiro que precisa de aprovação
+  EM_ROTA = 'Em rota',                                    // Pedido em roteiro liberado/iniciado
+  EM_ENTREGA = 'Em entrega',                              // Motorista está a caminho do cliente para este pedido
+  ENTREGUE = 'Entregue',                                  // Entrega bem-sucedida
+  NAO_ENTREGUE = 'Não entregue'                           // Tentativa de entrega falhou (com motivo)
 }
 
 // Status dos ROTEIROS (Deliveries)
 export enum DeliveryStatus {
-  A_LIBERAR = 'A liberar',                 // Precisa de aprovação
-  PENDENTE = 'Pendente',                   // Ainda não foi finalizado
-  FINALIZADO = 'Finalizado'                // Todas as entregas foram finalizadas ou retornadas
+  A_LIBERAR = 'A liberar',         // Roteiro aguardando aprovação
+  INICIADO = 'Iniciado',           // Roteiro liberado e em andamento
+  FINALIZADO = 'Finalizado',       // Todas as entregas do roteiro foram processadas
+  REJEITADO = 'Rejeitado'          // Roteiro foi rejeitado durante a liberação
 }
 
-// 🔧 MOBILE: Types atualizados (types/index.ts)
-export type OrderStatusMobile = 
-  | 'pendente'          // Pendente
-  | 'em_rota'          // Em rota  
-  | 'iniciada'         // Entrega Iniciada
-  | 'finalizada'       // Entrega Finalizada
-  | 'retornada';       // Entrega Retornada
+// (Opcional, mas útil) Ações de Aprovação
+export enum ApprovalAction {
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED'
+}
 
-export type RouteStatusMobile = 
-  | 'a_liberar'        // A liberar
-  | 'pendente'         // Pendente
-  | 'finalizado';      // Finalizado
 
-// 🔧 MAPEAMENTO: Backend ↔ Mobile
+// MAPEAMENTO: Backend ↔ Mobile (Atualizado)
+// Se o mobile for atualizado para usar os novos enums diretamente, este mapeamento pode ser simplificado.
 export const STATUS_MAPPING = {
-  // Order Status: Backend → Mobile
   ORDER_TO_MOBILE: {
-    'Pendente': 'pendente',
-    'Em rota': 'em_rota',
-    'Entrega Iniciada': 'iniciada',
-    'Entrega Finalizada': 'finalizada',
-    'Entrega Retornada': 'retornada'
+    [OrderStatus.SEM_ROTA]: 'sem_rota',
+    [OrderStatus.EM_ROTA_AGUARDANDO_LIBERACAO]: 'em_rota_aguardando_liberacao', // Novo
+    [OrderStatus.EM_ROTA]: 'em_rota',
+    [OrderStatus.EM_ENTREGA]: 'iniciada',
+    [OrderStatus.ENTREGUE]: 'finalizada',
+    [OrderStatus.NAO_ENTREGUE]: 'retornada'
   },
-  
-    // Order Status: Mobile → Backend
   MOBILE_TO_ORDER: {
-    'pendente': 'Pendente',
-    'em_rota': 'Em rota',
-    'iniciada': 'Entrega Iniciada',
-    'finalizada': 'Entrega Finalizada',
-    'retornada': 'Entrega Retornada'
+    'sem_rota': OrderStatus.SEM_ROTA,
+    'em_rota_aguardando_liberacao': OrderStatus.EM_ROTA_AGUARDANDO_LIBERACAO, // Novo
+    'em_rota': OrderStatus.EM_ROTA,
+    'iniciada': OrderStatus.EM_ENTREGA,
+    'finalizada': OrderStatus.ENTREGUE,
+    'retornada': OrderStatus.NAO_ENTREGUE
   },
-  
-  // Delivery Status: Backend → Mobile  
   DELIVERY_TO_MOBILE: {
-    'A liberar': 'a_liberar',
-    'Pendente': 'pendente',
-    'Finalizado': 'finalizado'
+    [DeliveryStatus.A_LIBERAR]: 'a_liberar',   // Novo/Reintroduzido
+    [DeliveryStatus.INICIADO]: 'pendente',    // 'Iniciado' no backend pode ser 'pendente'/'ativo' no mobile
+    [DeliveryStatus.FINALIZADO]: 'finalizado',
+    [DeliveryStatus.REJEITADO]: 'rejeitado'    // Novo
   },
-  
-  // Delivery Status: Mobile → Backend
   MOBILE_TO_DELIVERY: {
-    'a_liberar': 'A liberar',
-    'pendente': 'Pendente',
-    'finalizado': 'Finalizado'
+    'a_liberar': DeliveryStatus.A_LIBERAR,  // Novo/Reintroduzido
+    'pendente': DeliveryStatus.INICIADO,
+    'finalizado': DeliveryStatus.FINALIZADO,
+    'rejeitado': DeliveryStatus.REJEITADO   // Novo
   }
 };
+
+// Modelos de motivo para não entrega (Exemplo)
+export interface MotivoNaoEntrega {
+  codigo: string;
+  descricao: string;
+}
+
+export const MOTIVOS_NAO_ENTREGA: MotivoNaoEntrega[] = [
+  { codigo: 'AUSENTE', descricao: 'Destinatário ausente' },
+  { codigo: 'END_INC', descricao: 'Endereço incorreto/incompleto' },
+  { codigo: 'RECUSADO', descricao: 'Recusado pelo destinatário' },
+  { codigo: 'AVARIA', descricao: 'Produto avariado' },
+  { codigo: 'OUTRO', descricao: 'Outro motivo (especificar)' },
+];

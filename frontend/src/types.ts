@@ -1,35 +1,127 @@
+// frontend/src/types.ts
 import { ReactNode } from "react";
 
+export interface UserSummary {
+  id: string;
+  name: string;
+  email?: string;
+}
+
+export interface Approval {
+  id: string;
+  deliveryId: string;
+  tenantId: string;
+  action: string;
+  motivo?: string;
+  userId: string;
+  createdAt: string;
+  User?: UserSummary;
+  userName?: string;
+}
+
 export interface Category {
-  precoPorKM: any;
   id: string;
   name: string;
   valor: number;
   tenantId: string;
+  precoPorKM?: any;
+}
+
+export interface Vehicle {
+  id: string;
+  model: string;
+  plate: string;
+  driverId: string;
+  tenantId: string;
+  categoryId: string;
+  Category?: Category;
+  createdAt: string;
+  updatedAt: string;
+  valor?: number;
+}
+
+export interface Driver {
+  id: string;
+  name: string;
+  license: string;
+  cpf: string;
+  tenantId: string;
+  userId?: string;
+  User?: UserSummary;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Order {
+  id: string;
+  numero: string;
+  data: string;
+  idCliente: string;
+  cliente: string;
+  endereco: string;
+  cidade: string;
+  uf: string;
+  peso: number;
+  volume: number;
+  prazo?: string;
+  prioridade?: string;
+  telefone: string;
+  email?: string;
+  bairro: string;
+  valor: number;
+  instrucoesEntrega?: string;
+  nomeContato?: string;
+  cpfCnpj: string;
+  cep: string;
+  status: string;
+  motivoNaoEntrega?: string;
+  codigoMotivoNaoEntrega?: string;
+  deliveryId: string | null;
+  tenantId: string;
+  driverId?: string | null;
+  sorting: number | null; // Permitindo null aqui, pois o backend (Prisma) permite
+  startedAt?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  directionId?: string;
+  lat?: number;
+  lng?: number;
+  estado?: any;
+  logradouro?: any;
+  motorista?: ReactNode;
+  dataFinalizacao?: string | number | Date;
+  Delivery?: {
+    dataFim?: string;
+    Driver?: {
+      name: string;
+    };
+  };
 }
 
 export interface Delivery {
-  user: any;
-  region: any;
-  Vehicle: Vehicle;
-  Driver: Driver;
-  dataFim: string | number | Date;
-  dataInicio: string | number | Date;
   id: string;
   motoristaId: string;
   veiculoId: string;
   valorFrete: number;
   totalPeso: number;
   totalValor: number;
+  dataInicio: string;
+  dataFim?: string | null;
+  status: string;
   tenantId: string;
+  dataLiberacao?: string | null;
+  observacao?: string;
+  createdAt: string;
+  updatedAt: string;
   orders: Order[];
-  status?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-  dataLiberacao?: Date;
-  liberador?: string; 
-  motivo?: string; 
-  liberacoes: Approval[]; // Adicionado para relação com Approval
+  Driver?: Driver;
+  Vehicle?: Vehicle;
+  approvals: Approval[]; // Alterado de 'liberacoes' para 'approvals' para consistência com o backend
+  user?: any;
+  region?: any;
+  liberador?: string;
+  motivo?: string;
 }
 
 export interface Direction {
@@ -43,91 +135,6 @@ export interface Direction {
   updatedAt: string;
 }
 
-export interface Driver {
-  id: string;
-  name: string;
-  license: string;
-  cpf: string;
-  tenantId: string;
-  userId?: string; // ID do usuário relacionado (opcional)
-  User?: {         // Dados do usuário relacionado (quando incluído na consulta)
-    id: string;
-    name: string;
-    email: string;
-  };
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface AvailableUser {
-  id: string;
-  name: string;
-  email: string;
-}
-
-export interface Column {
-  column_name: string;
-  data_type: string;
-}
-
-export interface Metadata {
-  [table: string]: Column[];
-}
-
-export interface Order {
-  directionId: string;
-  sorting: number;
-  address: any;
-  lat: number;
-  lng: number;
-  estado: any;
-  logradouro: any;
-  motorista: ReactNode;
-  dataFinalizacao: string | number | Date;
-  id: string;
-  numero: string;
-  data: string;
-  idCliente: string;
-  cliente: string;
-  endereco: string;
-  cidade: string;
-  uf: string;
-  peso: number;
-  volume: number;
-  prazo: string;
-  prioridade: string;
-  telefone: string;
-  email: string;
-  bairro: string;
-  valor: number;
-  instrucoesEntrega: string;
-  nomeContato: string;
-  cpfCnpj: string;
-  cep: string;
-  status: string;
-  deliveryId: string | null;
-  tenantId: string;
-  createdAt: string;
-  updatedAt: string;
-  Delivery?: {
-    dataFim: string;
-    Driver?: {
-      name: string;
-    };
-  };
-}
-
-export interface Approval {
-  id: string;
-  deliveryId: string;
-  tenantId: string;
-  action: string; // 'approved' ou 'rejected'
-  motivo?: string;
-  userId: string;
-  createdAt: string;
-  User?: UserSummary; // <<< SUBSTITUA OU ADICIONE ESTA LINHA (usando UserSummary ou seu tipo User completo)
-}
-
 export interface Payment {
   id: string;
   amount: number;
@@ -138,21 +145,21 @@ export interface Payment {
   updatedAt: string;
   isGroup: boolean;
   groupedPaymentId: string | null;
-  Driver: Driver;
-  paymentDeliveries: {
-    delivery: Delivery;
+  Driver?: Driver;
+  paymentDeliveries?: {
+    delivery?: Delivery;
   }[];
 }
 
-export interface User {
+export interface User { // Usuário do sistema para o frontend web/admin
   id: string;
   email: string;
-  roleId: string;
+  roleId?: string;
   name: string;
-  password: string;
-  tenantId: string;
-  createdAt: string;
-  updatedAt: string;
+  password?: string;
+  tenantId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Role {
@@ -161,49 +168,15 @@ export interface Role {
 }
 
 export interface Tenant {
-  password: string;
-  user: string;
-  minDeliveryPercentage: number;
   id: string;
   name: string;
   address?: string;
-  minValue:             number;
-  minOrders:            number;
-  minPeso:             number;
-}
-
-
-export interface Vehicle {
-  id: string;
-  model: string;
-  plate: string;
-  driverId: string;
-  tenantId: string;
-  categoryId: string;
-  Category?: Category; // <<< ADICIONE ESTA LINHA (usando sua interface Category existente)
-  createdAt: string;
-  updatedAt: string;
-  valor: number; // Este é o valor do próprio veículo, diferente do valor da categoria para frete.
-}
-
-// Componente de Estatística
-export interface StatsCardProps {
-  icon: React.ReactElement;
-  title: string;
-  value: string | number;
-  subtitle?: string;
-  trend?: number;
-  color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple' |  'primary' | 'success' | 'warning' | 'error' | 'secondary';
-}
-
-export interface AlertCardProps {
-  icon: React.ReactNode;
-  title: string;
-  count: number;
-  subtitle: string;
-  color?: 'warning' | 'error' | 'success' | 'info';
-  urgent?: boolean;
-  onClick?: () => void;
+  minDeliveryPercentage?: number | null;
+  minValue?: number | null;
+  minOrders?: number | null;
+  minPeso?: number | null;
+  password?: string;
+  user?: string;
 }
 
 export interface OrderHistoryEvent {
@@ -217,16 +190,49 @@ export interface OrderHistoryEvent {
     newStatus?: string;
     reason?: string;
     proofUrl?: string;
-    deliveryId?: string;    // Adicionado
-    driverName?: string;    // Adicionado
-    vehiclePlate?: string;  // Adicionado
-    finalStatus?: string;   // Adicionado
-    deliveryStatus?: string; // Adicionado
+    deliveryId?: string;
+    driverName?: string;
+    vehiclePlate?: string;
+    finalStatus?: string;
+    deliveryStatus?: string;
+    motivoNaoEntrega?: string;
+    codigoMotivoNaoEntrega?: string;
+    approvalAction?: string;
+    approvalReason?: string;
+    orderNumber?: string;
   };
 }
 
-export interface UserSummary {
+export interface AvailableUser {
   id: string;
   name: string;
-  email?: string; // Opcional, se relevante
+  email: string;
+}
+
+export interface AlertCardProps {
+  icon: React.ReactNode;
+  title: string;
+  count: number;
+  subtitle: string;
+  color?: 'warning' | 'error' | 'success' | 'info';
+  urgent?: boolean;
+  onClick?: () => void;
+}
+
+export interface Column {
+  column_name: string;
+  data_type: string;
+}
+
+export interface Metadata {
+  [table: string]: Column[];
+}
+
+export interface StatsCardProps {
+  icon: React.ReactElement;
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  trend?: number;
+  color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple' |  'primary' | 'success' | 'warning' | 'error' | 'secondary';
 }

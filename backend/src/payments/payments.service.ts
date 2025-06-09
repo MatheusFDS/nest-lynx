@@ -5,6 +5,9 @@ import { UpdatePaymentDto } from './dto/update-payment.dto';
 
 @Injectable()
 export class PaymentsService {
+  findByDriver(driverId: any, tenantId: string): any {
+    throw new Error('Method not implemented.');
+  }
   private readonly logger = new Logger(PaymentsService.name);
 
   constructor(private prisma: PrismaService) {}

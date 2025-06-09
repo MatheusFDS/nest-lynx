@@ -1,5 +1,5 @@
 import { getApiUrl } from './utils/apiUtils';
-import { Delivery } from '../types';
+import { Delivery, Order as AppOrder, Approval } from '../types'; // Garanta que Approval e AppOrder estão corretos
 
 const API_URL = `${getApiUrl()}/delivery`;
 
@@ -12,14 +12,28 @@ export const fetchDeliveries = async (token: string): Promise<Delivery[]> => {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to fetch deliveries');
+    // Tentar pegar mais detalhes do erro, se possível
+    let errorMessage = 'Failed to fetch deliveries';
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.message || errorMessage;
+    } catch (e) {
+      // Se não conseguir parsear o JSON do erro, usa a mensagem padrão
+    }
+    throw new Error(errorMessage);
   }
 
-  const data = await response.json();
+  const responseData = await response.json();
 
-  const deliveries = data.map((delivery: any) => ({
-    ...delivery,
-    orders: delivery.orders.map((order: any) => ({
+  // 1. Verificar se a resposta principal (responseData) é um array
+  if (!Array.isArray(responseData)) {
+    console.error('API response is not an array for deliveries:', responseData);
+    return []; // Retorna um array vazio ou lança um erro mais específico
+  }
+
+  const deliveries: Delivery[] = responseData.map((delivery: any) => {
+    // 2. Mapear 'orders' com segurança, tratando se for undefined ou não for array
+    const orders = (Array.isArray(delivery.orders) ? delivery.orders : []).map((order: any) => ({
       id: order.id,
       numero: order.numero,
       cliente: order.cliente,
@@ -45,8 +59,11 @@ export const fetchDeliveries = async (token: string): Promise<Delivery[]> => {
       sorting: order.sorting,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
-    })),
-    approvals: delivery.liberacoes.map((approval: any) => ({
+      // Certifique-se que todos os campos esperados pelo tipo AppOrder estejam aqui
+    }));
+
+    // 3. Mapear 'liberacoes' (para 'approvals') com segurança
+    const approvals = (Array.isArray(delivery.liberacoes) ? delivery.liberacoes : []).map((approval: any) => ({
       id: approval.id,
       deliveryId: approval.deliveryId,
       tenantId: approval.tenantId,
@@ -54,9 +71,26 @@ export const fetchDeliveries = async (token: string): Promise<Delivery[]> => {
       motivo: approval.motivo,
       userId: approval.userId,
       createdAt: approval.createdAt,
-      userName: approval.User?.name || 'N/A',
-    })),
-  }));
+      userName: approval.User?.name || 'N/A', // Mantém o optional chaining se User pode ser undefined
+      User: approval.User, // Se precisar do objeto User completo
+      // Certifique-se que todos os campos esperados pelo tipo Approval estejam aqui
+    }));
+
+    // Retornar o objeto delivery completo, conforme o tipo Delivery
+    // O spread '...delivery' assume que a maioria das propriedades já vem com o nome correto.
+    // As propriedades mapeadas (orders, approvals) sobrescrevem as do spread se tiverem o mesmo nome,
+    // ou são adicionadas.
+    return {
+      ...delivery,
+      orders: orders,
+      approvals: approvals,
+      // Se 'Driver' e 'Vehicle' vêm com esses nomes da API e na estrutura correta,
+      // o spread já os inclui. Se os nomes ou estruturas forem diferentes,
+      // eles precisariam de mapeamento explícito também.
+      // Ex: Driver: delivery.AlgumNomeParaDriver || undefined,
+      // Ex: Vehicle: delivery.AlgumNomeParaVehicle || undefined,
+    };
+  });
 
   return deliveries;
 };
@@ -128,7 +162,7 @@ export const removeOrderFromDelivery = async (token: string, deliveryId: string,
   }
 };
 
-export const releaseDelivery = async (token: string, id: string): Promise<void> => {
+export const releaseDelivery = async (token: string, id: string): Promise<any> => {
   const response = await fetch(`${API_URL}/${id}/release`, {
     method: 'PATCH',
     headers: {
@@ -139,39 +173,33 @@ export const releaseDelivery = async (token: string, id: string): Promise<void> 
 
   if (!response.ok) {
     const errorData = await response.json();
- //   console.error('Failed to release delivery:', errorData);
-    throw new Error('Failed to release delivery');
+    throw new Error(errorData.message || 'Failed to release delivery');
   }
 
   return await response.json();
 };
 
 export const rejectRelease = async (token: string, id: string, motivo: string): Promise<void> => {
-  try {
-    const response = await fetch(`${API_URL}/${id}/reject`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ motivo }),
-    });
+  const response = await fetch(`${API_URL}/${id}/reject`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ motivo }),
+  });
 
-    if (!response.ok) {
+  if (!response.ok) {
+    let errorMessage = 'Failed to reject delivery';
+    try {
       const errorData = await response.json();
-   //   console.error('Failed to reject delivery:', errorData);
-      throw new Error(`Failed to reject delivery: ${errorData.message || 'Unknown error'}`);
+      errorMessage = errorData.message || errorMessage;
+    } catch(e) {
+      // Mantém a mensagem padrão se o corpo do erro não for JSON
     }
-  } catch (error) {
-    // Type assertion to ensure error is treated as an Error object
-    if (error instanceof Error) {
-    //  console.error('An unexpected error occurred:', error);
-      throw new Error(`Failed to reject delivery: ${error.message || 'Unknown error'}`);
-    } else {
-    //  console.error('An unexpected non-error object was thrown:', error);
-      throw new Error('Failed to reject delivery: An unknown error occurred');
-    }
+    throw new Error(errorMessage);
   }
+  // Não há um response.json() para retornar aqui se o status for 2xx mas sem corpo,
+  // ou se a função é Promise<void> e não deve retornar nada em caso de sucesso.
+  // Se a API retorna algo no sucesso, ajuste o tipo de retorno e adicione: return await response.json();
 };
-
-

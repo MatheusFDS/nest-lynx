@@ -1,103 +1,107 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+// Conteúdo para: src/delivery/delivery.service.ts
+
+import { Injectable, NotFoundException, BadRequestException, Logger, ConflictException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { UpdateDeliveryDto } from './dto/update-delivery.dto';
+import { OrderStatus, DeliveryStatus, ApprovalAction } from '../types/status.enum';
+import { Order, Tenant } from '@prisma/client'; // Prisma client Order model
 
 @Injectable()
 export class DeliveryService {
+  findAllByDriver(tenantId: any, driverId: any): any {
+    throw new Error('Method not implemented.');
+  }
   private readonly logger = new Logger(DeliveryService.name);
 
   constructor(private prisma: PrismaService) {}
 
-  // 🎯 NOVA LÓGICA: Criação de roteiro
-  async create(createDeliveryDto: CreateDeliveryDto, tenantId: string) {
-    const { motoristaId, orders, veiculoId, ...rest } = createDeliveryDto;
+  private isValidOrderStatusTransition(currentStatus: OrderStatus, newStatus: OrderStatus): boolean {
+    const validTransitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
+      [OrderStatus.EM_ROTA]: [OrderStatus.EM_ENTREGA], // Apenas se o roteiro estiver INICIADO
+      [OrderStatus.EM_ENTREGA]: [OrderStatus.ENTREGUE, OrderStatus.NAO_ENTREGUE],
+    };
+    return validTransitions[currentStatus]?.includes(newStatus) || false;
+  }
 
-    // 1. Verificar se motorista já está em rota ativa
-    const existingDelivery = await this.prisma.delivery.findFirst({
-      where: { 
-        motoristaId, 
-        status: { in: ['A liberar', 'Pendente'] } // ✅ NOVOS STATUS
-      },
-    });
+  private async checkTenantRulesForAutoApproval(
+    tenant: Tenant,
+    totalValor: number,
+    totalPeso: number,
+    ordersCount: number,
+    valorFrete: number
+  ): Promise<{ needsApproval: boolean; reasons: string[] }> {
+    const reasons: string[] = [];
 
-    if (existingDelivery) {
-      throw new BadRequestException('O motorista já possui um roteiro ativo.');
-    }
-
-    // 2. Verificar se orders são válidas (apenas Pendentes podem entrar em roteiro)
-    const orderRecords = await this.prisma.order.findMany({
-      where: {
-        id: { in: orders.map(order => order.id) },
-        status: 'Pendente', // ✅ APENAS PENDENTES
-        tenantId: tenantId,
-      },
-    });
-
-    if (orderRecords.length !== orders.length) {
-      throw new BadRequestException('Alguns pedidos não estão disponíveis ou já estão em outro roteiro.');
-    }
-
-    // 3. Calcular valores
-    const totalPeso = orderRecords.reduce((sum, order) => sum + order.peso, 0);
-    const totalValor = orderRecords.reduce((sum, order) => sum + order.valor, 0);
-
-    // 4. Calcular frete (lógica existente)
-    let maxDirectionValue = 0;
-    for (const order of orderRecords) {
-      const directionValue = await this.prisma.directions.findFirst({
-        where: {
-          tenantId: tenantId,
-          rangeInicio: { lte: order.cep },
-          rangeFim: { gte: order.cep },
-        },
-        orderBy: { valorDirecao: 'desc' },
-      });
-
-      if (directionValue && Number(directionValue.valorDirecao) > maxDirectionValue) {
-        maxDirectionValue = Number(directionValue.valorDirecao);
+    if (tenant.minDeliveryPercentage !== null && totalValor > 0) {
+      const freightPercentage = (valorFrete / totalValor) * 100;
+      if (freightPercentage > tenant.minDeliveryPercentage) {
+        reasons.push(`Percentual de frete (${freightPercentage.toFixed(2)}%) acima do máximo permitido (${tenant.minDeliveryPercentage}%).`);
       }
     }
+    if (tenant.minValue !== null && totalValor < tenant.minValue) {
+      reasons.push(`Valor total da mercadoria (R$ ${totalValor.toFixed(2)}) abaixo do mínimo exigido (R$ ${tenant.minValue.toFixed(2)}).`);
+    }
+    if (tenant.minPeso !== null && totalPeso < tenant.minPeso) {
+      reasons.push(`Peso total (${totalPeso.toFixed(2)} kg) abaixo do mínimo exigido (${tenant.minPeso.toFixed(2)} kg).`);
+    }
+    if (tenant.minOrders !== null && ordersCount < tenant.minOrders) {
+      reasons.push(`Quantidade de pedidos (${ordersCount}) abaixo do mínimo exigido (${tenant.minOrders}).`);
+    }
 
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: veiculoId },
-      include: { Category: true },
+    return { needsApproval: reasons.length > 0, reasons };
+  }
+
+  async create(createDeliveryDto: CreateDeliveryDto, tenantId: string, userId: string) {
+    const { motoristaId, orders: orderReferences, veiculoId, observacao, dataInicio } = createDeliveryDto;
+
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new NotFoundException('Tenant não encontrado.');
+
+    const driver = await this.prisma.driver.findFirst({ where: { id: motoristaId, tenantId } });
+    if (!driver) throw new NotFoundException(`Motorista com ID ${motoristaId} não encontrado.`);
+
+    const vehicle = await this.prisma.vehicle.findFirst({ where: { id: veiculoId, tenantId } });
+    if (!vehicle) throw new NotFoundException(`Veículo com ID ${veiculoId} não encontrado.`);
+    
+    const existingDeliveryForDriver = await this.prisma.delivery.findFirst({
+      where: { motoristaId, tenantId, status: { in: [DeliveryStatus.INICIADO, DeliveryStatus.A_LIBERAR] } },
+    });
+    if (existingDeliveryForDriver) {
+      throw new ConflictException(`Motorista ${driver.name} já possui um roteiro '${existingDeliveryForDriver.status}' (ID: ${existingDeliveryForDriver.id}).`);
+    }
+
+    const orderIds = orderReferences.map(order => order.id);
+    const orderRecords = await this.prisma.order.findMany({
+      where: { id: { in: orderIds }, tenantId },
     });
 
-    const valorFrete = maxDirectionValue + (vehicle?.Category?.valor ?? 0);
-
-    // 5. Verificar regras de negócio para aprovação
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-    });
-
-    if (!tenant) {
-      throw new BadRequestException('Tenant não encontrado.');
+    if (orderRecords.length !== orderIds.length) {
+      const foundIds = orderRecords.map(o => o.id);
+      const notFoundIds = orderIds.filter(id => !foundIds.includes(id));
+      throw new BadRequestException(`Pedidos não encontrados ou não pertencem ao tenant: ${notFoundIds.join(', ')}.`);
     }
 
-    const percentualFrete = (valorFrete / totalValor) * 100;
+    const ordersNotAvailable = orderRecords.filter(o => o.status !== OrderStatus.SEM_ROTA);
+    if (ordersNotAvailable.length > 0) {
+      throw new BadRequestException(
+        `Os seguintes pedidos não estão com status '${OrderStatus.SEM_ROTA}': ` +
+        ordersNotAvailable.map(o => `${o.numero} (status: ${o.status})`).join(', ')
+      );
+    }
+    
+    const totalPeso = orderRecords.reduce((sum, order) => sum + (order.peso || 0), 0);
+    const totalValor = orderRecords.reduce((sum, order) => sum + (order.valor || 0), 0);
+    const valorFrete = await this.calculateFreight(orderRecords, veiculoId, tenantId);
 
-    const reasons = [];
-    if (percentualFrete > (tenant.minDeliveryPercentage || 100)) {
-      reasons.push('Percentual de frete acima do máximo permitido');
-    }
-    if (totalValor < (tenant.minValue || 0)) {
-      reasons.push('Valor total abaixo do mínimo exigido');
-    }
-    if (totalPeso < (tenant.minPeso || 0)) {
-      reasons.push('Peso total abaixo do mínimo exigido');
-    }
-    if (orders.length < (tenant.minOrders || 0)) {
-      reasons.push('Quantidade de documentos abaixo do mínimo exigido');
-    }
+    const approvalCheck = await this.checkTenantRulesForAutoApproval(
+        tenant, totalValor, totalPeso, orderRecords.length, valorFrete
+    );
 
-    // ✅ NOVA LÓGICA: Status inicial do roteiro
-    const deliveryStatus = reasons.length > 0 ? 'A liberar' : 'Pendente';
-    const orderStatus = 'Em rota'; // ✅ Orders vão para "Em rota"
-
-    // 6. Criar roteiro em transação
+    const initialDeliveryStatus = approvalCheck.needsApproval ? DeliveryStatus.A_LIBERAR : DeliveryStatus.INICIADO;
+    const initialOrderStatus = approvalCheck.needsApproval ? OrderStatus.EM_ROTA_AGUARDANDO_LIBERACAO : OrderStatus.EM_ROTA;
+    
     const result = await this.prisma.$transaction(async (tx) => {
-      // Criar delivery
       const delivery = await tx.delivery.create({
         data: {
           motoristaId,
@@ -106,465 +110,502 @@ export class DeliveryService {
           valorFrete,
           totalPeso,
           totalValor,
-          status: deliveryStatus,
-          ...rest,
-          orders: {
-            connect: orders.map(order => ({ id: order.id })),
-          },
+          status: initialDeliveryStatus,
+          dataInicio: dataInicio ? new Date(dataInicio) : new Date(),
+          observacao: observacao || '',
+          orders: { connect: orderReferences.map(order => ({ id: order.id })) },
+          // Não criar approval na criação, apenas quando houver ação de liberar/rejeitar
         },
-        include: {
-          orders: true,
-          Driver: true,
-          Vehicle: true,
-        },
+        include: { orders: true, Driver: true, Vehicle: true },
       });
 
-      // Atualizar status das orders
       await tx.order.updateMany({
-        where: { id: { in: orders.map(o => o.id) } },
-        data: { 
-          status: orderStatus,
+        where: { id: { in: orderIds } },
+        data: {
+          status: initialOrderStatus,
           deliveryId: delivery.id,
-          sorting: null // Reset sorting
+          startedAt: null, completedAt: null, motivoNaoEntrega: null, codigoMotivoNaoEntrega: null,
         },
       });
 
-      // Aplicar sorting individual se fornecido
-      for (const order of orders) {
-        if (order.sorting !== undefined) {
-          await tx.order.update({
-            where: { id: order.id },
-            data: { sorting: order.sorting },
-          });
-        }
+      for (const orderRef of orderReferences) {
+        await tx.order.update({
+          where: { id: orderRef.id },
+          data: { sorting: orderRef.sorting !== undefined ? orderRef.sorting : null },
+        });
       }
-
       return delivery;
     });
 
-    this.logger.log(`Roteiro criado: ${result.id}, Status: ${deliveryStatus}, Orders: ${orders.length}`);
+    let message = `Roteiro criado com status '${initialDeliveryStatus}'.`;
+    if (approvalCheck.needsApproval) {
+      message += ` Necessita liberação pelos seguintes motivos: ${approvalCheck.reasons.join('; ')}`;
+    }
 
-    return {
-      delivery: result,
-      status: result.status,
-      message: deliveryStatus === 'A liberar' ? 
-        'Roteiro criado e enviado para liberação: ' + reasons.join(', ') :
-        'Roteiro criado com sucesso!'
-    };
+    this.logger.log(`Roteiro ${result.id} criado por usuário ${userId}. Status: ${result.status}. Pedidos: ${orderReferences.length}. Motivos para liberação (se houver): ${approvalCheck.reasons.join('; ')}`);
+    return { message, delivery: result, needsApproval: approvalCheck.needsApproval, approvalReasons: approvalCheck.reasons };
   }
 
-  // 🎯 NOVA LÓGICA: Liberar roteiro
-  async release(id: string, tenantId: string, userId: string) {
+  private async calculateFreight(orders: Order[], veiculoId: string, tenantId: string): Promise<number> {
+    let maxDirectionValue = 0;
+    for (const order of orders) {
+      const directionValue = await this.prisma.directions.findFirst({
+        where: { tenantId, rangeInicio: { lte: order.cep }, rangeFim: { gte: order.cep } },
+        orderBy: { valorDirecao: 'desc' },
+      });
+      if (directionValue && Number(directionValue.valorDirecao) > maxDirectionValue) {
+        maxDirectionValue = Number(directionValue.valorDirecao);
+      }
+    }
+    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: veiculoId }, include: { Category: true } });
+    return maxDirectionValue + (vehicle?.Category?.valor ?? 0);
+  }
+
+  async liberarRoteiro(deliveryId: string, tenantId: string, userId: string) {
     const delivery = await this.prisma.delivery.findFirst({
-      where: { id, tenantId },
+      where: { id: deliveryId, tenantId },
       include: { orders: true }
     });
 
-    if (!delivery) {
-      throw new NotFoundException('Roteiro não encontrado');
+    if (!delivery) throw new NotFoundException(`Roteiro com ID ${deliveryId} não encontrado.`);
+    if (delivery.status !== DeliveryStatus.A_LIBERAR) {
+      throw new BadRequestException(`Roteiro ${deliveryId} não está aguardando liberação (status atual: ${delivery.status}).`);
     }
 
-    if (delivery.status !== 'A liberar') {
-      throw new BadRequestException('Este roteiro não precisa de liberação.');
-    }
-
-    // Atualizar em transação
-    const result = await this.prisma.$transaction(async (tx) => {
-      // Atualizar delivery
+    return this.prisma.$transaction(async (tx) => {
       const updatedDelivery = await tx.delivery.update({
-        where: { id },
+        where: { id: deliveryId },
         data: {
-          status: 'Pendente', // ✅ NOVO STATUS
+          status: DeliveryStatus.INICIADO,
           dataLiberacao: new Date(),
         },
-        include: {
-          orders: true,
-          Driver: true,
-          Vehicle: true,
+        include: { orders: true, Driver: true, Vehicle: true }
+      });
+
+      await tx.order.updateMany({
+        where: { deliveryId: deliveryId, status: OrderStatus.EM_ROTA_AGUARDANDO_LIBERACAO },
+        data: { status: OrderStatus.EM_ROTA },
+      });
+
+      await tx.approval.create({
+        data: {
+          deliveryId,
+          tenantId,
+          userId,
+          action: ApprovalAction.APPROVED,
+          createdAt: new Date(),
         }
       });
-
-      // Orders já estão "Em rota", não precisam mudar
-
-      // Registrar aprovação
-      await tx.approval.create({
-        data: {
-          deliveryId: id,
-          tenantId,
-          action: 'approved',
-          userId: userId,
-          createdAt: new Date(),
-        },
-      });
-
-      return updatedDelivery;
+      this.logger.log(`Roteiro ${deliveryId} liberado pelo usuário ${userId}.`);
+      return { message: 'Roteiro liberado com sucesso!', delivery: updatedDelivery };
     });
-
-    this.logger.log(`Roteiro liberado: ${id} por usuário: ${userId}`);
-
-    return {
-      ...result,
-      approval: {
-        userName: (await this.prisma.user.findUnique({ where: { id: userId } }))?.name,
-        action: 'approved',
-        createdAt: new Date().toISOString(),
-      },
-    };
   }
 
-  // 🎯 NOVA LÓGICA: Rejeitar liberação
-  async rejectRelease(id: string, tenantId: string, userId: string, motivo: string): Promise<void> {
-    const delivery = await this.prisma.delivery.findUnique({
-      where: { id },
-      include: { orders: true },
+  async rejeitarRoteiro(deliveryId: string, tenantId: string, userId: string, motivo: string) {
+    const delivery = await this.prisma.delivery.findFirst({
+      where: { id: deliveryId, tenantId },
+      include: { orders: true }
     });
-  
-    if (!delivery) {
-      throw new NotFoundException('Roteiro não encontrado');
-    }
-  
-    if (delivery.tenantId !== tenantId) {
-      throw new NotFoundException('Roteiro não encontrado para este tenant');
+
+    if (!delivery) throw new NotFoundException(`Roteiro com ID ${deliveryId} não encontrado.`);
+    if (delivery.status !== DeliveryStatus.A_LIBERAR) {
+      throw new BadRequestException(`Roteiro ${deliveryId} não pode ser rejeitado (status atual: ${delivery.status}).`);
     }
 
-    if (delivery.status !== 'A liberar') {
-      throw new BadRequestException('Este roteiro não está pendente de liberação.');
-    }
-
-    // Rejeitar em transação
-    await this.prisma.$transaction(async (tx) => {
-      // Voltar orders para Pendente
+    return this.prisma.$transaction(async (tx) => {
+      const updatedDelivery = await tx.delivery.update({
+        where: { id: deliveryId },
+        data: { status: DeliveryStatus.REJEITADO }, // Ou deletar: await tx.delivery.delete({ where: { id: deliveryId }});
+        include: { orders: true, Driver: true, Vehicle: true }
+      });
+      
       await tx.order.updateMany({
-        where: { deliveryId: id },
-        data: { 
-          status: 'Pendente', // ✅ VOLTA PARA PENDENTE
-          deliveryId: null,
-          sorting: null
-        },
+        where: { deliveryId: deliveryId, status: OrderStatus.EM_ROTA_AGUARDANDO_LIBERACAO },
+        data: { status: OrderStatus.SEM_ROTA, deliveryId: null, sorting: null },
       });
 
-      // Registrar rejeição
       await tx.approval.create({
         data: {
-          deliveryId: id,
+          deliveryId,
           tenantId,
-          action: 'rejected',
-          motivo,
           userId,
-        },
+          action: ApprovalAction.REJECTED,
+          motivo,
+          createdAt: new Date(),
+        }
       });
+      // Se o roteiro é apenas marcado como REJEITADO e não deletado, os pedidos são desconectados.
+      // Se for deletado, o Prisma pode cuidar disso com onDelete: Cascade nas relações, mas aqui desvinculamos manualmente.
+      if (updatedDelivery.status === DeliveryStatus.REJEITADO) {
+         await tx.delivery.update({
+            where: { id: deliveryId },
+            data: { orders: { disconnect: delivery.orders.map(o => ({id: o.id})) } }
+         });
+      }
 
-      // Deletar o roteiro (ou marcar como rejeitado)
-      await tx.delivery.delete({
-        where: { id },
-      });
+      this.logger.log(`Roteiro ${deliveryId} rejeitado pelo usuário ${userId}. Motivo: ${motivo}`);
+      return { message: `Roteiro rejeitado com sucesso. Pedidos retornaram para '${OrderStatus.SEM_ROTA}'.`, delivery: updatedDelivery };
     });
-
-    this.logger.log(`Roteiro rejeitado: ${id} por usuário: ${userId}, motivo: ${motivo}`);
   }
 
-  // 🎯 NOVA LÓGICA: Atualizar status de order individual
-  async updateOrderStatus(orderId: string, newStatus: string, tenantId: string, driverId?: string) {
-    // Validar status
-    const validStatuses = ['Entrega Iniciada', 'Entrega Finalizada', 'Entrega Retornada'];
-    if (!validStatuses.includes(newStatus)) {
-      throw new BadRequestException(`Status inválido: ${newStatus}`);
+  async updateOrderStatus(
+    orderId: string,
+    newStatus: OrderStatus.EM_ENTREGA | OrderStatus.ENTREGUE | OrderStatus.NAO_ENTREGUE,
+    tenantId: string,
+    driverIdFromAuth: string,
+    motivoNaoEntrega?: string,
+    codigoMotivoNaoEntrega?: string,
+  ) {
+    if (![OrderStatus.EM_ENTREGA, OrderStatus.ENTREGUE, OrderStatus.NAO_ENTREGUE].includes(newStatus)) {
+      throw new BadRequestException(`Status inválido: ${newStatus}.`);
     }
 
     const order = await this.prisma.order.findFirst({
-      where: { 
-        id: orderId, 
-        tenantId,
-        status: { not: 'Pendente' } // Deve estar em um roteiro
-      },
-      include: { Delivery: { include: { orders: true } } }
+      where: { id: orderId, tenantId },
+      include: { Delivery: true },
     });
 
-    if (!order) {
-      throw new NotFoundException('Pedido não encontrado ou não está em um roteiro.');
+    if (!order) throw new NotFoundException(`Pedido ${orderId} não encontrado.`);
+    if (!order.Delivery) throw new BadRequestException(`Pedido ${order.numero} não está em um roteiro.`);
+    if (order.Delivery.status !== DeliveryStatus.INICIADO) {
+      throw new BadRequestException(`Roteiro ${order.Delivery.id} não está '${DeliveryStatus.INICIADO}'. Status atual: ${order.Delivery.status}.`);
+    }
+    if (order.Delivery.motoristaId !== driverIdFromAuth) {
+      throw new ForbiddenException('Motorista não autorizado para este roteiro.');
+    }
+    if (!this.isValidOrderStatusTransition(order.status as OrderStatus, newStatus)) {
+      throw new BadRequestException(`Transição inválida de "${order.status}" para "${newStatus}".`);
     }
 
-    // Verificar se motorista tem permissão (se driverId fornecido)
-    if (driverId && order.Delivery?.motoristaId !== driverId) {
-      throw new BadRequestException('Você não tem permissão para alterar este pedido.');
+    const updateData: any = { status: newStatus, updatedAt: new Date(), driverId: driverIdFromAuth }; // Associa o motorista que fez a ação
+
+    if (newStatus === OrderStatus.EM_ENTREGA) {
+      updateData.startedAt = new Date();
+      updateData.completedAt = null;
+      updateData.motivoNaoEntrega = null;
+      updateData.codigoMotivoNaoEntrega = null;
+    } else if (newStatus === OrderStatus.ENTREGUE) {
+      updateData.completedAt = new Date();
+      if (!order.startedAt) updateData.startedAt = new Date();
+    } else if (newStatus === OrderStatus.NAO_ENTREGUE) {
+      if (!motivoNaoEntrega) throw new BadRequestException('Motivo da não entrega é obrigatório.');
+      updateData.completedAt = new Date();
+      updateData.motivoNaoEntrega = motivoNaoEntrega;
+      updateData.codigoMotivoNaoEntrega = codigoMotivoNaoEntrega;
+      if (!order.startedAt) updateData.startedAt = new Date();
     }
 
-    // Verificar transição válida
-    const currentStatus = order.status;
-    if (!this.isValidStatusTransition(currentStatus, newStatus)) {
-      throw new BadRequestException(`Não é possível mudar de "${currentStatus}" para "${newStatus}"`);
-    }
+    const updatedOrder = await this.prisma.$transaction(async (tx) => {
+      const orderAfterUpdate = await tx.order.update({ where: { id: orderId }, data: updateData });
 
-    // Atualizar em transação
-    const result = await this.prisma.$transaction(async (tx) => {
-      // Atualizar order
-      const updatedOrder = await tx.order.update({
-        where: { id: orderId },
-        data: { 
-          status: newStatus,
-          completedAt: ['Entrega Finalizada', 'Entrega Retornada'].includes(newStatus) ? new Date() : null,
-          updatedAt: new Date()
-        },
-      });
-
-      // Verificar se roteiro deve ser finalizado
-      if (order.Delivery) {
-        const allOrders = await tx.order.findMany({
-          where: { deliveryId: order.Delivery.id },
-          select: { status: true }
-        });
-
-        const allFinished = allOrders.every(o => 
-          o.status === 'Entrega Finalizada' || o.status === 'Entrega Retornada'
+      const deliveryId = orderAfterUpdate.deliveryId;
+      if (deliveryId) {
+        const ordersInDelivery = await tx.order.findMany({ where: { deliveryId } });
+        const allOrdersFinalized = ordersInDelivery.every(
+          o => o.status === OrderStatus.ENTREGUE || o.status === OrderStatus.NAO_ENTREGUE,
         );
-
-        if (allFinished) {
+        if (allOrdersFinalized) {
           await tx.delivery.update({
-            where: { id: order.Delivery.id },
-            data: { 
-              status: 'Finalizado',
-              dataFim: new Date()
-            },
+            where: { id: deliveryId },
+            data: { status: DeliveryStatus.FINALIZADO, dataFim: new Date() },
           });
-
-          this.logger.log(`Roteiro finalizado automaticamente: ${order.Delivery.id}`);
+          this.logger.log(`Roteiro ${deliveryId} finalizado automaticamente.`);
         }
       }
-
-      return updatedOrder;
+      return orderAfterUpdate;
     });
 
-    this.logger.log(`Order atualizada: ${orderId} -> ${newStatus}`);
-
-    return result;
+    this.logger.log(`Status do pedido ${orderId} atualizado para ${newStatus} pelo motorista ${driverIdFromAuth}.`);
+    return updatedOrder;
   }
 
-  // 🎯 HELPER: Validar transição de status
-  private isValidStatusTransition(currentStatus: string, newStatus: string): boolean {
-    const validTransitions = {
-      'Em rota': ['Entrega Iniciada'],
-      'Entrega Iniciada': ['Entrega Finalizada', 'Entrega Retornada'],
-      'Entrega Retornada': ['Entrega Iniciada'], // Pode tentar novamente
-      'Entrega Finalizada': [] // Status final
-    };
-
-    return validTransitions[currentStatus]?.includes(newStatus) || false;
-  }
-
-  // 🎯 ATUALIZADO: Update geral do roteiro
-  async update(id: string, updateDeliveryDto: UpdateDeliveryDto, tenantId: string) {
-    const { motoristaId, veiculoId, orders, status, ...rest } = updateDeliveryDto;
+  async update(id: string, updateDeliveryDto: UpdateDeliveryDto, tenantId: string, userId: string) {
+    const { motoristaId, veiculoId, orders: orderReferences, status: newDeliveryStatusRequest, observacao, dataInicio } = updateDeliveryDto;
 
     const delivery = await this.prisma.delivery.findFirst({
       where: { id, tenantId },
-      include: { orders: true }
+      include: { orders: true, approvals: { orderBy: { createdAt: 'desc' } } }, // Pegar a última aprovação para referência
     });
 
-    if (!delivery) {
-      throw new NotFoundException('Roteiro não encontrado');
+    if (!delivery) throw new NotFoundException(`Roteiro ${id} não encontrado.`);
+
+    if ([DeliveryStatus.FINALIZADO, DeliveryStatus.REJEITADO].includes(delivery.status as DeliveryStatus)) {
+      // Permitir apenas edição de observação em roteiros finalizados/rejeitados
+      if (observacao !== undefined && Object.keys(updateDeliveryDto).length === 1) {
+         const updatedObs = await this.prisma.delivery.update({ where: {id}, data: { observacao }});
+         return { message: "Observação do roteiro atualizada.", delivery: updatedObs };
+      }
+      throw new BadRequestException(`Roteiro ${id} está '${delivery.status}' e não pode ser modificado significativamente.`);
     }
 
-    // Verificar se pode ser editado
-    if (delivery.status === 'Finalizado') {
-      throw new BadRequestException('Não é possível editar um roteiro finalizado.');
-    }
+    const updateData: any = { updatedAt: new Date() };
 
-    // Verificar se motorista está livre (se mudando motorista)
     if (motoristaId && motoristaId !== delivery.motoristaId) {
-      const existingDelivery = await this.prisma.delivery.findFirst({
-        where: {
-          motoristaId,
-          status: { in: ['A liberar', 'Pendente'] },
-          id: { not: id },
+      const driver = await this.prisma.driver.findFirst({ where: {id: motoristaId, tenantId}});
+      if (!driver) throw new NotFoundException(`Novo motorista ${motoristaId} não encontrado.`);
+      const existingDeliveryForNewDriver = await this.prisma.delivery.findFirst({
+          where: { motoristaId, tenantId, status: { in: [DeliveryStatus.INICIADO, DeliveryStatus.A_LIBERAR] }, id: { not: id } },
+      });
+      if (existingDeliveryForNewDriver) {
+          throw new ConflictException(`Novo motorista ${driver.name} já possui um roteiro '${existingDeliveryForNewDriver.status}' (ID: ${existingDeliveryForNewDriver.id}).`);
+      }
+      updateData.motoristaId = motoristaId;
+    }
+    if (veiculoId && veiculoId !== delivery.veiculoId) {
+      if(!await this.prisma.vehicle.findFirst({ where: {id: veiculoId, tenantId}})) throw new NotFoundException(`Novo veículo ${veiculoId} não encontrado.`);
+      updateData.veiculoId = veiculoId;
+    }
+    if (observacao !== undefined) updateData.observacao = observacao;
+    if (dataInicio) updateData.dataInicio = new Date(dataInicio);
+    
+    // A alteração de status via PATCH deve ser controlada.
+    // Ex: Um admin pode querer forçar 'A LIBERAR' se algo mudou e precisa de nova análise.
+    // Não se deve permitir mudar para FINALIZADO ou REJEITADO aqui, pois têm fluxos próprios.
+    if (newDeliveryStatusRequest && newDeliveryStatusRequest !== delivery.status) {
+        if (newDeliveryStatusRequest === DeliveryStatus.A_LIBERAR && delivery.status === DeliveryStatus.INICIADO) {
+            updateData.status = DeliveryStatus.A_LIBERAR;
+            // Ao voltar para 'A Liberar', os pedidos também devem voltar para 'Em rota, aguardando liberação'
+            // E uma nova entrada em Approval pode ser necessária para registrar quem e porquê solicitou nova liberação.
+            // Isso adiciona complexidade. Por ora, vamos permitir a mudança de status e o serviço de criação verificará as regras.
+        } else if ([DeliveryStatus.FINALIZADO, DeliveryStatus.REJEITADO].includes(newDeliveryStatusRequest as DeliveryStatus)) {
+            throw new BadRequestException(`Não é possível alterar o status para '${newDeliveryStatusRequest}' através desta rota. Use os fluxos específicos.`);
+        } else {
+            updateData.status = newDeliveryStatusRequest; // Ex: Iniciado
+        }
+    }
+
+
+    return this.prisma.$transaction(async (tx) => {
+        let newOrderStatusForAddedItems = delivery.status === DeliveryStatus.A_LIBERAR ? OrderStatus.EM_ROTA_AGUARDANDO_LIBERACAO : OrderStatus.EM_ROTA;
+        if(updateData.status === DeliveryStatus.A_LIBERAR) newOrderStatusForAddedItems = OrderStatus.EM_ROTA_AGUARDANDO_LIBERACAO;
+        else if (updateData.status === DeliveryStatus.INICIADO) newOrderStatusForAddedItems = OrderStatus.EM_ROTA;
+
+
+        if (orderReferences) { // Se uma nova lista de pedidos foi fornecida
+            const currentOrderIds = delivery.orders.map(o => o.id);
+            const newOrderIdsFromRequest = orderReferences.map(or => or.id);
+
+            const ordersToAddRefs = orderReferences.filter(or => !currentOrderIds.includes(or.id));
+            const ordersToRemoveIds = currentOrderIds.filter(id => !newOrderIdsFromRequest.includes(id));
+
+            if (ordersToAddRefs.length > 0) {
+                const ordersToAddRecords = await tx.order.findMany({
+                    where: { id: { in: ordersToAddRefs.map(or => or.id) }, tenantId, status: OrderStatus.SEM_ROTA }
+                });
+                if (ordersToAddRecords.length !== ordersToAddRefs.length) {
+                    throw new BadRequestException("Alguns pedidos a serem adicionados não existem ou não estão no status 'Sem rota'.");
+                }
+                await tx.order.updateMany({
+                    where: { id: { in: ordersToAddRecords.map(o => o.id) } },
+                    data: { deliveryId: id, status: newOrderStatusForAddedItems, startedAt: null, completedAt: null }
+                });
+            }
+            if (ordersToRemoveIds.length > 0) {
+                await tx.order.updateMany({
+                    where: { id: { in: ordersToRemoveIds }, deliveryId: id },
+                    data: { deliveryId: null, status: OrderStatus.SEM_ROTA, sorting: null, startedAt: null, completedAt: null }
+                });
+            }
+            
+            // Desconectar os removidos e conectar os adicionados (se houver)
+            // O Prisma exige que `set` seja usado para substituir completamente, ou `connect` e `disconnect` separados
+            // Para simplificar, se `orderReferences` é fornecido, usamos `set` para definir a lista exata.
+             updateData.orders = { set: orderReferences.map(or => ({ id: or.id })) };
+
+
+            // Atualizar sorting para todos os pedidos na nova lista
+            for (const orderRef of orderReferences) {
+                await tx.order.update({
+                    where: { id: orderRef.id },
+                    data: { sorting: orderRef.sorting !== undefined ? orderRef.sorting : null }
+                });
+            }
+        }
+      // Recalcular totais e frete com base nos pedidos que ESTARÃO no roteiro após o update
+      const finalOrderIdsInDelivery = orderReferences ? orderReferences.map(or => or.id) : delivery.orders.map(o => o.id);
+      const finalOrdersInDelivery = await tx.order.findMany({ where: { id: {in: finalOrderIdsInDelivery}}});
+      updateData.totalPeso = finalOrdersInDelivery.reduce((sum, order) => sum + (order.peso || 0), 0);
+      updateData.totalValor = finalOrdersInDelivery.reduce((sum, order) => sum + (order.valor || 0), 0);
+      updateData.valorFrete = await this.calculateFreight(finalOrdersInDelivery, updateData.veiculoId || delivery.veiculoId, tenantId);
+      
+      // Se a edição (ex: adição de pedido) fizer com que o roteiro precise de nova liberação:
+      const tenantData = await tx.tenant.findUnique({ where: {id: tenantId }});
+      if (tenantData && delivery.status === DeliveryStatus.INICIADO) { // Só reavaliar se estava INICIADO
+          const approvalCheckAfterUpdate = await this.checkTenantRulesForAutoApproval(
+              tenantData, updateData.totalValor, updateData.totalPeso, finalOrdersInDelivery.length, updateData.valorFrete
+          );
+          if (approvalCheckAfterUpdate.needsApproval) {
+              updateData.status = DeliveryStatus.A_LIBERAR; // Força 'A Liberar'
+              // Mudar status dos pedidos para 'EM_ROTA_AGUARDANDO_LIBERACAO'
+              await tx.order.updateMany({
+                  where: { deliveryId: id, status: OrderStatus.EM_ROTA },
+                  data: { status: OrderStatus.EM_ROTA_AGUARDANDO_LIBERACAO }
+              });
+              this.logger.log(`Roteiro ${id} modificado e agora requer nova liberação. Motivos: ${approvalCheckAfterUpdate.reasons.join('; ')}`);
+              // Pode-se criar um registro de Approval 'SYSTEM_FLAGGED_FOR_REAPPROVAL' aqui.
+               await tx.approval.create({
+                    data: {
+                        deliveryId: id,
+                        tenantId,
+                        userId, // Usuário que fez a alteração que causou a necessidade de re-aprovação
+                        action: 'RE_APPROVAL_NEEDED', // Novo tipo de ação
+                        motivo: `Alterações no roteiro (${approvalCheckAfterUpdate.reasons.join('; ')}) exigem nova liberação.`,
+                        createdAt: new Date(),
+                    }
+                });
+          }
+      }
+
+
+      const updatedDelivery = await tx.delivery.update({
+        where: { id },
+        data: updateData,
+        include: {
+          orders: { orderBy: { sorting: 'asc' } },
+          Driver: true,
+          Vehicle: true,
+          approvals: { include: { User: true }, orderBy: {createdAt: 'desc'}}
         },
       });
 
-      if (existingDelivery) {
-        throw new BadRequestException('O motorista já possui outro roteiro ativo.');
-      }
-    }
-
-    // Atualizar
-    const updatedDelivery = await this.prisma.delivery.update({
-      where: { id },
-      data: {
-        ...rest,
-        ...(motoristaId && { motoristaId }),
-        ...(veiculoId && { veiculoId }),
-        ...(status && { status }),
-        orders: orders ? {
-          set: orders.map(order => ({ id: order.id }))
-        } : undefined,
-      },
-      include: {
-        orders: true,
-        Driver: true,
-        Vehicle: true,
-      },
+      return { message: "Roteiro atualizado com sucesso.", delivery: updatedDelivery};
     });
-
-    return updatedDelivery;
   }
 
-  // 🎯 MÉTODO EXISTENTE: Buscar todos os roteiros
   async findAll(tenantId: string) {
     return this.prisma.delivery.findMany({
-      where: { tenantId },
+      where: { tenantId, status: { not: DeliveryStatus.REJEITADO } }, // Opcional: não mostrar rejeitados por padrão
       include: {
-        orders: {
-          orderBy: { sorting: 'asc' }
-        },
-        Driver: true,
-        Vehicle: true,
-        liberacoes: {
-          include: {
-            User: true,
-          },
-        },
+        orders: { orderBy: { sorting: 'asc' } },
+        Driver: true, Vehicle: true,
+        approvals: { include: { User: true }, orderBy: { createdAt: 'desc' } },
       },
-      orderBy: { dataInicio: 'desc' }
+      orderBy: { dataInicio: 'desc' },
     });
   }
 
-  // 🎯 MÉTODO EXISTENTE: Buscar roteiro específico
   async findOne(id: string, tenantId: string) {
     const delivery = await this.prisma.delivery.findFirst({
       where: { id, tenantId },
       include: {
-        orders: {
-          orderBy: { sorting: 'asc' }
-        },
-        Driver: true,
-        Vehicle: true,
-        liberacoes: {
-          include: {
-            User: true,
-          },
-        },
+        orders: { orderBy: { sorting: 'asc' } },
+        Driver: true, Vehicle: true,
+        approvals: { include: { User: true }, orderBy: { createdAt: 'desc' } },
       },
     });
-
-    if (!delivery) {
-      throw new NotFoundException('Roteiro não encontrado');
-    }
-
+    if (!delivery) throw new NotFoundException(`Roteiro ${id} não encontrado.`);
     return delivery;
   }
 
-  // 🎯 ATUALIZADO: Remover roteiro
-  async remove(id: string, tenantId: string) {
+  async remove(id: string, tenantId: string, userId: string) {
     const delivery = await this.findOne(id, tenantId);
 
-    if (delivery.status === 'Finalizado') {
-      throw new BadRequestException('Não é possível excluir um roteiro finalizado.');
+    if (delivery.status === DeliveryStatus.INICIADO) {
+      const hasNonFinalizedOrders = delivery.orders.some(o => o.status === OrderStatus.EM_ENTREGA || o.status === OrderStatus.EM_ROTA);
+      if (hasNonFinalizedOrders){
+        throw new BadRequestException(`Não é possível excluir um roteiro '${DeliveryStatus.INICIADO}' com pedidos ativos ou em entrega. Conclua ou remova os pedidos primeiro.`);
+      }
     }
+    // Para roteiros 'A LIBERAR', 'FINALIZADO', 'REJEITADO', a exclusão é permitida.
 
-    // Verificar pagamentos baixados
     const hasPayments = await this.prisma.accountsPayable.findFirst({
-      where: {
-        paymentDeliveries: { some: { deliveryId: id } },
-        status: 'Baixado',
-      },
+      where: { paymentDeliveries: { some: { deliveryId: id } }, status: 'Baixado' },
     });
+    if (hasPayments) throw new BadRequestException('Não é possível excluir roteiro com pagamentos baixados.');
 
-    if (hasPayments) {
-      throw new BadRequestException('Não é possível excluir um roteiro com pagamentos baixados.');
-    }
-
-    // Remover em transação
     await this.prisma.$transaction(async (tx) => {
-      // Voltar orders para Pendente
       await tx.order.updateMany({
         where: { deliveryId: id },
-        data: { 
-          status: 'Pendente',
-          deliveryId: null,
-          sorting: null,
-          completedAt: null
-        },
+        data: { status: OrderStatus.SEM_ROTA, deliveryId: null, sorting: null, startedAt: null, completedAt: null, motivoNaoEntrega: null, codigoMotivoNaoEntrega: null },
       });
-
-      // Limpar relacionamentos
-      await tx.paymentDelivery.deleteMany({
-        where: { deliveryId: id },
-      });
-
-      await tx.accountsPayable.deleteMany({
-        where: {
-          paymentDeliveries: { some: { deliveryId: id } },
-        },
-      });
-
-      await tx.approval.deleteMany({
-        where: { deliveryId: id },
-      });
-
-      // Deletar roteiro
+      await tx.paymentDelivery.deleteMany({ where: { deliveryId: id } });
+      await tx.approval.deleteMany({where: {deliveryId: id}}); // Remover histórico de aprovação do roteiro
       await tx.delivery.delete({ where: { id } });
     });
 
-    this.logger.log(`Roteiro removido: ${id}`);
-
-    return { message: 'Roteiro removido com sucesso' };
+    this.logger.log(`Roteiro ${id} removido pelo usuário ${userId}.`);
+    return { message: 'Roteiro removido com sucesso. Pedidos desvinculados e aprovações limpas.' };
   }
 
-  // 🎯 ATUALIZADO: Remover order de roteiro
-  async removeOrderFromDelivery(deliveryId: string, orderId: string, tenantId: string) {
+  async removeOrderFromDelivery(deliveryId: string, orderId: string, tenantId: string, userId: string) {
     const delivery = await this.prisma.delivery.findFirst({
       where: { id: deliveryId, tenantId },
       include: { orders: true },
     });
 
-    if (!delivery) {
-      throw new NotFoundException('Roteiro não encontrado');
-    }
-
-    if (delivery.status === 'Finalizado') {
-      throw new BadRequestException('Não é possível remover pedidos de um roteiro finalizado.');
+    if (!delivery) throw new NotFoundException(`Roteiro ${deliveryId} não encontrado.`);
+    if ([DeliveryStatus.FINALIZADO, DeliveryStatus.REJEITADO].includes(delivery.status as DeliveryStatus)) {
+      throw new BadRequestException(`Não é possível remover pedidos de um roteiro '${delivery.status}'.`);
     }
 
     const order = delivery.orders.find(o => o.id === orderId);
-    if (!order) {
-      throw new NotFoundException('Pedido não encontrado neste roteiro.');
+    if (!order) throw new NotFoundException(`Pedido ${orderId} não encontrado neste roteiro.`);
+
+    if ([OrderStatus.ENTREGUE, OrderStatus.NAO_ENTREGUE, OrderStatus.EM_ENTREGA].includes(order.status as OrderStatus)) {
+      throw new BadRequestException(`Pedido ${order.numero} está '${order.status}' e não pode ser removido diretamente. Reverta o status primeiro se necessário.`);
     }
+    // Se o pedido está EM_ROTA ou EM_ROTA_AGUARDANDO_LIBERACAO, pode ser removido.
 
-    if (['Entrega Finalizada', 'Entrega Retornada'].includes(order.status)) {
-      throw new BadRequestException('Não é possível remover um pedido que já foi finalizado.');
-    }
-
-    // Remover em transação
-    const result = await this.prisma.$transaction(async (tx) => {
-      // Desconectar order
-      const updatedDelivery = await tx.delivery.update({
-        where: { id: deliveryId },
-        data: {
-          orders: {
-            disconnect: { id: orderId },
-          },
-        },
-        include: { 
-          orders: {
-            orderBy: { sorting: 'asc' }
-          }
-        },
-      });
-
-      // Voltar order para Pendente
+    const updatedDelivery = await this.prisma.$transaction(async (tx) => {
       await tx.order.update({
         where: { id: orderId },
-        data: { 
-          status: 'Pendente',
-          deliveryId: null,
-          sorting: null,
-          completedAt: null
-        },
+        data: { status: OrderStatus.SEM_ROTA, deliveryId: null, sorting: null, startedAt: null, completedAt: null, motivoNaoEntrega: null, codigoMotivoNaoEntrega: null },
       });
 
-      return updatedDelivery;
+      const deliveryAfterUpdate = await tx.delivery.update({
+        where: { id: deliveryId },
+        data: { orders: { disconnect: { id: orderId } } }, // Apenas desconectar
+        include: { orders: { orderBy: { sorting: 'asc' } } },
+      });
+
+      // Recalcular totais e verificar se precisa de nova liberação
+      const tenantData = await tx.tenant.findUnique({where: { id: tenantId }});
+      if (tenantData) {
+          const finalOrdersInDelivery = deliveryAfterUpdate.orders;
+          const totalPeso = finalOrdersInDelivery.reduce((sum, o) => sum + (o.peso || 0), 0);
+          const totalValor = finalOrdersInDelivery.reduce((sum, o) => sum + (o.valor || 0), 0);
+          const valorFrete = await this.calculateFreight(finalOrdersInDelivery, delivery.veiculoId, tenantId); // Usar veiculoId original do roteiro
+
+          await tx.delivery.update({
+              where: { id: deliveryId },
+              data: { totalPeso, totalValor, valorFrete }
+          });
+
+          if (delivery.status === DeliveryStatus.INICIADO) { // Só reavaliar se estava INICIADO
+              const approvalCheckAfterUpdate = await this.checkTenantRulesForAutoApproval(
+                  tenantData, totalValor, totalPeso, finalOrdersInDelivery.length, valorFrete
+              );
+              if (approvalCheckAfterUpdate.needsApproval) {
+                  await tx.delivery.update({
+                      where: { id: deliveryId },
+                      data: { status: DeliveryStatus.A_LIBERAR }
+                  });
+                  await tx.order.updateMany({
+                      where: { deliveryId: deliveryId, status: OrderStatus.EM_ROTA },
+                      data: { status: OrderStatus.EM_ROTA_AGUARDANDO_LIBERACAO }
+                  });
+                  this.logger.log(`Roteiro ${deliveryId} (após remoção de pedido) agora requer nova liberação. Motivos: ${approvalCheckAfterUpdate.reasons.join('; ')}`);
+                   await tx.approval.create({
+                        data: {
+                            deliveryId: deliveryId,
+                            tenantId,
+                            userId, // Usuário que removeu o pedido
+                            action: 'RE_APPROVAL_NEEDED',
+                            motivo: `Remoção do pedido ${order.numero} fez o roteiro (${approvalCheckAfterUpdate.reasons.join('; ')}) exigir nova liberação.`,
+                            createdAt: new Date(),
+                        }
+                    });
+              }
+          }
+          if (finalOrdersInDelivery.length === 0 && delivery.status !== DeliveryStatus.A_LIBERAR) { // Se um roteiro A_LIBERAR ficar vazio, pode ser que deva ser excluído ou tratado.
+              this.logger.warn(`Roteiro ${deliveryId} ficou sem pedidos após a remoção do pedido ${orderId}. Considere regras para roteiros vazios.`);
+              // Ex: await tx.delivery.delete({ where: { id: deliveryId }}); // Se for o caso
+          }
+      }
+      return deliveryAfterUpdate;
     });
 
-    this.logger.log(`Order removida do roteiro: ${orderId} do roteiro ${deliveryId}`);
-
-    return result;
+    this.logger.log(`Pedido ${orderId} removido do roteiro ${deliveryId} pelo usuário ${userId}.`);
+    return {message: `Pedido ${order.numero} removido do roteiro.`, delivery: updatedDelivery};
   }
 }

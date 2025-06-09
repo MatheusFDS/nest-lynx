@@ -12,6 +12,8 @@ export class StatisticsController {
     @Request() req,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
+    @Query('driverId') driverId: string = '',
+    @Query('includeDetails') includeDetails: boolean = false,
   ) {
     const tenantId = req.user.tenantId;
     
@@ -26,6 +28,6 @@ export class StatisticsController {
       throw new BadRequestException('Invalid date format');
     }
 
-    return this.statisticsService.getStatistics(tenantId, start, end);
+    return this.statisticsService.getStatistics(tenantId, start, end, driverId, includeDetails);
   }
 }

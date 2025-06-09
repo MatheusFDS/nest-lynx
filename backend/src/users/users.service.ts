@@ -9,6 +9,9 @@ type PrismaTransactionalClient = Omit<PrismaClient, "$connect" | "$disconnect" |
 
 @Injectable()
 export class UsersService {
+  activate(id: string, tenantId: any) {
+    throw new Error('Method not implemented.');
+  }
   constructor(private prisma: PrismaService) {}
 
   async create(data: CreateUserDto, tenantId: string) {

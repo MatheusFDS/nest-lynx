@@ -96,8 +96,8 @@ const DriversPage: React.FC = () => {
       driver.name.toLowerCase().includes(term.toLowerCase()) ||
       driver.cpf.toLowerCase().includes(term.toLowerCase()) ||
       driver.license.toLowerCase().includes(term.toLowerCase()) ||
-      (driver.User?.name.toLowerCase().includes(term.toLowerCase()) ?? false) ||
-      (driver.User?.email.toLowerCase().includes(term.toLowerCase()) ?? false)
+      (driver.User?.name?.toLowerCase().includes(term.toLowerCase()) ?? false) ||
+      (driver.User?.email?.toLowerCase().includes(term.toLowerCase()) ?? false)
     );
     setFilteredDrivers(filtered);
   };
@@ -173,10 +173,6 @@ const handleAddDriver = async () => {
 
   return (
     <Container>
-      <Typography variant="h4" gutterBottom>
-        Gerenciar Motoristas
-      </Typography>
-
       {/* Campo de Busca */}
       <TextField
         label="Buscar Motoristas"

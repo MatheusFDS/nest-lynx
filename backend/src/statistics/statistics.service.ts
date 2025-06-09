@@ -3,9 +3,18 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class StatisticsService {
+  getRevenueStatistics(tenantId: any, start: Date, end: Date, selectedGroupBy: string) {
+    throw new Error('Method not implemented.');
+  }
+  getPerformanceStatistics(tenantId: any, selectedPeriod: string) {
+    throw new Error('Method not implemented.');
+  }
+  getDashboardStatistics(tenantId: any, startDate: Date, endDate: Date) {
+    throw new Error('Method not implemented.');
+  }
   constructor(private prisma: PrismaService) {}
 
-  async getStatistics(tenantId: string, startDate: Date, endDate: Date) {
+  async getStatistics(tenantId: string, startDate: Date, endDate: Date, driverId: string, shouldIncludeDetails: boolean) {
     // Define a common date filter
     const dateFilter = {
       gte: startDate,

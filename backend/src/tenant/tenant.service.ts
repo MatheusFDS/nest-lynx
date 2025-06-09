@@ -8,6 +8,12 @@ import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class TenantService {
+  activateTenant(tenantId: string, userId: string, reason: string) {
+    throw new Error('Method not implemented.');
+  }
+  getTenantSettings(tenantId: string, userId: string, settings: any) {
+    throw new Error('Method not implemented.');
+  }
   constructor(
     private prisma: PrismaService,
     private usersService: UsersService,

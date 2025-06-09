@@ -7,10 +7,11 @@ import {
   ArrayMinSize,
   IsOptional,
   IsNumber,
+  IsDateString, // Adicionar para validação de data
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-class OrderReferenceDto {
+export class OrderReferenceDto { // Mantido como na sua definição original
   @IsString()
   @IsNotEmpty()
   id: string;
@@ -33,12 +34,14 @@ export class CreateDeliveryDto {
   @ValidateNested({ each: true })
   @ArrayMinSize(1)
   @Type(() => OrderReferenceDto)
-  orders: OrderReferenceDto[]; // Agora espera apenas {id, sorting}
+  orders: OrderReferenceDto[];
 
   @IsString()
   @IsOptional()
   observacao?: string;
 
-  // Os campos valorFrete, totalPeso, totalValor e tenantId
-  // foram removidos, pois serão tratados pelo backend.
+  @IsOptional()
+  @IsDateString() // Adicionado para permitir string no formato de data ISO
+  dataInicio?: string; // Campo adicionado
+
 }

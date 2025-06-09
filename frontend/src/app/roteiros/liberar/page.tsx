@@ -13,16 +13,16 @@ import {
   Badge,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { Delivery } from '../../types';
-import withAuth from '../hoc/withAuth';
-import RealeseTable from '../components/realese/RealeseTable';
-import ReleaseDialog from '../components/realese/ReleaseDialog';
-import RejectDialog from '../components/realese/RejectDialog';
-import DetailsDialog from '../components/realese/DetailsDialog';
-import FilterBar from '../components/realese/FilterBar';
-import SkeletonLoader from '../components/SkeletonLoader';
-import { useLoading } from '../context/LoadingContext';
-import { useMessage } from '../context/MessageContext'; // Importar o contexto de mensagens
+import { Delivery } from '../../../types';
+import withAuth from '../../hoc/withAuth';
+import RealeseTable from '../../components/realese/RealeseTable';
+import ReleaseDialog from '../../components/realese/ReleaseDialog';
+import RejectDialog from '../../components/realese/RejectDialog';
+import DetailsDialog from '../../components/realese/DetailsDialog';
+import FilterBar from '../../components/realese/FilterBar';
+import SkeletonLoader from '../../components/SkeletonLoader';
+import { useLoading } from '../../context/LoadingContext';
+import { useMessage } from '../../context/MessageContext'; // Importar o contexto de mensagens
 import { fetchDeliveries, rejectRelease, releaseDelivery } from '@/services/deliveryService';
 
 // Estilização personalizada para o botão
