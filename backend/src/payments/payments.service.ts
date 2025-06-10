@@ -3,6 +3,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 
+// Enum para status de pagamentos
+export enum PaymentStatus {
+  PENDENTE = 'Pendente',
+  PAGO = 'Pago',
+  BAIXADO = 'Baixado',
+  CANCELADO = 'Cancelado'
+}
+
 @Injectable()
 export class PaymentsService {
   findByDriver(driverId: any, tenantId: string): any {
@@ -17,7 +25,7 @@ export class PaymentsService {
 
     const paymentData: any = {
       amount,
-      status,
+      status: status || PaymentStatus.PENDENTE,
       tenantId,
       motoristaId,
       isGroup: false,
@@ -100,8 +108,8 @@ export class PaymentsService {
       throw new BadRequestException('Não é possível cancelar a baixa de um pagamento parte de um agrupamento.');
     }
 
-    if (payment.status === 'Baixado' && updatePaymentDto.status !== 'Pendente') {
-      throw new BadRequestException('Não é possível atualizar um pagamento baixado para outro status além de "Pendente".');
+    if (payment.status === PaymentStatus.BAIXADO && updatePaymentDto.status !== PaymentStatus.PENDENTE) {
+      throw new BadRequestException(`Não é possível atualizar um pagamento baixado para outro status além de "${PaymentStatus.PENDENTE}".`);
     }
 
     return this.prisma.accountsPayable.update({
@@ -127,7 +135,7 @@ export class PaymentsService {
       where: { id },
     });
 
-    if (!payment || payment.status === 'Baixado' || payment.isGroup || payment.groupedPaymentId) {
+    if (!payment || payment.status === PaymentStatus.BAIXADO || payment.isGroup || payment.groupedPaymentId) {
       throw new BadRequestException('Não é possível excluir um pagamento baixado, agrupado ou parte de um agrupamento.');
     }
 
@@ -180,7 +188,7 @@ export class PaymentsService {
         throw new Error('Todos os pagamentos devem ser do mesmo motorista para serem agrupados.');
       }
 
-      if (payments.some(payment => payment.status === 'Baixado')) {
+      if (payments.some(payment => payment.status === PaymentStatus.BAIXADO)) {
         throw new Error('Não é possível agrupar pagamentos que já foram baixados.');
       }
 
@@ -190,7 +198,7 @@ export class PaymentsService {
       const groupedPayment = await this.prisma.accountsPayable.create({
         data: {
           amount: totalAmount,
-          status: 'Pendente',
+          status: PaymentStatus.PENDENTE,
           tenantId,
           motoristaId,
           isGroup: true,
@@ -217,7 +225,7 @@ export class PaymentsService {
           id: { in: paymentIds },
         },
         data: {
-          status: 'Baixado',
+          status: PaymentStatus.BAIXADO,
           groupedPaymentId: groupedPayment.id,
         },
       });
@@ -251,13 +259,13 @@ export class PaymentsService {
         throw new BadRequestException('Pagamento não encontrado ou não é um pagamento agrupado.');
       }
 
-      if (payment.status === 'Baixado') {
+      if (payment.status === PaymentStatus.BAIXADO) {
         throw new BadRequestException('Não é possível desagrupar um pagamento baixado. Cancele a baixa primeiro.');
       }
 
       await this.prisma.accountsPayable.updateMany({
         where: { groupedPaymentId: paymentId },
-        data: { status: 'Pendente', groupedPaymentId: null },
+        data: { status: PaymentStatus.PENDENTE, groupedPaymentId: null },
       });
 
       return this.prisma.accountsPayable.delete({

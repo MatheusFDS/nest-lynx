@@ -1,274 +1,325 @@
-// src/theme.ts
-
+// src/theme/theme.ts
 import { createTheme } from '@mui/material/styles';
 
+// ========================================
+// DESIGN TOKENS CORPORATIVOS
+// ========================================
+
+export const tokens = {
+  // Cores mais sérias/corporativas
+  colors: {
+    primary: '#1976d2',      // Azul mais sério
+    secondary: '#424242',     // Cinza neutro
+    accent: '#0288d1',       // Azul claro
+    success: '#2e7d32',      // Verde mais sério
+    warning: '#ed6c02',      // Laranja mais sério
+    error: '#d32f2f',        // Vermelho mais sério
+    info: '#0288d1',         // Azul informativo
+  },
+  
+  // Backgrounds neutros
+  backgrounds: {
+    light: '#fafafa',
+    dark: '#121212',
+    surfaceLight: '#ffffff',
+    surfaceDark: '#1e1e1e',
+  },
+  
+  // Textos padrão
+  text: {
+    primaryDark: '#ffffff',
+    secondaryDark: '#b3b3b3',
+    primaryLight: '#212121',
+    secondaryLight: '#757575',
+  },
+  
+  // Espaçamentos reduzidos
+  spacing: {
+    xs: 4,
+    sm: 8,
+    md: 16,
+    lg: 24,
+    xl: 32,
+  },
+  
+  // Border radius mais reto/corporativo
+  radius: {
+    sm: 4,
+    md: 6,
+    lg: 8,
+    xl: 12,
+  },
+  
+  // Shadows mais sutis
+  shadows: {
+    sm: '0 1px 3px rgba(0,0,0,0.12)',
+    md: '0 2px 6px rgba(0,0,0,0.15)',
+    lg: '0 4px 12px rgba(0,0,0,0.15)',
+  },
+};
+
+// ========================================
+// TIPOGRAFIA CORPORATIVA
+// ========================================
+
 const commonTypography = {
-  fontFamily: '"Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif',
+  fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
   h1: {
-    fontSize: '2.25rem',
-    fontWeight: 800,
+    fontSize: '2rem',
+    fontWeight: 500,
     lineHeight: 1.2,
-    letterSpacing: '-0.025em',
   },
   h2: {
-    fontSize: '1.875rem',
-    fontWeight: 700,
+    fontSize: '1.75rem',
+    fontWeight: 500,
     lineHeight: 1.3,
-    letterSpacing: '-0.02em',
   },
   h3: {
     fontSize: '1.5rem',
-    fontWeight: 600,
+    fontWeight: 500,
     lineHeight: 1.4,
-    letterSpacing: '-0.015em',
   },
   h4: {
     fontSize: '1.25rem',
-    fontWeight: 600,
+    fontWeight: 500,
     lineHeight: 1.4,
   },
   h5: {
     fontSize: '1.125rem',
-    fontWeight: 600,
+    fontWeight: 500,
+    lineHeight: 1.4,
+  },
+  h6: {
+    fontSize: '1rem',
+    fontWeight: 500,
     lineHeight: 1.4,
   },
   body1: {
-    fontSize: '1rem',
-    lineHeight: 1.6,
-    fontWeight: 400,
-  },
-  body2: {
     fontSize: '0.875rem',
     lineHeight: 1.5,
     fontWeight: 400,
   },
+  body2: {
+    fontSize: '0.75rem',
+    lineHeight: 1.4,
+    fontWeight: 400,
+  },
   button: {
     textTransform: 'none' as const,
-    fontWeight: 600,
+    fontWeight: 500,
     fontSize: '0.875rem',
-    letterSpacing: '0.01em',
   },
 };
 
-const commonComponents = {
-  MuiButton: {
-    styleOverrides: {
-      root: {
-        boxShadow: 'none',
-        padding: '10px 24px',
-        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        '&:hover': {
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          transform: 'translateY(-1px)',
-        },
-        '&:active': {
-          transform: 'translateY(0)',
-        },
-      },
-      contained: {
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        '&:hover': {
-          background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
-        },
-      },
-      outlined: {
-        borderWidth: '1.5px',
-        '&:hover': {
-          borderWidth: '1.5px',
-        },
-      },
-    },
-  },
-  MuiCard: {
-    styleOverrides: {
-      root: {
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        backdropFilter: 'blur(10px)',
-        background: 'rgba(255, 255, 255, 0.05)',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
-        },
-      },
-    },
-  },
-  MuiTextField: {
-    styleOverrides: {
-      root: {
-        '& .MuiOutlinedInput-root': {
-          backgroundColor: 'rgba(2, 1, 1, 0.05)',
-          backdropFilter: 'blur(10px)',
-          transition: 'all 0.2s ease',
-          '&:hover': {
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-          },
-          '&.Mui-focused': {
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)',
-          },
-        },
-      },
-    },
-  },
-  MuiPaper: {
-    styleOverrides: {
-      root: {
-        backdropFilter: 'blur(20px)',
-        background: 'rgba(255, 255, 255, 0.08)',
-        border: '1px solid rgba(255, 255, 255, 0.12)',
-      },
-    },
-  },
-  MuiAppBar: {
-    styleOverrides: {
-      root: {
-        backdropFilter: 'blur(20px)',
-        background: 'rgba(255, 255, 255, 0.1)',
-        border: 'none',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-      },
-    },
-  },
-};
+// ========================================
+// COMPONENTES CORPORATIVOS
+// ========================================
 
-const themeColors = {
-  primary: '#667eea',
-  secondary: '#764ba2',
-  accent: '#f093fb',
-  success: '#4ade80',
-  warning: '#fbbf24',
-  error: '#f87171',
-  backgroundDark: '#0f0f23',
-  backgroundLight: '#fafbfc',
-  surfaceDark: '#1a1a2e',
-  surfaceLight: '#ffffff',
-  textPrimaryDark: '#f8fafc',    // Texto claro para fundo escuro
-  textSecondaryDark: '#94a3b8',  // Texto secundário para fundo escuro
-  textPrimaryLight: '#1e293b',   // Texto escuro para fundo claro
-  textSecondaryLight: '#64748b', // Texto secundário para fundo claro
-};
-
-const lightTheme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: themeColors.primary,
-      light: '#8b9aed',
-      dark: '#4c63d2',
-    },
-    secondary: {
-      main: themeColors.secondary,
-      light: '#9575cd',
-      dark: '#5e35b1',
-    },
-    background: {
-      default: themeColors.backgroundLight,
-      paper: themeColors.surfaceLight,
-    },
-    text: {
-      primary: themeColors.textPrimaryLight,
-      secondary: themeColors.textSecondaryLight,
-    },
-    success: {
-      main: themeColors.success,
-    },
-    warning: {
-      main: themeColors.warning,
-    },
-    error: {
-      main: themeColors.error,
-    },
-  },
-  typography: commonTypography,
-  shape: {
-    borderRadius: 12,
-  },
-  components: {
-    ...commonComponents,
-    MuiCard: {
+const createComponents = (mode: 'light' | 'dark') => {
+  const isDark = mode === 'dark';
+  
+  return {
+    MuiButton: {
       styleOverrides: {
         root: {
-          border: '1px solid rgba(30, 41, 59, 0.2)',
-          background: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(10px)',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          borderRadius: tokens.radius.sm,
+          padding: '8px 16px',
+          boxShadow: 'none',
+          textTransform: 'none' as const,
+          fontWeight: 500,
           '&:hover': {
-            transform: 'translateY(-4px)',
-            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
-            border: '1px solid rgba(102, 126, 234, 0.3)',
+            boxShadow: 'none',
+          },
+        },
+        contained: {
+          backgroundColor: tokens.colors.primary,
+          color: 'white',
+          '&:hover': {
+            backgroundColor: '#1565c0',
+          },
+        },
+        outlined: {
+          borderColor: tokens.colors.primary,
+          color: tokens.colors.primary,
+          '&:hover': {
+            backgroundColor: isDark ? 'rgba(25, 118, 210, 0.08)' : 'rgba(25, 118, 210, 0.04)',
           },
         },
       },
     },
+    
     MuiTextField: {
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            backgroundColor: 'rgba(30, 41, 59, 0.08)',
-            border: '1px solid rgba(30, 41, 59, 0.2)',
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              backgroundColor: 'rgba(30, 41, 59, 0.12)',
-              borderColor: 'rgba(102, 126, 234, 0.5)',
+            borderRadius: tokens.radius.sm,
+            '& fieldset': {
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.23)' : 'rgba(0, 0, 0, 0.23)',
             },
-            '&.Mui-focused': {
-              backgroundColor: 'rgba(102, 126, 234, 0.08)',
-              borderColor: 'rgba(102, 126, 234, 0.8)',
-              boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.15)',
+            '&:hover fieldset': {
+              borderColor: tokens.colors.primary,
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: tokens.colors.primary,
+              borderWidth: '2px',
             },
           },
         },
       },
     },
-    MuiPaper: {
+    
+    MuiCard: {
       styleOverrides: {
         root: {
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(30, 41, 59, 0.15)',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+          borderRadius: tokens.radius.md,
+          boxShadow: tokens.shadows.sm,
+          border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)'}`,
         },
       },
     },
+    
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: tokens.radius.md,
+          backgroundImage: 'none',
+        },
+      },
+    },
+    
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: isDark ? '#1e1e1e' : '#ffffff',
+          color: isDark ? '#ffffff' : '#212121',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+        },
+      },
+    },
+    
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          borderRight: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)'}`,
+          backgroundColor: isDark ? '#1e1e1e' : '#fafafa',
+        },
+      },
+    },
+    
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: tokens.radius.sm,
+          '&.Mui-selected': {
+            backgroundColor: isDark ? 'rgba(25, 118, 210, 0.12)' : 'rgba(25, 118, 210, 0.08)',
+            '&:hover': {
+              backgroundColor: isDark ? 'rgba(25, 118, 210, 0.16)' : 'rgba(25, 118, 210, 0.12)',
+            },
+          },
+        },
+      },
+    },
+    
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          borderRadius: tokens.radius.lg,
+        },
+      },
+    },
+    
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: tokens.radius.sm,
+        },
+      },
+    },
+  };
+};
+
+// ========================================
+// TEMA LIGHT
+// ========================================
+
+export const lightTheme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: {
+      main: tokens.colors.primary,
+      light: '#42a5f5',
+      dark: '#1565c0',
+    },
+    secondary: {
+      main: tokens.colors.secondary,
+      light: '#6d6d6d',
+      dark: '#2e2e2e',
+    },
+    background: {
+      default: tokens.backgrounds.light,
+      paper: tokens.backgrounds.surfaceLight,
+    },
+    text: {
+      primary: tokens.text.primaryLight,
+      secondary: tokens.text.secondaryLight,
+    },
+    success: { main: tokens.colors.success },
+    warning: { main: tokens.colors.warning },
+    error: { main: tokens.colors.error },
+    info: { main: tokens.colors.info },
+    divider: 'rgba(0, 0, 0, 0.12)',
   },
+  typography: commonTypography,
+  shape: { borderRadius: tokens.radius.sm },
+  components: createComponents('light'),
 });
 
-const darkTheme = createTheme({
+// ========================================
+// TEMA DARK
+// ========================================
+
+export const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: themeColors.primary,
-      light: '#8b9aed',
-      dark: '#4c63d2',
+      main: tokens.colors.primary,
+      light: '#42a5f5',
+      dark: '#1565c0',
     },
     secondary: {
-      main: themeColors.secondary,
-      light: '#9575cd',
-      dark: '#5e35b1',
+      main: tokens.colors.secondary,
+      light: '#6d6d6d',
+      dark: '#2e2e2e',
     },
     background: {
-      default: themeColors.backgroundDark,
-      paper: themeColors.surfaceDark,
+      default: tokens.backgrounds.dark,
+      paper: tokens.backgrounds.surfaceDark,
     },
     text: {
-      primary: themeColors.textPrimaryDark,
-      secondary: themeColors.textSecondaryDark,
+      primary: tokens.text.primaryDark,
+      secondary: tokens.text.secondaryDark,
     },
-    success: {
-      main: themeColors.success,
-    },
-    warning: {
-      main: themeColors.warning,
-    },
-    error: {
-      main: themeColors.error,
-    },
+    success: { main: tokens.colors.success },
+    warning: { main: tokens.colors.warning },
+    error: { main: tokens.colors.error },
+    info: { main: tokens.colors.info },
+    divider: 'rgba(255, 255, 255, 0.12)',
   },
   typography: commonTypography,
-  shape: {
-  },
-  components: commonComponents,
+  shape: { borderRadius: tokens.radius.sm },
+  components: createComponents('dark'),
 });
 
-export { lightTheme, darkTheme };
+// ========================================
+// HELPER FUNCTIONS
+// ========================================
+
+export const getTheme = (mode: 'light' | 'dark') => {
+  return mode === 'dark' ? darkTheme : lightTheme;
+};
+
+// ========================================
+// EXPORTS
+// ========================================
+
+export default { lightTheme, darkTheme, getTheme, tokens };

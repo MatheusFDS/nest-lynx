@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { OrderStatus, DeliveryStatus, PaymentStatus } from '../types/status.enum';
 
 @Injectable()
 export class StatisticsService {
@@ -24,7 +25,7 @@ export class StatisticsService {
     const ordersInRoute = await this.prisma.order.count({
       where: {
         tenantId,
-        status: 'Em Rota',
+        status: OrderStatus.EM_ROTA,
         createdAt: dateFilter,
       },
     });
@@ -32,7 +33,7 @@ export class StatisticsService {
     const ordersFinalized = await this.prisma.order.count({
       where: {
         tenantId,
-        status: 'Finalizado',
+        status: OrderStatus.ENTREGUE,
         createdAt: dateFilter,
       },
     });
@@ -40,7 +41,7 @@ export class StatisticsService {
     const ordersPending = await this.prisma.order.count({
       where: {
         tenantId,
-        status: 'Pendente',
+        status: OrderStatus.SEM_ROTA,
         createdAt: dateFilter,
       },
     });
@@ -48,7 +49,7 @@ export class StatisticsService {
     const freightsToPay = await this.prisma.accountsPayable.count({
       where: {
         tenantId,
-        status: 'Pendente',
+        status: PaymentStatus.PENDENTE,
         createdAt: dateFilter,
       },
     });
@@ -56,7 +57,7 @@ export class StatisticsService {
     const freightsPaid = await this.prisma.accountsPayable.count({
       where: {
         tenantId,
-        status: 'Baixado',
+        status: PaymentStatus.PAGO,
         createdAt: dateFilter,
       },
     });
@@ -75,7 +76,7 @@ export class StatisticsService {
     const deliveriesInRoute = await this.prisma.delivery.count({
       where: {
         tenantId,
-        status: 'Em Rota',
+        status: DeliveryStatus.INICIADO,
         createdAt: dateFilter,
       },
     });
@@ -83,7 +84,7 @@ export class StatisticsService {
     const deliveriesFinalized = await this.prisma.delivery.count({
       where: {
         tenantId,
-        status: 'Finalizado',
+        status: DeliveryStatus.FINALIZADO,
         createdAt: dateFilter,
       },
     });

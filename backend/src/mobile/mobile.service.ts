@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DeliveryService } from '../delivery/delivery.service';
-import { OrderStatus, DeliveryStatus } from '../types/status.enum';
+import { OrderStatus, DeliveryStatus, PaymentStatus } from '../types/status.enum';
 import * as sharp from 'sharp';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -147,7 +147,7 @@ export class MobileService {
       let paymentStatus: 'pago' | 'nao_pago' = 'nao_pago';
       if (delivery.paymentDeliveries && delivery.paymentDeliveries.length > 0) {
         const isPaid = delivery.paymentDeliveries.some(
-          pd => pd.accountsPayable?.status?.toUpperCase() === 'PAGO'
+          pd => pd.accountsPayable?.status?.toUpperCase() === PaymentStatus.PAGO.toUpperCase()
         );
         if (isPaid) {
           paymentStatus = 'pago';
@@ -258,7 +258,7 @@ export class MobileService {
       let paymentStatus: 'pago' | 'nao_pago' = 'nao_pago';
       if (delivery.paymentDeliveries && delivery.paymentDeliveries.length > 0) {
         const isPaid = delivery.paymentDeliveries.some(
-          pd => pd.accountsPayable?.status?.toUpperCase() === 'PAGO'
+          pd => pd.accountsPayable?.status?.toUpperCase() === PaymentStatus.PAGO.toUpperCase()
         );
         if (isPaid) {
           paymentStatus = 'pago';
@@ -329,7 +329,7 @@ export class MobileService {
       let isDeliveryPaid = false;
       if (delivery.paymentDeliveries && delivery.paymentDeliveries.length > 0) {
         isDeliveryPaid = delivery.paymentDeliveries.some(
-          pd => pd.accountsPayable?.status?.toUpperCase() === 'PAGO'
+          pd => pd.accountsPayable?.status?.toUpperCase() === PaymentStatus.PAGO.toUpperCase()
         );
       }
       if (!isDeliveryPaid) {
@@ -652,7 +652,7 @@ export class MobileService {
         return 'rejeitado';
       default:
         this.logger.warn(`[mapRouteStatusToMobile] Status de roteiro desconhecido do backend: ${statusBackend}`);
-        return statusBackend;
+        return String(statusBackend);
     }
   }
 
@@ -672,7 +672,7 @@ export class MobileService {
         return 'nao_entregue';
       default:
         this.logger.warn(`[mapOrderStatusToMobile] Status de pedido desconhecido do backend: ${statusBackend}`);
-        return statusBackend;
+        return String(statusBackend);
     }
   }
 
@@ -689,6 +689,23 @@ export class MobileService {
         return OrderStatus.NAO_ENTREGUE;
       default:
         this.logger.warn(`[mapMobileToOrderStatus] Status de pedido desconhecido do mobile: ${statusMobile}`);
+        return null;
+    }
+  }
+
+  private mapMobileToDeliveryStatus(statusMobile: string): DeliveryStatus | null {
+    switch (statusMobile?.toLowerCase()) {
+      case 'a_liberar':
+        return DeliveryStatus.A_LIBERAR;
+      case 'iniciado':
+      case 'pendente':
+        return DeliveryStatus.INICIADO;
+      case 'finalizado':
+        return DeliveryStatus.FINALIZADO;
+      case 'rejeitado':
+        return DeliveryStatus.REJEITADO;
+      default:
+        this.logger.warn(`[mapMobileToDeliveryStatus] Status de roteiro desconhecido do mobile: ${statusMobile}`);
         return null;
     }
   }

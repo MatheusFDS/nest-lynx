@@ -1,374 +1,957 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Typography,
-  Container,
   Grid,
   Button,
-  Paper,
-  TextField,
-  FormControlLabel,
-  Checkbox,
+  Box,
+  Chip,
   Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
   DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  Stack,
+  Tooltip,
+  Card,
+  CardContent,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  InputAdornment,
+  Switch,
+  FormControlLabel,
+  Collapse,
   Badge,
+  Checkbox,
+  Paper,
+  Table,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  TextField,
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import { Payment, Delivery, Direction } from '../../types';
-import withAuth from '../hoc/withAuth';
 import {
-  fetchPayments,
-  updatePaymentStatus,
-  groupPayments,
-  ungroupPayments,
-  fetchDeliveryDetails,
-} from '../../services/paymentService';
-import { fetchDirections } from '../../services/auxiliaryService';
-import PaymentsTable from '../components/payments/PaymentsTable';
-import PaymentDetailsDialog from '../components/payments/PaymentDetailsDialog';
-import generateSummaryReport from '../components/payments/generateSummaryReport';
-import SkeletonLoader from '../components/SkeletonLoader';
-import { useLoading } from '../context/LoadingContext'; // Importar o LoadingContext
-import { useMessage } from '../context/MessageContext'; // Importar o contexto de mensagens
-import { Height } from '@mui/icons-material';
+  MonetizationOn,
+  AccountBalance,
+  CheckCircle,
+  PendingActions,
+  Group,
+  Visibility,
+  Payment as PaymentIcon,
+  Receipt,
+  TrendingUp,
+  Refresh,
+  FilterList,
+  Search,
+  Close,
+  GetApp,
+  GroupWork,
+  AccountBalanceWallet,
+} from '@mui/icons-material';
 
-const StyledButton = styled(Button)({
-  margin: '8px 0',
-  padding: '8px 16px',
-  backgroundColor: '#1976d2',
-  color: '#fff',
-  '&:hover': {
-    backgroundColor: '#115293',
-  },
-});
+import { 
+  type Payment, 
+  type Delivery,
+  type PaymentFilters,
+  PaymentStatus,
+  PAYMENT_STATUS_ARRAYS,
+  StatusHelper,
+} from '../../types';
+import DS from '../components/ds';
+import { useCrud, useFilters } from '../hooks';
+import withAuth from '../hoc/withAuth';
+import { useMessage } from '../context/MessageContext';
+import { useLoading } from '../context/LoadingContext';
+
+// ========================================
+// INTERFACES E TIPOS
+// ========================================
+
+interface PaymentStats {
+  total: number;
+  pending: number;
+  paid: number;
+  grouped: number;
+  totalValue: number;
+  pendingValue: number;
+  paidValue: number;
+  avgPaymentValue: number;
+}
+
+interface PaymentDetailsDialogProps {
+  open: boolean;
+  payment: Payment | null;
+  onClose: () => void;
+}
+
+interface GroupPaymentsDialogProps {
+  open: boolean;
+  selectedPayments: Payment[];
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+// ========================================
+// COMPONENTES AUXILIARES
+// ========================================
+
+const PaymentDetailsDialog: React.FC<PaymentDetailsDialogProps> = ({ 
+  open, 
+  payment, 
+  onClose 
+}) => (
+  <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Receipt color="primary" />
+        Detalhes do Pagamento
+      </Box>
+      <DS.IconButton onClick={onClose}>
+        <Close />
+      </DS.IconButton>
+    </DialogTitle>
+    <DialogContent>
+      {payment && (
+        <Box sx={{ pt: 1 }}>
+          {/* Informações Gerais */}
+          <Card sx={{ mb: 2 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>Informações Gerais</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Typography variant="caption" color="text.secondary">Status</Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    <DS.StatusChip status={payment.status} />
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="caption" color="text.secondary">Tipo</Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    <Chip
+                      label={payment.isGroup ? 'Agrupado' : 'Individual'}
+                      color={payment.isGroup ? 'secondary' : 'default'}
+                      size="small"
+                    />
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="caption" color="text.secondary">Data de Criação</Typography>
+                  <Typography variant="body2">
+                    {new Date(payment.createdAt).toLocaleString('pt-BR')}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="caption" color="text.secondary">Valor</Typography>
+                  <Typography variant="h6" color="success.main">
+                    {new Intl.NumberFormat('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    }).format(payment.amount || payment.value || 0)}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+
+          {/* Motorista */}
+          {payment.Driver && (
+            <Card sx={{ mb: 2 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Motorista</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <DS.Avatar dsVariant="gradient">
+                    {payment.Driver.name.charAt(0)}
+                  </DS.Avatar>
+                  <Box>
+                    <Typography variant="body1" fontWeight={600}>
+                      {payment.Driver.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      CPF: {payment.Driver.cpf}
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Entregas Relacionadas */}
+          {payment.paymentDeliveries && payment.paymentDeliveries.length > 0 && (
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Entregas Relacionadas ({payment.paymentDeliveries.length})
+                </Typography>
+                <List dense>
+                  {payment.paymentDeliveries.map((pd, index) => {
+                    const delivery = pd.delivery;
+                    if (!delivery) return null;
+                    
+                    return (
+                      <React.Fragment key={delivery.id}>
+                        <ListItem>
+                          <ListItemText
+                            primary={`Entrega ${delivery.id.substring(0, 8)}...`}
+                            secondary={
+                              <Box>
+                                <Typography variant="caption" component="span">
+                                  Motorista: {delivery.Driver?.name || 'N/A'}
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+                                  <Chip 
+                                    size="small" 
+                                    label={delivery.status} 
+                                    variant="outlined"
+                                  />
+                                  <Chip 
+                                    size="small" 
+                                    label={new Intl.NumberFormat('pt-BR', {
+                                      style: 'currency',
+                                      currency: 'BRL',
+                                    }).format(delivery.totalValor || 0)}
+                                    color="success"
+                                    variant="outlined"
+                                  />
+                                </Box>
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                        {index < payment.paymentDeliveries!.length - 1 && <Divider />}
+                      </React.Fragment>
+                    );
+                  })}
+                </List>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Descrição */}
+          {payment.description && (
+            <Card sx={{ mt: 2 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Descrição</Typography>
+                <Typography variant="body2">
+                  {payment.description}
+                </Typography>
+              </CardContent>
+            </Card>
+          )}
+        </Box>
+      )}
+    </DialogContent>
+  </Dialog>
+);
+
+const GroupPaymentsDialog: React.FC<GroupPaymentsDialogProps> = ({ 
+  open, 
+  selectedPayments, 
+  onClose, 
+  onConfirm 
+}) => {
+  const totalValue = selectedPayments.reduce((sum, p) => sum + (p.amount || p.value || 0), 0);
+  
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <GroupWork color="primary" />
+        Agrupar Pagamentos
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body1" sx={{ mb: 2 }}>
+          Confirma o agrupamento de <strong>{selectedPayments.length} pagamentos</strong>?
+        </Typography>
+        
+        <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1, mb: 2 }}>
+          <Typography variant="h6" color="success.main" textAlign="center">
+            Valor Total: {new Intl.NumberFormat('pt-BR', {
+              style: 'currency',
+              currency: 'BRL',
+            }).format(totalValue)}
+          </Typography>
+        </Box>
+
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Os pagamentos serão agrupados em um único registro para facilitar o processamento.
+        </Alert>
+
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Motorista</TableCell>
+                <TableCell align="right">Valor</TableCell>
+                <TableCell>Status</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {selectedPayments.map((payment) => (
+                <TableRow key={payment.id}>
+                  <TableCell>
+                    {payment.Driver?.name || 'N/A'}
+                  </TableCell>
+                  <TableCell align="right">
+                    {new Intl.NumberFormat('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    }).format(payment.amount || payment.value || 0)}
+                  </TableCell>
+                  <TableCell>
+                    <Chip size="small" label={payment.status} variant="outlined" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancelar</Button>
+        <DS.ActionButton dsVariant="primary" onClick={onConfirm}>
+          Confirmar Agrupamento
+        </DS.ActionButton>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+// ========================================
+// COMPONENTE PRINCIPAL
+// ========================================
 
 const PaymentsPage: React.FC = () => {
-  const { setLoading, isLoading } = useLoading();
-  const { showMessage } = useMessage(); // Hook para mensagens
+  const { showMessage } = useMessage();
+  const { setLoading } = useLoading();
 
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
-  const [directions, setDirections] = useState<Direction[]>([]);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-  const [grouped, setGrouped] = useState<boolean>(false);
-  const [paid, setPaid] = useState<boolean>(false);
-  const [pending, setPending] = useState<boolean>(true);
+  // Estados dos diálogos
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
-  const [detailsOpen, setDetailsOpen] = useState<boolean>(false);
-  const [selectedDeliveries, setSelectedDeliveries] = useState<Delivery[]>([]);
+  const [filterOpen, setFilterOpen] = useState(false);
 
-  const token = localStorage.getItem('token') || '';
+  // Hook CRUD para payments
+  const payments = useCrud<Payment>('/payments', { globalLoading: true });
 
-  const loadPayments = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [paymentsData, directionsData] = await Promise.all([
-        fetchPayments(token),
-        fetchDirections(token),
-      ]);
-      setPayments(paymentsData);
-      filterPayments(searchTerm, startDate, endDate, grouped, paid, pending, paymentsData);
-      setDirections(directionsData);
-     // showMessage('Pagamentos carregados com sucesso!', 'success'); // Mensagem de sucesso
-    } catch (error: unknown) {
-      console.error('Erro ao buscar pagamentos:', error);
-      showMessage('Falha ao buscar pagamentos.', 'error'); // Mensagem de erro
-    } finally {
-      setLoading(false);
-    }
-  }, [token, searchTerm, startDate, endDate, grouped, paid, pending, showMessage, setLoading]);
-
-  useEffect(() => {
-    loadPayments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const term = e.target.value;
-    setSearchTerm(term);
-    filterPayments(term, startDate, endDate, grouped, paid, pending, payments);
-  };
-
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    if (name === 'startDate') {
-      setStartDate(value);
-      filterPayments(searchTerm, value, endDate, grouped, paid, pending, payments);
-    } else {
-      setEndDate(value);
-      filterPayments(searchTerm, startDate, value, grouped, paid, pending, payments);
-    }
-  };
-
-  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    if (name === 'grouped') {
-      setGrouped(checked);
-      filterPayments(searchTerm, startDate, endDate, checked, paid, pending, payments);
-    } else if (name === 'paid') {
-      setPaid(checked);
-      filterPayments(searchTerm, startDate, endDate, grouped, checked, pending, payments);
-    } else if (name === 'pending') {
-      setPending(checked);
-      filterPayments(searchTerm, startDate, endDate, grouped, paid, checked, payments);
-    }
-  };
-
-  const filterPayments = (
-    searchTerm: string,
-    startDate: string,
-    endDate: string,
-    grouped: boolean,
-    paid: boolean,
-    pending: boolean,
-    paymentsData: Payment[]
-  ) => {
-    let filtered = paymentsData;
-
-    if (searchTerm) {
-      filtered = filtered.filter((payment) =>
-        Object.values(payment).some((value) =>
-          value
-            ? value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-            : false
-        )
+  // Configuração dos filtros
+  const filterFunctions = {
+    search: (payment: Payment, term: string) => {
+      const searchTerm = term.toLowerCase();
+      return (
+        payment.Driver?.name?.toLowerCase().includes(searchTerm) ||
+        payment.description?.toLowerCase().includes(searchTerm) ||
+        payment.id.toLowerCase().includes(searchTerm) ||
+        payment.status.toLowerCase().includes(searchTerm)
       );
+    },
+    status: (payment: Payment, status: string) => {
+      if (!status) return true;
+      return payment.status === status;
+    },
+    dateRange: (payment: Payment, start: string, end: string) => {
+      if (!start || !end) return true;
+      const paymentDate = new Date(payment.createdAt);
+      return paymentDate >= new Date(start) && paymentDate <= new Date(end);
+    },
+    custom: {
+      pending: (payment: Payment) => payment.status === PaymentStatus.PENDENTE,
+      paid: (payment: Payment) => PAYMENT_STATUS_ARRAYS.PAID.includes(payment.status as PaymentStatus),
+      grouped: (payment: Payment) => payment.isGroup === true,
+      dueToday: (payment: Payment) => StatusHelper.isPaymentDueToday({
+        status: payment.status,
+        createdAt: payment.createdAt
+      }),
     }
-
-    if (startDate && endDate) {
-      filtered = filtered.filter((payment) => {
-        const paymentDate = new Date(payment.createdAt);
-        return paymentDate >= new Date(startDate) && paymentDate <= new Date(endDate);
-      });
-    }
-
-    if (grouped || paid || pending) {
-      filtered = filtered.filter((payment) => {
-        return (
-          (grouped && payment.isGroup === true) ||
-          (paid && payment.status === 'Baixado') ||
-          (pending && payment.status === 'Pendente')
-        );
-      });
-    } else {
-      filtered = [];
-    }
-
-    setFilteredPayments(filtered);
   };
 
-  const handlePaymentSelect = (paymentId: string) => {
-    setSelectedPayments((prevSelected) =>
-      prevSelected.includes(paymentId)
-        ? prevSelected.filter((id) => id !== paymentId)
-        : [...prevSelected, paymentId]
+  // Hook de filtros
+  const { filteredData, filters, actions: filterActions } = useFilters(
+    payments.data, 
+    filterFunctions
+  );
+
+  // Estatísticas calculadas
+  const stats: PaymentStats = useMemo(() => {
+    const total = payments.data.length;
+    const pending = payments.data.filter(p => p.status === PaymentStatus.PENDENTE).length;
+    const paid = payments.data.filter(p => PAYMENT_STATUS_ARRAYS.PAID.includes(p.status as PaymentStatus)).length;
+    const grouped = payments.data.filter(p => p.isGroup === true).length;
+    const totalValue = payments.data.reduce((sum, p) => sum + (p.amount || p.value || 0), 0);
+    const pendingValue = payments.data
+      .filter(p => p.status === PaymentStatus.PENDENTE)
+      .reduce((sum, p) => sum + (p.amount || p.value || 0), 0);
+    const paidValue = payments.data
+      .filter(p => PAYMENT_STATUS_ARRAYS.PAID.includes(p.status as PaymentStatus))
+      .reduce((sum, p) => sum + (p.amount || p.value || 0), 0);
+    const avgPaymentValue = total > 0 ? totalValue / total : 0;
+
+    return { 
+      total, 
+      pending, 
+      paid, 
+      grouped, 
+      totalValue, 
+      pendingValue, 
+      paidValue, 
+      avgPaymentValue 
+    };
+  }, [payments.data]);
+
+  // ========================================
+  // HANDLERS DE AÇÕES
+  // ========================================
+
+  const handleDetailsClick = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setDetailsDialogOpen(true);
+  };
+
+  const handleSelectPayment = (paymentId: string) => {
+    setSelectedPayments(prev =>
+      prev.includes(paymentId)
+        ? prev.filter(id => id !== paymentId)
+        : [...prev, paymentId]
     );
   };
 
-  const handleGroupPayments = async () => {
-    if (selectedPayments.length === 0) {
-      showMessage('Nenhum pagamento selecionado para agrupar.', 'warning'); // Mensagem de aviso
+  const handleSelectAll = () => {
+    if (selectedPayments.length === filteredData.length) {
+      setSelectedPayments([]);
+    } else {
+      setSelectedPayments(filteredData.map(p => p.id));
+    }
+  };
+
+  const handleCloseDialogs = () => {
+    setDetailsDialogOpen(false);
+    setGroupDialogOpen(false);
+    setSelectedPayment(null);
+  };
+
+  const handleGroupPayments = () => {
+    if (selectedPayments.length < 2) {
+      showMessage('Selecione pelo menos 2 pagamentos para agrupar', 'warning');
       return;
     }
+    setGroupDialogOpen(true);
+  };
 
+  const handleConfirmGroup = useCallback(async () => {
     try {
-      await groupPayments(token, selectedPayments);
-      showMessage('Pagamentos agrupados com sucesso!', 'success'); // Mensagem de sucesso
-      loadPayments();
+      setLoading(true);
+      // Simular API call - substituir pela chamada real
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Criar um novo pagamento agrupado
+      const selectedPaymentData = payments.data.filter(p => selectedPayments.includes(p.id));
+      const totalValue = selectedPaymentData.reduce((sum, p) => sum + (p.amount || p.value || 0), 0);
+      
+      const groupedPayment = {
+        amount: totalValue,
+        status: PaymentStatus.PENDENTE,
+        isGroup: true,
+        description: `Pagamento agrupado de ${selectedPaymentData.length} entregas`,
+        deliveryIds: selectedPaymentData.flatMap(p => p.deliveryIds || []),
+        motoristaId: selectedPaymentData[0].motoristaId,
+      };
+      
+      await payments.create(groupedPayment);
+      
+      // Remover pagamentos individuais
+      await Promise.all(selectedPayments.map(id => payments.delete(id)));
+      
+      showMessage('Pagamentos agrupados com sucesso!', 'success');
       setSelectedPayments([]);
-    } catch (error: unknown) {
-      console.error('Erro ao agrupar pagamentos:', error);
-      showMessage('Falha ao agrupar pagamentos.', 'error'); // Mensagem de erro
+      handleCloseDialogs();
+    } catch (error) {
+      showMessage('Erro ao agrupar pagamentos', 'error');
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [selectedPayments, payments, showMessage, setLoading]);
 
-  const handleUngroupPayments = async (paymentId: string) => {
+  const handleUpdatePaymentStatus = useCallback(async (paymentId: string, newStatus: PaymentStatus) => {
     try {
-      await ungroupPayments(token, paymentId);
-      showMessage('Pagamento desagrupado com sucesso!', 'success'); // Mensagem de sucesso
-      loadPayments();
-    } catch (error: unknown) {
-      console.error('Erro ao desagrupar pagamento:', error);
-      showMessage('Falha ao desagrupar pagamento.', 'error'); // Mensagem de erro
+      await payments.update(paymentId, { status: newStatus });
+      showMessage(`Pagamento ${newStatus.toLowerCase()} com sucesso!`, 'success');
+    } catch (error) {
+      showMessage('Erro ao atualizar status do pagamento', 'error');
     }
+  }, [payments, showMessage]);
+
+  const handleExport = () => {
+    const dataToExport = filteredData.map(payment => ({
+      'ID': payment.id,
+      'Motorista': payment.Driver?.name || 'N/A',
+      'Valor': payment.amount || payment.value || 0,
+      'Status': payment.status,
+      'Tipo': payment.isGroup ? 'Agrupado' : 'Individual',
+      'Data': new Date(payment.createdAt).toLocaleDateString('pt-BR'),
+      'Descrição': payment.description || 'N/A',
+    }));
+    
+    const headers = Object.keys(dataToExport[0] || {}).join(',');
+    const rows = dataToExport.map(item => 
+      Object.values(item).map(val => `"${val}"`).join(',')
+    ).join('\n');
+    
+    const csv = `${headers}\n${rows}`;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pagamentos_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    
+    URL.revokeObjectURL(url);
   };
 
-  const handlePaymentStatusChange = async (paymentId: string, status: string) => {
-    try {
-      await updatePaymentStatus(token, paymentId, status);
-      showMessage('Status do pagamento atualizado com sucesso!', 'success'); // Mensagem de sucesso
-      loadPayments();
-    } catch (error: unknown) {
-      console.error(`Erro ao atualizar status do pagamento:`, error);
-      showMessage('Falha ao atualizar status do pagamento.', 'error'); // Mensagem de erro
-    }
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
   };
 
-  const handleViewDetails = async (deliveryIds: string[]) => {
-    try {
-      const detailsPromises = deliveryIds.map((id) => fetchDeliveryDetails(token, id));
-      const details = await Promise.all(detailsPromises);
-      setSelectedDeliveries(details);
-      setDetailsOpen(true);
-      showMessage('Detalhes dos pagamentos carregados com sucesso!', 'success'); // Mensagem de sucesso
-    } catch (error: unknown) {
-      console.error('Erro ao buscar detalhes das entregas:', error);
-      showMessage('Falha ao buscar detalhes das entregas.', 'error'); // Mensagem de erro
-    }
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleString('pt-BR');
   };
 
-  const handleDetailsClose = () => {
-    setDetailsOpen(false);
-    setSelectedDeliveries([]);
-  };
+  // ========================================
+  // RENDER
+  // ========================================
 
   return (
-    <Container>
-      {/* Campo de Busca */}
-      <Grid container spacing={2} style={{ marginTop: '16px', marginBottom: '16px' }}>
-        <Grid item xs={12}>
-          <TextField
-            label="Buscar"
-            fullWidth
-            value={searchTerm}
-            onChange={handleSearch}
-            variant="outlined"
-            size="small"
-            placeholder="Pesquisar por qualquer campo"
-          />
+    <DS.Container variant="page">
+      {/* Cards de Estatísticas */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <DS.StatsCard color="info">
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Typography variant="h4" fontWeight={700}>
+                    {stats.total}
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                    Total de Pagamentos
+                  </Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                    {formatCurrency(stats.totalValue)}
+                  </Typography>
+                </Box>
+                <AccountBalance sx={{ fontSize: 40, opacity: 0.8 }} />
+              </Box>
+            </CardContent>
+          </DS.StatsCard>
         </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            label="Data Início"
-            type="datetime-local"
-            fullWidth
-            value={startDate}
-            onChange={handleDateChange}
-            name="startDate"
-            InputLabelProps={{ shrink: true }}
-            size="small"
-            variant="outlined"
-          />
+
+        <Grid item xs={12} sm={6} md={3}>
+          <DS.StatsCard color="warning">
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Typography variant="h4" fontWeight={700}>
+                    {stats.pending}
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                    Pendentes
+                  </Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                    {formatCurrency(stats.pendingValue)}
+                  </Typography>
+                </Box>
+                <Badge badgeContent={stats.pending > 0 ? '!' : 0} color="error">
+                  <PendingActions sx={{ fontSize: 40, opacity: 0.8 }} />
+                </Badge>
+              </Box>
+            </CardContent>
+          </DS.StatsCard>
         </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            label="Data Fim"
-            type="datetime-local"
-            fullWidth
-            value={endDate}
-            onChange={handleDateChange}
-            name="endDate"
-            InputLabelProps={{ shrink: true }}
-            size="small"
-            variant="outlined"
-          />
+
+        <Grid item xs={12} sm={6} md={3}>
+          <DS.StatsCard color="success">
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Typography variant="h4" fontWeight={700}>
+                    {stats.paid}
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                    Baixados
+                  </Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                    {formatCurrency(stats.paidValue)}
+                  </Typography>
+                </Box>
+                <CheckCircle sx={{ fontSize: 40, opacity: 0.8 }} />
+              </Box>
+            </CardContent>
+          </DS.StatsCard>
         </Grid>
-        <Grid item xs={12}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={grouped}
-                onChange={handleStatusFilterChange}
-                name="grouped"
-              />
-            }
-            label="Agrupamentos"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={paid}
-                onChange={handleStatusFilterChange}
-                name="paid"
-              />
-            }
-            label="Baixados"
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={pending}
-                onChange={handleStatusFilterChange}
-                name="pending"
-              />
-            }
-            label="Pendentes"
-          />
-          <Badge badgeContent={filteredPayments.length} color="primary" showZero style={{ marginLeft: '16px' }} />
+
+        <Grid item xs={12} sm={6} md={3}>
+          <DS.StatsCard color="secondary">
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Typography variant="h4" fontWeight={700}>
+                    {stats.grouped}
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                    Agrupados
+                  </Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                    Média: {formatCurrency(stats.avgPaymentValue)}
+                  </Typography>
+                </Box>
+                <Group sx={{ fontSize: 40, opacity: 0.8 }} />
+              </Box>
+            </CardContent>
+          </DS.StatsCard>
         </Grid>
       </Grid>
 
-      {isLoading ? (
-        <SkeletonLoader />
-      ) : filteredPayments.length > 0 ? (
-        <>
-          {/* Botões de Agrupamento e Relatório */}
-          <Grid container spacing={2} style={{ marginBottom: '16px' }}>
-            <Grid item xs={12} sm={6}>
-              <StyledButton
-                variant="contained"
-                color="primary"
-                onClick={handleGroupPayments}
-                disabled={
-                  selectedPayments.length === 0 ||
-                  selectedPayments.some(
-                    (id) => payments.find((payment) => payment.id === id)?.isGroup === true
-                  )
-                }
-              >
-                Agrupar Selecionados
-              </StyledButton>
-            </Grid>
-            <Grid item xs={12} sm={6} style={{ textAlign: 'right' }}>
-              <StyledButton
-                variant="contained"
-                color="primary"
-                onClick={() => generateSummaryReport(filteredPayments, startDate, endDate)}
-              >
-                Gerar Relatório Totalizador
-              </StyledButton>
-            </Grid>
+      {/* Alert para pagamentos pendentes */}
+      {stats.pending > 0 && (
+        <Alert 
+          severity="warning" 
+          sx={{ mb: 3, borderRadius: 2 }}
+          action={
+            <Button 
+              color="inherit" 
+              size="small" 
+              onClick={() => filterActions.setCustomFilter('pending', true)}
+            >
+              VER PENDENTES
+            </Button>
+          }
+        >
+          <Typography variant="h6" fontWeight={600}>
+            💰 {stats.pending} pagamentos pendentes
+          </Typography>
+          <Typography>
+            Total de {formatCurrency(stats.pendingValue)} aguardando processamento.
+          </Typography>
+        </Alert>
+      )}
+
+      {/* Painel de Filtros */}
+      <DS.FilterPanel>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={4}>
+            <DS.SearchField
+              fullWidth
+              placeholder="Buscar por motorista, descrição..."
+              value={filters.searchTerm}
+              onChange={(e) => filterActions.setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search />
+                  </InputAdornment>
+                ),
+                endAdornment: filters.searchTerm && (
+                  <InputAdornment position="end">
+                    <DS.IconButton
+                      size="small"
+                      onClick={() => filterActions.setSearchTerm('')}
+                    >
+                      <Close />
+                    </DS.IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
           </Grid>
 
-          {/* Tabela de Pagamentos */}
-          <Paper elevation={3}>
-            <PaymentsTable
-              payments={filteredPayments}
-              selectedPayments={selectedPayments}
-              handlePaymentSelect={handlePaymentSelect}
-              handleViewDetails={handleViewDetails}
-              handlePaymentStatusChange={handlePaymentStatusChange}
-              handleUngroupPayments={handleUngroupPayments}
+          <Grid item xs={12} md={2}>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<FilterList />}
+              onClick={() => setFilterOpen(!filterOpen)}
+              sx={{ height: 48, borderRadius: 3 }}
+            >
+              Filtros
+              {filterActions.hasActiveFilters && (
+                <Chip
+                  size="small"
+                  label="Ativo"
+                  color="primary"
+                  sx={{ ml: 1 }}
+                />
+              )}
+            </Button>
+          </Grid>
+
+          <Grid item xs={12} md={3}>
+            <Box display="flex" gap={1}>
+              <DS.ActionButton
+                variant="outlined"
+                startIcon={<Refresh />}
+                onClick={payments.refresh}
+                disabled={payments.loading}
+              >
+                Atualizar
+              </DS.ActionButton>
+              
+              <DS.ActionButton
+                variant="outlined"
+                startIcon={<GetApp />}
+                onClick={handleExport}
+                disabled={filteredData.length === 0}
+              >
+                Exportar
+              </DS.ActionButton>
+            </Box>
+          </Grid>
+
+          <Grid item xs={12} md={3}>
+            {selectedPayments.length > 0 && (
+              <DS.ActionButton
+                fullWidth
+                dsVariant="primary"
+                startIcon={<Group />}
+                onClick={handleGroupPayments}
+                disabled={selectedPayments.length < 2}
+              >
+                Agrupar ({selectedPayments.length})
+              </DS.ActionButton>
+            )}
+          </Grid>
+        </Grid>
+
+        {/* Filtros Expandidos */}
+        <Collapse in={filterOpen}>
+          <Divider sx={{ my: 2 }} />
+          <Grid container spacing={2}>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Data Início"
+                    type="datetime-local"
+                    value={filters.dateStart}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => filterActions.setDateRange(e.target.value, filters.dateEnd)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Data Fim"
+                    type="datetime-local"
+                    value={filters.dateEnd}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => filterActions.setDateRange(filters.dateStart, e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                  />
+                </Grid>
+            <Grid item xs={12} md={4}>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={!!filters.customFilters.pending}
+                      onChange={(e) =>
+                        filterActions.setCustomFilter('pending', e.target.checked || undefined)
+                      }
+                    />
+                  }
+                  label="Pendentes"
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={!!filters.customFilters.paid}
+                      onChange={(e) =>
+                        filterActions.setCustomFilter('paid', e.target.checked || undefined)
+                      }
+                    />
+                  }
+                  label="Baixados"
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={!!filters.customFilters.grouped}
+                      onChange={(e) =>
+                        filterActions.setCustomFilter('grouped', e.target.checked || undefined)
+                      }
+                    />
+                  }
+                  label="Agrupados"
+                />
+              </Stack>
+            </Grid>
+          </Grid>
+        </Collapse>
+      </DS.FilterPanel>
+
+      {/* Barra de Seleção */}
+      {filteredData.length > 0 && (
+        <Paper sx={{ p: 2, mb: 3, backgroundColor: 'action.hover' }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={selectedPayments.length === filteredData.length}
+                  indeterminate={selectedPayments.length > 0 && selectedPayments.length < filteredData.length}
+                  onChange={handleSelectAll}
+                />
+              }
+              label={`${selectedPayments.length} de ${filteredData.length} selecionados`}
             />
-          </Paper>
-        </>
-      ) : (
-        <Paper elevation={3}>
-          <Typography align="center" style={{ padding: '16px' }}>
-            Nenhum pagamento encontrado. Use os filtros para buscar pagamentos.
-          </Typography>
+            
+            {selectedPayments.length > 0 && (
+              <Box display="flex" gap={1}>
+                <Typography variant="body2" color="text.secondary">
+                  Total selecionado: {formatCurrency(
+                    payments.data
+                      .filter(p => selectedPayments.includes(p.id))
+                      .reduce((sum, p) => sum + (p.amount || p.value || 0), 0)
+                  )}
+                </Typography>
+              </Box>
+            )}
+          </Box>
         </Paper>
       )}
 
-  
-      {/* Diálogo de Detalhes dos Pagamentos */}
+      {/* Lista de Pagamentos */}
+      {filteredData.length > 0 ? (
+        <Grid container spacing={2}>
+          {filteredData.map((payment) => (
+            <Grid item xs={12} key={payment.id}>
+              <DS.ItemCard 
+                dsVariant="interactive"
+                selected={selectedPayments.includes(payment.id)}
+                onClick={() => handleSelectPayment(payment.id)}
+              >
+                <CardContent>
+                  <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Box display="flex" alignItems="center" gap={2}>
+                        <DS.Avatar dsVariant="gradient">
+                          {payment.isGroup ? <Group /> : <PaymentIcon />}
+                        </DS.Avatar>
+                        <Box>
+                          <Typography variant="h6" fontWeight={600} color="success.main">
+                            {formatCurrency(payment.amount || payment.value || 0)}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatDate(payment.createdAt)}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6} md={2}>
+                      <DS.StatusChip status={payment.status} />
+                      {payment.isGroup && (
+                        <Chip
+                          label="Agrupado"
+                          size="small"
+                          color="secondary"
+                          sx={{ ml: 1 }}
+                        />
+                      )}
+                    </Grid>
+
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Box>
+                        <Typography variant="body2" fontWeight={600}>
+                          {payment.Driver?.name || 'Motorista não definido'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" noWrap>
+                          {payment.description || 'Sem descrição'}
+                        </Typography>
+                      </Box>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6} md={2}>
+                      <Box textAlign="center">
+                        <Typography variant="body2" color="text.secondary">
+                          {payment.deliveryIds?.length || payment.paymentDeliveries?.length || 0}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Entregas
+                        </Typography>
+                      </Box>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6} md={2}>
+                      <Box display="flex" alignItems="center" justifyContent="center" gap={1}>
+                        <Tooltip title="Ver Detalhes">
+                          <DS.IconButton
+                            variant="default"
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDetailsClick(payment);
+                            }}
+                          >
+                            <Visibility />
+                          </DS.IconButton>
+                        </Tooltip>
+                        
+                        {payment.status === PaymentStatus.PENDENTE && (
+                          <Tooltip title="Baixar Pagamento">
+                            <DS.IconButton
+                              variant="success"
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUpdatePaymentStatus(payment.id, PaymentStatus.BAIXADO);
+                              }}
+                            >
+                              <CheckCircle />
+                            </DS.IconButton>
+                          </Tooltip>
+                        )}
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </DS.ItemCard>
+            </Grid>
+          ))}
+        </Grid>
+      ) : !payments.loading ? (
+        <DS.ItemCard>
+          <CardContent sx={{ textAlign: 'center', py: 8 }}>
+            <MonetizationOn sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              Nenhum pagamento encontrado
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Ajuste os filtros para encontrar os pagamentos desejados
+            </Typography>
+          </CardContent>
+        </DS.ItemCard>
+      ) : null}
+
+      {/* Diálogos */}
       <PaymentDetailsDialog
-        open={detailsOpen}
-        deliveries={selectedDeliveries}
-        onClose={handleDetailsClose}
+        open={detailsDialogOpen}
+        payment={selectedPayment}
+        onClose={handleCloseDialogs}
       />
 
-      {/* Diálogo de Erro */}
-      <Dialog open={false} onClose={() => {}}>
-        {/* Este diálogo foi removido, pois usamos showMessage para feedback */}
-      </Dialog>
-    </Container>
+      <GroupPaymentsDialog
+        open={groupDialogOpen}
+        selectedPayments={payments.data.filter(p => selectedPayments.includes(p.id))}
+        onClose={handleCloseDialogs}
+        onConfirm={handleConfirmGroup}
+      />
+    </DS.Container>
   );
 };
 

@@ -8,28 +8,37 @@ import {
   Box, CircularProgress, Card, CardContent, List, ListItem, ListItemText, TextField,
   Stepper, Step, StepLabel, Alert, IconButton, Tooltip, Dialog, DialogTitle, DialogContent,
   DialogActions, ListItemIcon, Divider, Chip, Fade, Slide, Avatar, CardActionArea,
+  Stack, InputAdornment, Switch, FormControlLabel, LinearProgress, Zoom, Collapse,
 } from '@mui/material';
-import { useTheme, alpha } from '@mui/material/styles';
-import MapIcon from '@mui/icons-material/Map';
-import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
-import AirportShuttleIcon from '@mui/icons-material/AirportShuttle';
-import PersonIcon from '@mui/icons-material/Person';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import InfoIcon from '@mui/icons-material/Info';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import CloseIcon from '@mui/icons-material/Close';
-import DeleteIcon from '@mui/icons-material/Delete';
-import LocalShippingIcon from '@mui/icons-material/LocalShipping';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import RouteIcon from '@mui/icons-material/Route';
-import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
-import ScaleIcon from '@mui/icons-material/Scale';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
-import BusinessIcon from '@mui/icons-material/Business';
-import InventoryIcon from '@mui/icons-material/Inventory';
-import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
+import { useTheme, alpha, styled } from '@mui/material/styles';
+import {
+  Map as MapIcon,
+  PlaylistAddCheck as PlaylistAddCheckIcon,
+  AirportShuttle as AirportShuttleIcon,
+  Person as PersonIcon,
+  CheckCircleOutline as CheckCircleOutlineIcon,
+  Info as InfoIcon,
+  FilterList as FilterListIcon,
+  Close as CloseIcon,
+  Delete as DeleteIcon,
+  LocalShipping as LocalShippingIcon,
+  Assignment as AssignmentIcon,
+  Route as RouteIcon,
+  MonetizationOn as MonetizationOnIcon,
+  Scale as ScaleIcon,
+  LocationOn as LocationOnIcon,
+  CalendarToday as CalendarTodayIcon,
+  DragIndicator as DragIndicatorIcon,
+  Business as BusinessIcon,
+  Inventory as InventoryIcon,
+  AddShoppingCart as AddShoppingCartIcon,
+  Search,
+  Refresh as RefreshRounded,
+  Timeline,
+  Assessment,
+  TrendingUp,
+  Navigation,
+} from '@mui/icons-material';
 
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
@@ -43,6 +52,79 @@ import { useMessage } from '../../context/MessageContext';
 import { Order, Driver, Vehicle, Direction, Category as VehicleCategory } from '../../../types';
 import { getStoredToken } from '../../../services/authService';
 
+// Styled Components
+const StyledContainer = styled(Container)(({ theme }) => ({
+  padding: theme.spacing(3),
+  maxWidth: '1400px',
+  [theme.breakpoints.down('sm')]: {
+    padding: theme.spacing(1),
+  },
+}));
+
+const StatsCard = styled(Card)(({ theme }) => ({
+  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+  color: 'white',
+  transition: 'all 0.3s ease',
+  cursor: 'pointer',
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    boxShadow: theme.shadows[8],
+  },
+}));
+
+const FilterPanel = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  background: alpha(theme.palette.background.paper, 0.8),
+  backdropFilter: 'blur(10px)',
+  borderRadius: theme.spacing(2),
+  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+}));
+
+const SearchField = styled(TextField)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    borderRadius: theme.spacing(3),
+    backgroundColor: alpha(theme.palette.background.paper, 0.8),
+    backdropFilter: 'blur(10px)',
+    transition: 'all 0.3s ease',
+    '&:hover': {
+      backgroundColor: theme.palette.background.paper,
+    },
+    '&.Mui-focused': {
+      backgroundColor: theme.palette.background.paper,
+      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+    },
+  },
+}));
+
+const RegionCard = styled(Card)(({ theme }) => ({
+  height: '100%',
+  cursor: 'pointer',
+  borderRadius: theme.spacing(2),
+  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    boxShadow: theme.shadows[8],
+    borderColor: theme.palette.primary.main,
+  },
+}));
+
+const OrderCard = styled(Card)(({ theme }) => ({
+  marginBottom: theme.spacing(1),
+  cursor: 'pointer',
+  borderRadius: theme.spacing(1),
+  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    borderColor: theme.palette.primary.main,
+    backgroundColor: alpha(theme.palette.primary.main, 0.02),
+  },
+  '&.selected': {
+    borderColor: theme.palette.primary.main,
+    backgroundColor: alpha(theme.palette.primary.main, 0.05),
+  },
+}));
+
 const ORDER_STATUS_SEM_ROTA = 'Sem rota';
 const ORDER_STATUS_NAO_ENTREGUE = 'Não entregue';
 
@@ -51,6 +133,15 @@ interface FrontendCreateDeliveryPayload {
   veiculoId: string;
   orders: Array<{ id: string; sorting?: number | undefined }>;
   observacao?: string;
+}
+
+interface OrderStats {
+  total: number;
+  semRota: number;
+  naoEntregue: number;
+  totalValue: number;
+  totalWeight: number;
+  regionsCount: number;
 }
 
 const steps = ['Seleção de Pedidos', 'Configuração da Rota e Sequência', 'Confirmação Final'];
@@ -90,15 +181,33 @@ const RoteirizacaoPage: React.FC = () => {
   const [directions, setDirections] = useState<Direction[]>([]);
   const [vehicleCategories, setVehicleCategories] = useState<VehicleCategory[]>([]);
   
+  // Estados de filtro
+  const [filterOpen, setFilterOpen] = useState<boolean>(false);
   const [filterRegionTable, setFilterRegionTable] = useState<string>('');
   const [filterDateTable, setFilterDateTable] = useState<string>('');
   const [filterOrderNumberTable, setFilterOrderNumberTable] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   
   const [viewingOrderDetails, setViewingOrderDetails] = useState<Order | null>(null);
   const [majorRegionForFreight, setMajorRegionForFreight] = useState<Direction | null>(null);
 
   const { isLoading, setLoading } = useLoading();
   const { showMessage } = useMessage();
+
+  // Estatísticas dos pedidos
+  const orderStats: OrderStats = useMemo(() => {
+    const total = allAvailableOrders.length;
+    const semRota = allAvailableOrders.filter(o => o.status === ORDER_STATUS_SEM_ROTA).length;
+    const naoEntregue = allAvailableOrders.filter(o => o.status === ORDER_STATUS_NAO_ENTREGUE).length;
+    const totalValue = allAvailableOrders.reduce((sum, o) => sum + (Number(o.valor) || 0), 0);
+    const totalWeight = allAvailableOrders.reduce((sum, o) => sum + (Number(o.peso) || 0), 0);
+    const regionsWithOrders = directions.filter(dir => 
+      allAvailableOrders.some(order => isCepInDirection(order.cep, dir))
+    );
+    const regionsCount = regionsWithOrders.length;
+
+    return { total, semRota, naoEntregue, totalValue, totalWeight, regionsCount };
+  }, [allAvailableOrders, directions]);
 
   const handleApiError = useCallback((error: unknown, defaultMessage: string) => {
     console.error(defaultMessage, error);
@@ -146,13 +255,25 @@ const RoteirizacaoPage: React.FC = () => {
   }, [allAvailableOrders, directions]);
 
   const tableDisplayOrders = useMemo(() => {
-    return allAvailableOrders.filter(order => {
+    let filtered = allAvailableOrders;
+
+    // Filtro de busca
+    if (searchTerm) {
+      filtered = filtered.filter(order =>
+        Object.values(order).some(value =>
+          value?.toString().toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
+    }
+
+    // Outros filtros
+    return filtered.filter(order => {
       const matchesOrderNumber = filterOrderNumberTable ? order.numero.toLowerCase().includes(filterOrderNumberTable.toLowerCase()) : true;
       const matchesDate = filterDateTable ? order.data.includes(filterDateTable) : true;
       const matchesRegion = filterRegionTable ? !!directions.find(dir => dir.id === filterRegionTable && isCepInDirection(order.cep, dir)) : true;
       return matchesOrderNumber && matchesDate && matchesRegion;
     });
-  }, [allAvailableOrders, filterOrderNumberTable, filterDateTable, filterRegionTable, directions]);
+  }, [allAvailableOrders, searchTerm, filterOrderNumberTable, filterDateTable, filterRegionTable, directions]);
 
   const updateSelectedOrdersWithSorting = useCallback((newSelectedOrders: Order[]) => {
     setSelectedOrders(newSelectedOrders.map((o, index) => ({ ...o, sorting: index + 1 })));
@@ -283,9 +404,16 @@ const RoteirizacaoPage: React.FC = () => {
     };
   }, [selectedOrders, estimatedFreightData, majorRegionForFreight]);
 
-  const openMapForOptimizing = () => { /* ... (sem alterações) ... */ };
+  const openMapForOptimizing = () => { /* ... */ };
   const handleViewOrderDetails = (order: Order) => setViewingOrderDetails(order);
   const handleCloseOrderDetails = () => setViewingOrderDetails(null);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
+  };
 
   const renderStepContent = () => {
     switch (activeStep) {
@@ -293,144 +421,395 @@ const RoteirizacaoPage: React.FC = () => {
         return (
           <Fade in timeout={600}>
             <Box>
-              <Typography variant="h6" gutterBottom fontWeight="medium" sx={{mb:2, display: 'flex', alignItems: 'center'}}>
-                <LocationOnIcon sx={{mr:1, color: theme.palette.text.secondary}}/> Seleção Rápida por Região
+              {/* Estatísticas dos Pedidos */}
+              <Grid container spacing={2} sx={{ mb: 4 }}>
+                <Grid item xs={12} sm={6} md={2.4}>
+                  <StatsCard>
+                    <CardContent>
+                      <Box display="flex" alignItems="center" justifyContent="space-between">
+                        <Box>
+                          <Typography variant="h4" fontWeight={700}>
+                            {orderStats.total}
+                          </Typography>
+                          <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                            Pedidos Disponíveis
+                          </Typography>
+                        </Box>
+                        <AssignmentIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+                      </Box>
+                    </CardContent>
+                  </StatsCard>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={2.4}>
+                  <StatsCard sx={{ background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)' }}>
+                    <CardContent>
+                      <Box display="flex" alignItems="center" justifyContent="space-between">
+                        <Box>
+                          <Typography variant="h4" fontWeight={700}>
+                            {orderStats.semRota}
+                          </Typography>
+                          <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                            Sem Rota
+                          </Typography>
+                        </Box>
+                        <RouteIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+                      </Box>
+                    </CardContent>
+                  </StatsCard>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={2.4}>
+                  <StatsCard sx={{ background: 'linear-gradient(135deg, #f44336 0%, #d32f2f 100%)' }}>
+                    <CardContent>
+                      <Box display="flex" alignItems="center" justifyContent="space-between">
+                        <Box>
+                          <Typography variant="h4" fontWeight={700}>
+                            {orderStats.naoEntregue}
+                          </Typography>
+                          <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                            Não Entregues
+                          </Typography>
+                        </Box>
+                        <LocalShippingIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+                      </Box>
+                    </CardContent>
+                  </StatsCard>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={2.4}>
+                  <StatsCard sx={{ background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)' }}>
+                    <CardContent>
+                      <Box display="flex" alignItems="center" justifyContent="space-between">
+                        <Box>
+                          <Typography variant="h4" fontWeight={700}>
+                            {formatCurrency(orderStats.totalValue).replace('R$', '')}
+                          </Typography>
+                          <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                            Valor Total
+                          </Typography>
+                          <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                            {orderStats.totalWeight.toFixed(0)} kg
+                          </Typography>
+                        </Box>
+                        <MonetizationOnIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+                      </Box>
+                    </CardContent>
+                  </StatsCard>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={2.4}>
+                  <StatsCard sx={{ background: 'linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%)' }}>
+                    <CardContent>
+                      <Box display="flex" alignItems="center" justifyContent="space-between">
+                        <Box>
+                          <Typography variant="h4" fontWeight={700}>
+                            {orderStats.regionsCount}
+                          </Typography>
+                          <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                            Regiões com Pedidos
+                          </Typography>
+                        </Box>
+                        <BusinessIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+                      </Box>
+                    </CardContent>
+                  </StatsCard>
+                </Grid>
+              </Grid>
+
+              {/* Seleção Rápida por Região */}
+              <Typography variant="h6" gutterBottom fontWeight={600} sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                <LocationOnIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                Seleção Rápida por Região
               </Typography>
+              
               {isLoading && !regionSummaries.length && !allAvailableOrders.length ? (
-                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
               ) : regionSummaries.length === 0 ? (
-                <Alert severity="info" sx={{borderRadius: 2}}>Nenhuma região com pedidos elegíveis ('Sem Rota' ou 'Não Entregue') encontrada.</Alert>
+                <Alert severity="info" sx={{ borderRadius: 2, mb: 4 }}>
+                  Nenhuma região com pedidos elegíveis ('Sem Rota' ou 'Não Entregue') encontrada.
+                </Alert>
               ) : (
-                <Grid container spacing={2}>
+                <Grid container spacing={2} sx={{ mb: 4 }}>
                   {regionSummaries.map(({ direction, totalWeight, totalValue, orderCount, ordersInRegion }) => (
                     <Grid item xs={12} sm={6} md={4} lg={2.4} key={direction.id}>
-                      <Paper 
-                        elevation={2}
-                        sx={{
-                          borderRadius: 3,
-                          border: `1px solid ${theme.palette.divider}`,
-                          transition: 'all 0.3s ease',
-                          height: '100%',
-                          cursor: 'pointer',
-                          '&:hover': {
-                            borderColor: theme.palette.primary.main,
-                            boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.15)}`,
-                            transform: 'translateY(-4px)',
-                          },
-                        }}
-                        onClick={() => handleRegionCardClick(ordersInRegion)}
-                      >
-                        <Box sx={{ p: 2 }}>
-                          <Box sx={{display: 'flex', alignItems: 'center', mb: 1}}>
-                            <BusinessIcon sx={{fontSize: '1.2rem', mr: 1, color: theme.palette.primary.main}}/>
-                            <Typography variant="subtitle2" component="div" fontWeight="bold" noWrap title={direction.regiao}>
-                              {direction.regiao || `Range ${direction.rangeInicio}-${direction.rangeFim}`}
-                            </Typography>
-                          </Box>
-                          <Divider sx={{my: 1}}/>
-                          <Box>
-                            <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', my: 0.5}}>
-                              <Typography variant="caption" color="text.secondary">Pedidos:</Typography>
-                              <Chip icon={<InventoryIcon sx={{fontSize:14}}/>} label={orderCount} size="small" sx={{fontWeight:600, height: 22, fontSize: '0.7rem', bgcolor: alpha(theme.palette.background.paper, 0.8)}} />
+                      <Zoom in timeout={600} style={{ transitionDelay: '100ms' }}>
+                        <RegionCard onClick={() => handleRegionCardClick(ordersInRegion)}>
+                          <CardContent sx={{ p: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <BusinessIcon sx={{ fontSize: '1.2rem', mr: 1, color: theme.palette.primary.main }} />
+                              <Typography variant="subtitle2" component="div" fontWeight="bold" noWrap title={direction.regiao}>
+                                {direction.regiao || `Range ${direction.rangeInicio}-${direction.rangeFim}`}
+                              </Typography>
                             </Box>
-                            <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', my: 0.5}}>
-                              <Typography variant="caption" color="text.secondary">Peso:</Typography>
-                              <Chip icon={<ScaleIcon sx={{fontSize:14}}/>} label={`${totalWeight.toFixed(1)}Kg`} size="small" sx={{fontWeight:600, height: 22, fontSize: '0.7rem', bgcolor: alpha(theme.palette.warning.light, 0.2), color: theme.palette.warning.dark}}/>
+                            <Divider sx={{ my: 1 }} />
+                            <Stack spacing={1}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="caption" color="text.secondary">Pedidos:</Typography>
+                                <Chip 
+                                  icon={<InventoryIcon sx={{ fontSize: 14 }} />} 
+                                  label={orderCount} 
+                                  size="small" 
+                                  sx={{ 
+                                    fontWeight: 600, 
+                                    height: 22, 
+                                    fontSize: '0.7rem', 
+                                    bgcolor: alpha(theme.palette.info.main, 0.1),
+                                    color: theme.palette.info.main 
+                                  }} 
+                                />
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="caption" color="text.secondary">Peso:</Typography>
+                                <Chip 
+                                  icon={<ScaleIcon sx={{ fontSize: 14 }} />} 
+                                  label={`${totalWeight.toFixed(1)}kg`} 
+                                  size="small" 
+                                  sx={{ 
+                                    fontWeight: 600, 
+                                    height: 22, 
+                                    fontSize: '0.7rem', 
+                                    bgcolor: alpha(theme.palette.warning.main, 0.1),
+                                    color: theme.palette.warning.main 
+                                  }} 
+                                />
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="caption" color="text.secondary">Valor:</Typography>
+                                <Chip 
+                                  icon={<MonetizationOnIcon sx={{ fontSize: 14 }} />} 
+                                  label={formatCurrency(totalValue).replace('R$', 'R$')} 
+                                  size="small" 
+                                  sx={{ 
+                                    fontWeight: 600, 
+                                    height: 22, 
+                                    fontSize: '0.7rem', 
+                                    bgcolor: alpha(theme.palette.success.main, 0.1),
+                                    color: theme.palette.success.main 
+                                  }} 
+                                />
+                              </Box>
+                            </Stack>
+                            <Box sx={{ 
+                              p: 1, 
+                              mt: 2, 
+                              textAlign: 'center', 
+                              backgroundColor: alpha(theme.palette.primary.main, 0.1), 
+                              borderRadius: 2, 
+                              border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}` 
+                            }}>
+                              <Typography variant="caption" color="primary.main" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}>
+                                <AddShoppingCartIcon sx={{ fontSize: 16, mr: 0.5 }} /> Adicionar à Rota
+                              </Typography>
                             </Box>
-                            <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', my: 0.5}}>
-                              <Typography variant="caption" color="text.secondary">Valor:</Typography>
-                              <Chip icon={<MonetizationOnIcon sx={{fontSize:14}}/>} label={`R${totalValue.toFixed(0)}`} size="small" sx={{fontWeight:600, height: 22, fontSize: '0.7rem', bgcolor: alpha(theme.palette.success.light, 0.2), color: theme.palette.success.dark}}/>
-                            </Box>
-                          </Box>
-                          <Box sx={{ p:1, mt: 2, textAlign: 'center', backgroundColor: alpha(theme.palette.primary.light, 0.1), borderRadius: 2, border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`}}>
-                            <Typography variant="caption" color="primary.main" fontWeight="medium" sx={{display:'flex', alignItems:'center', justifyContent:'center', fontSize: '0.75rem'}}>
-                              <AddShoppingCartIcon sx={{fontSize:16, mr:0.5}}/> Adicionar à Rota
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </Paper>
+                          </CardContent>
+                        </RegionCard>
+                      </Zoom>
                     </Grid>
                   ))}
                 </Grid>
               )}
-              
-              <Divider sx={{my:4}}><Chip label="Seleção Detalhada de Pedidos" size="small" sx={{ bgcolor: theme.palette.action.hover }}/></Divider>
 
-              <Paper elevation={1} sx={{mb:3, borderRadius: 3, border: `1px solid ${theme.palette.divider}`}}>
-                <Box sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <FilterListIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
-                      <Typography variant="h6" fontWeight="medium">Filtros da Tabela de Pedidos</Typography>
-                  </Box>
-                  <Grid container spacing={2}>
-                      <Grid item xs={12} sm={4}><FormControl fullWidth size="small"><InputLabel>Região (Tabela)</InputLabel><Select value={filterRegionTable} label="Região (Tabela)" onChange={(e) => setFilterRegionTable(e.target.value)}><MenuItem value=""><em>Todas</em></MenuItem>{directions.map(dir => ( <MenuItem key={dir.id} value={dir.id}>{dir.regiao || `Range ${dir.rangeInicio}-${dir.rangeFim}`}</MenuItem> ))}</Select></FormControl></Grid>
-                      <Grid item xs={12} sm={4}><TextField fullWidth size="small" label="Número do Pedido (Tabela)" value={filterOrderNumberTable} onChange={(e) => setFilterOrderNumberTable(e.target.value)} /></Grid>
-                      <Grid item xs={12} sm={4}><TextField fullWidth size="small" label="Data (Tabela)" value={filterDateTable} onChange={(e) => setFilterDateTable(e.target.value)} placeholder="DD/MM/YYYY ou parte" /></Grid>
+              <Divider sx={{ my: 4 }}>
+                <Chip label="Seleção Detalhada de Pedidos" size="small" sx={{ bgcolor: theme.palette.action.hover }} />
+              </Divider>
+
+              {/* Filtros */}
+              <FilterPanel sx={{ mb: 3 }}>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} md={6}>
+                    <SearchField
+                      fullWidth
+                      placeholder="Buscar pedidos por qualquer campo..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <Search color="action" />
+                          </InputAdornment>
+                        ),
+                        endAdornment: searchTerm && (
+                          <InputAdornment position="end">
+                            <IconButton size="small" onClick={() => setSearchTerm('')}>
+                              <CloseIcon />
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
                   </Grid>
-                </Box>
-              </Paper>
-              
+
+                  <Grid item xs={12} md={3}>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      startIcon={<FilterListIcon />}
+                      onClick={() => setFilterOpen(!filterOpen)}
+                      sx={{ height: 48, borderRadius: 3 }}
+                    >
+                      Filtros Avançados
+                    </Button>
+                  </Grid>
+
+                  <Grid item xs={12} md={3}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      startIcon={<PlaylistAddCheckIcon />}
+                      onClick={handleSelectAllFiltered}
+                      disabled={tableDisplayOrders.length === 0}
+                      sx={{ height: 48, borderRadius: 3 }}
+                    >
+                      {tableDisplayOrders.length > 0 && tableDisplayOrders.every(o => selectedOrders.some(so => so.id === o.id)) 
+                        ? 'Desmarcar Filtrados' 
+                        : 'Marcar Todos Filtrados'
+                      }
+                    </Button>
+                  </Grid>
+                </Grid>
+
+                <Collapse in={filterOpen}>
+                  <Divider sx={{ my: 2 }} />
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>Região (Tabela)</InputLabel>
+                        <Select 
+                          value={filterRegionTable} 
+                          label="Região (Tabela)" 
+                          onChange={(e) => setFilterRegionTable(e.target.value)}
+                        >
+                          <MenuItem value=""><em>Todas</em></MenuItem>
+                          {directions.map(dir => (
+                            <MenuItem key={dir.id} value={dir.id}>
+                              {dir.regiao || `Range ${dir.rangeInicio}-${dir.rangeFim}`}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <TextField 
+                        fullWidth 
+                        size="small" 
+                        label="Número do Pedido" 
+                        value={filterOrderNumberTable} 
+                        onChange={(e) => setFilterOrderNumberTable(e.target.value)} 
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <TextField 
+                        fullWidth 
+                        size="small" 
+                        label="Data" 
+                        value={filterDateTable} 
+                        onChange={(e) => setFilterDateTable(e.target.value)} 
+                        placeholder="DD/MM/YYYY ou parte" 
+                      />
+                    </Grid>
+                  </Grid>
+                </Collapse>
+              </FilterPanel>
+
+              {/* Lista de Pedidos */}
               <Paper elevation={1} sx={{ borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
                 <Box sx={{ p: 3 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h6" fontWeight="medium">Pedidos Disponíveis na Tabela ({tableDisplayOrders.length})</Typography>
-                    <Button 
-                      size="small" 
-                      onClick={handleSelectAllFiltered} 
-                      startIcon={<PlaylistAddCheckIcon/>} 
-                      disabled={tableDisplayOrders.length === 0}
-                      sx={{ 
-                        borderRadius: 2, 
-                        textTransform: 'none',
-                        bgcolor: theme.palette.primary.main,
-                        color: theme.palette.primary.contrastText,
-                        '&:hover': { bgcolor: theme.palette.primary.dark }
-                      }}
-                    >
-                        {tableDisplayOrders.length > 0 && tableDisplayOrders.every(o => selectedOrders.some(so => so.id === o.id)) ? 'Desmarcar Filtrados' : 'Marcar Todos Filtrados'}
-                    </Button>
+                    <Typography variant="h6" fontWeight="medium">
+                      Pedidos Disponíveis ({tableDisplayOrders.length})
+                    </Typography>
+                    {selectedOrders.length > 0 && (
+                      <Chip 
+                        label={`${selectedOrders.length} selecionados`} 
+                        color="primary" 
+                        sx={{ fontWeight: 600 }}
+                      />
+                    )}
                   </Box>
-                  {isLoading && !allAvailableOrders.length ? ( <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+                  
+                  {isLoading && !allAvailableOrders.length ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                      <CircularProgress />
+                    </Box>
                   ) : tableDisplayOrders.length === 0 ? (
                     <Box sx={{ textAlign: 'center', py: 4 }}>
                       <AssignmentIcon sx={{ fontSize: 40, color: theme.palette.text.disabled, mb: 1 }} />
-                      <Typography variant="subtitle1" color="text.secondary">Nenhum pedido encontrado com os filtros aplicados.</Typography>
+                      <Typography variant="subtitle1" color="text.secondary">
+                        Nenhum pedido encontrado com os filtros aplicados.
+                      </Typography>
                     </Box>
                   ) : (
-                    <TableContainer component={Paper} elevation={0} sx={{ maxHeight: 400, border: `1px solid ${theme.palette.divider}`, borderRadius: 2}}>
-                      <Table stickyHeader size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell padding="checkbox"><Checkbox color="primary" indeterminate={selectedOrders.filter(so => tableDisplayOrders.some(tdo => tdo.id === so.id)).length > 0 && selectedOrders.filter(so => tableDisplayOrders.some(tdo => tdo.id === so.id)).length < tableDisplayOrders.length} checked={tableDisplayOrders.length > 0 && tableDisplayOrders.every(o => selectedOrders.some(so => so.id === o.id))} onChange={handleSelectAllFiltered} disabled={tableDisplayOrders.length === 0}/></TableCell>
-                            <TableCell>Número</TableCell><TableCell>Cliente</TableCell><TableCell>Endereço</TableCell><TableCell>Status</TableCell>
-                            <TableCell align="right">Peso</TableCell><TableCell align="right">Valor</TableCell><TableCell align="center">Info</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {tableDisplayOrders.map((order) => {
-                            const isSelected = selectedOrders.some(o => o.id === order.id);
-                            return (
-                              <TableRow hover key={order.id} selected={isSelected} sx={{ '&:last-child td, &:last-child th': { border: 0 }, cursor:'pointer' }} onClick={() => handleOrderToggle(order)}>
-                                <TableCell padding="checkbox"><Checkbox color="primary" checked={isSelected} /></TableCell>
-                                <TableCell><Typography variant="body2" fontWeight={500}>{order.numero}</Typography></TableCell>
-                                <TableCell><Typography variant="body2">{order.cliente}</Typography></TableCell>
-                                <TableCell><Typography variant="caption" color="text.secondary">{`${order.endereco || ''}, ${order.cidade || ''}`}</Typography></TableCell>
-                                <TableCell><Chip label={order.status} size="small" variant="outlined" color={order.status === ORDER_STATUS_NAO_ENTREGUE ? "error" : "default"} sx={{fontSize:'0.7rem', height:22}} /></TableCell>
-                                <TableCell align="right"><Typography variant="body2">{Number(order.peso || 0).toFixed(2)} kg</Typography></TableCell>
-                                <TableCell align="right"><Typography variant="body2" fontWeight="medium" color="success.dark">R$ {Number(order.valor || 0).toFixed(2)}</Typography></TableCell>
-                                <TableCell align="center"><Tooltip title="Ver Detalhes"><IconButton size="small" onClick={(e) => { e.stopPropagation(); handleViewOrderDetails(order);}}><InfoIcon fontSize="inherit" /></IconButton></Tooltip></TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                    <Grid container spacing={1}>
+                      {tableDisplayOrders.map((order) => {
+                        const isSelected = selectedOrders.some(o => o.id === order.id);
+                        return (
+                          <Grid item xs={12} sm={6} md={4} key={order.id}>
+                            <OrderCard 
+                              className={isSelected ? 'selected' : ''}
+                              onClick={() => handleOrderToggle(order)}
+                            >
+                              <CardContent sx={{ p: 2 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1 }}>
+                                  <Box sx={{ flexGrow: 1 }}>
+                                    <Typography variant="subtitle2" fontWeight={600}>
+                                      #{order.numero}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary" noWrap>
+                                      {order.cliente}
+                                    </Typography>
+                                  </Box>
+                                  <Checkbox 
+                                    checked={isSelected} 
+                                    size="small"
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={() => handleOrderToggle(order)}
+                                  />
+                                </Box>
+                                
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                                  {`${order.endereco}, ${order.cidade}`}
+                                </Typography>
+                                
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Box sx={{ display: 'flex', gap: 1 }}>
+                                    <Chip 
+                                      label={`${Number(order.peso || 0).toFixed(1)}kg`} 
+                                      size="small" 
+                                      sx={{ fontSize: '0.7rem', height: 20 }} 
+                                    />
+                                    <Chip 
+                                      label={formatCurrency(Number(order.valor || 0))} 
+                                      size="small" 
+                                      color="success"
+                                      sx={{ fontSize: '0.7rem', height: 20 }} 
+                                    />
+                                  </Box>
+                                  <IconButton 
+                                    size="small" 
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      handleViewOrderDetails(order); 
+                                    }}
+                                  >
+                                    <InfoIcon fontSize="inherit" />
+                                  </IconButton>
+                                </Box>
+                              </CardContent>
+                            </OrderCard>
+                          </Grid>
+                        );
+                      })}
+                    </Grid>
                   )}
                 </Box>
               </Paper>
             </Box>
           </Fade>
         );
+
       case 1: // Configuração da Rota e Sequência
         return (
           <Slide direction="left" in timeout={600}>
@@ -438,91 +817,274 @@ const RoteirizacaoPage: React.FC = () => {
               <Grid item xs={12} md={4}>
                 <Paper elevation={1} sx={{ borderRadius: 3, border: `1px solid ${theme.palette.divider}`, height: 'fit-content' }}>
                   <Box sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}><AirportShuttleIcon sx={{ mr: 1, color: theme.palette.primary.main }} /><Typography variant="h6" fontWeight="medium">Configurar Entrega</Typography></Box>
-                    <FormControl fullWidth sx={{ mb: 2 }} size="small"><InputLabel>Motorista</InputLabel><Select value={selectedDriverId} label="Motorista" onChange={(e) => setSelectedDriverId(e.target.value)}><MenuItem value=""><em>Selecione...</em></MenuItem>{drivers.map((driver) => ( <MenuItem key={driver.id} value={driver.id}>{driver.name}</MenuItem> ))}</Select></FormControl>
-                    <FormControl fullWidth sx={{ mb: 2 }} size="small"><InputLabel>Veículo</InputLabel><Select value={selectedVehicleId} label="Veículo" onChange={(e) => setSelectedVehicleId(e.target.value)} disabled={!selectedDriverId || driverVehicles.length === 0}><MenuItem value=""><em>{!selectedDriverId ? "Motorista?" : driverVehicles.length === 0 ? "Sem veículos" : "Selecione..."}</em></MenuItem>{driverVehicles.map((vehicle) => ( <MenuItem key={vehicle.id} value={vehicle.id}>{vehicle.model} - {vehicle.plate}</MenuItem> ))}</Select></FormControl>
-                    <TextField label="Observações do Roteiro" multiline rows={3} value={observacaoRoteiro} onChange={(e) => setObservacaoRoteiro(e.target.value)} fullWidth placeholder="Adicione observações..." size="small"/>
-                    {selectedDriverObject && selectedVehicleObject && (<Box sx={{mt:2}}><Chip icon={<PersonIcon fontSize="small"/>} label={selectedDriverObject.name} size="small" sx={{mr:1, mb:1, bgcolor: alpha(theme.palette.info.light, 0.2), color: theme.palette.info.dark}}/><Chip icon={<LocalShippingIcon fontSize="small"/>} label={`${selectedVehicleObject.model}`} size="small" sx={{mb:1, bgcolor: alpha(theme.palette.secondary.light, 0.2), color: theme.palette.secondary.dark}}/></Box>)}
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <AirportShuttleIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                      <Typography variant="h6" fontWeight="medium">Configurar Entrega</Typography>
+                    </Box>
+                    
+                    <FormControl fullWidth sx={{ mb: 2 }} size="small">
+                      <InputLabel>Motorista</InputLabel>
+                      <Select 
+                        value={selectedDriverId} 
+                        label="Motorista" 
+                        onChange={(e) => setSelectedDriverId(e.target.value)}
+                      >
+                        <MenuItem value=""><em>Selecione...</em></MenuItem>
+                        {drivers.map((driver) => (
+                          <MenuItem key={driver.id} value={driver.id}>{driver.name}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    
+                    <FormControl fullWidth sx={{ mb: 2 }} size="small">
+                      <InputLabel>Veículo</InputLabel>
+                      <Select 
+                        value={selectedVehicleId} 
+                        label="Veículo" 
+                        onChange={(e) => setSelectedVehicleId(e.target.value)} 
+                        disabled={!selectedDriverId || driverVehicles.length === 0}
+                      >
+                        <MenuItem value="">
+                          <em>{!selectedDriverId ? "Motorista?" : driverVehicles.length === 0 ? "Sem veículos" : "Selecione..."}</em>
+                        </MenuItem>
+                        {driverVehicles.map((vehicle) => (
+                          <MenuItem key={vehicle.id} value={vehicle.id}>
+                            {vehicle.model} - {vehicle.plate}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    
+                    <TextField 
+                      label="Observações do Roteiro" 
+                      multiline 
+                      rows={3} 
+                      value={observacaoRoteiro} 
+                      onChange={(e) => setObservacaoRoteiro(e.target.value)} 
+                      fullWidth 
+                      placeholder="Adicione observações..." 
+                      size="small"
+                    />
+                    
+                    {selectedDriverObject && selectedVehicleObject && (
+                      <Box sx={{ mt: 2 }}>
+                        <Chip 
+                          icon={<PersonIcon fontSize="small" />} 
+                          label={selectedDriverObject.name} 
+                          size="small" 
+                          sx={{ 
+                            mr: 1, 
+                            mb: 1, 
+                            bgcolor: alpha(theme.palette.info.main, 0.1), 
+                            color: theme.palette.info.main 
+                          }} 
+                        />
+                        <Chip 
+                          icon={<LocalShippingIcon fontSize="small" />} 
+                          label={`${selectedVehicleObject.model}`} 
+                          size="small" 
+                          sx={{ 
+                            mb: 1, 
+                            bgcolor: alpha(theme.palette.secondary.main, 0.1), 
+                            color: theme.palette.secondary.main 
+                          }} 
+                        />
+                      </Box>
+                    )}
                   </Box>
                 </Paper>
-                 {/* TOTALIZADOR DOS PEDIDOS SELECIONADOS */}
+                
+                {/* Resumo da Carga */}
                 {selectedOrders.length > 0 && (
-                    <Paper elevation={1} sx={{ borderRadius: 3, border: `1px solid ${theme.palette.divider}`, mt: 3 }}>
-                        <Box sx={{ p: 3 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                                <PlaylistAddCheckIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
-                                <Typography variant="h6" fontWeight="medium">Resumo da Carga</Typography>
-                            </Box>
-                            <Grid container spacing={2} justifyContent="center">
-                                <Grid item xs={12} sm={4}><Chip icon={<InventoryIcon/>} label={`${displaySummarySelectedOrders.count} Pedidos`} variant="filled" sx={{width: '100%', bgcolor: alpha(theme.palette.info.light, 0.2), color: theme.palette.info.dark}} /></Grid>
-                                <Grid item xs={12} sm={4}><Chip icon={<ScaleIcon/>} label={`${displaySummarySelectedOrders.totalPesoDisplay} Kg`} sx={{width: '100%', bgcolor: alpha(theme.palette.warning.light, 0.2), color: theme.palette.warning.dark}} /></Grid>
-                                <Grid item xs={12} sm={4}><Chip icon={<MonetizationOnIcon/>} label={`R$ ${displaySummarySelectedOrders.totalValorDisplay}`} sx={{width: '100%', bgcolor: alpha(theme.palette.success.light, 0.2), color: theme.palette.success.dark}} /></Grid>
-                            </Grid>
-                        </Box>
-                    </Paper>
+                  <Paper elevation={1} sx={{ borderRadius: 3, border: `1px solid ${theme.palette.divider}`, mt: 3 }}>
+                    <Box sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <PlaylistAddCheckIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                        <Typography variant="h6" fontWeight="medium">Resumo da Carga</Typography>
+                      </Box>
+                      <Grid container spacing={2} justifyContent="center">
+                        <Grid item xs={12} sm={4}>
+                          <Chip 
+                            icon={<InventoryIcon />} 
+                            label={`${displaySummarySelectedOrders.count} Pedidos`} 
+                            variant="filled" 
+                            sx={{ 
+                              width: '100%', 
+                              bgcolor: alpha(theme.palette.info.main, 0.1), 
+                              color: theme.palette.info.main 
+                            }} 
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                          <Chip 
+                            icon={<ScaleIcon />} 
+                            label={`${displaySummarySelectedOrders.totalPesoDisplay} Kg`} 
+                            sx={{ 
+                              width: '100%', 
+                              bgcolor: alpha(theme.palette.warning.main, 0.1), 
+                              color: theme.palette.warning.main 
+                            }} 
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                          <Chip 
+                            icon={<MonetizationOnIcon />} 
+                            label={formatCurrency(Number(displaySummarySelectedOrders.totalValorDisplay))} 
+                            sx={{ 
+                              width: '100%', 
+                              bgcolor: alpha(theme.palette.success.main, 0.1), 
+                              color: theme.palette.success.main 
+                            }} 
+                          />
+                        </Grid>
+                      </Grid>
+                    </Box>
+                  </Paper>
                 )}
               </Grid>
+              
               <Grid item xs={12} md={8}>
                 <Paper elevation={1} sx={{ borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
                   <Box sx={{ p: 3 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}><RouteIcon sx={{ mr: 1, color: theme.palette.primary.main }} /><Typography variant="h6" fontWeight="medium">Sequência de Entregas ({selectedOrders.length})</Typography></Box>
-                        <Tooltip title="Otimizar Rota (Google Maps)">
-                          <IconButton 
-                            onClick={openMapForOptimizing} 
-                            disabled={selectedOrders.length < 1} 
-                            sx={{
-                              bgcolor: theme.palette.primary.main, 
-                              color: theme.palette.primary.contrastText, 
-                              '&:hover': {bgcolor: theme.palette.primary.dark},
-                              borderRadius: 2
-                            }}
-                          >
-                            <MapIcon />
-                          </IconButton>
-                        </Tooltip>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <RouteIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                        <Typography variant="h6" fontWeight="medium">
+                          Sequência de Entregas ({selectedOrders.length})
+                        </Typography>
+                      </Box>
+                      <Tooltip title="Otimizar Rota (Google Maps)">
+                        <IconButton 
+                          onClick={openMapForOptimizing} 
+                          disabled={selectedOrders.length < 1} 
+                          sx={{
+                            bgcolor: theme.palette.primary.main, 
+                            color: theme.palette.primary.contrastText, 
+                            '&:hover': { bgcolor: theme.palette.primary.dark },
+                            borderRadius: 2
+                          }}
+                        >
+                          <MapIcon />
+                        </IconButton>
+                      </Tooltip>
                     </Box>
-                    <Alert severity="info" icon={<DragIndicatorIcon />} sx={{ mb: 2, borderRadius: 2 }}>Arraste os itens para reordenar a sequência.</Alert>
+                    
+                    <Alert severity="info" icon={<DragIndicatorIcon />} sx={{ mb: 2, borderRadius: 2 }}>
+                      Arraste os itens para reordenar a sequência.
+                    </Alert>
+                    
                     <DragDropContext onDragEnd={onDragEnd}>
                       <Droppable droppableId="delivery-sequence">
                         {(providedDroppable, snapshotDroppable) => (
-                          <List {...providedDroppable.droppableProps} ref={providedDroppable.innerRef}
+                          <List 
+                            {...providedDroppable.droppableProps} 
+                            ref={providedDroppable.innerRef}
                             sx={{ 
                               maxHeight: 400, 
                               overflow: 'auto', 
                               border: `2px dashed ${snapshotDroppable.isDraggingOver ? theme.palette.primary.main : theme.palette.divider}`, 
                               p: 1, 
                               minHeight: '200px', 
-                              bgcolor: snapshotDroppable.isDraggingOver ? alpha(theme.palette.primary.light, 0.1) : 'transparent', 
+                              bgcolor: snapshotDroppable.isDraggingOver ? alpha(theme.palette.primary.main, 0.1) : 'transparent', 
                               borderRadius: 2 
                             }}
                           >
                             {selectedOrders.map((order, index) => (
                               <Draggable key={order.id} draggableId={order.id} index={index}>
                                 {(providedDraggable, snapshotDraggable) => (
-                                  <ListItem component={Paper} variant="outlined" ref={providedDraggable.innerRef} {...providedDraggable.draggableProps}
-                                    style={{...providedDraggable.draggableProps.style, userSelect:'none'}}
+                                  <ListItem 
+                                    component={Paper} 
+                                    variant="outlined" 
+                                    ref={providedDraggable.innerRef} 
+                                    {...providedDraggable.draggableProps}
+                                    style={{ ...providedDraggable.draggableProps.style, userSelect: 'none' }}
                                     sx={{ 
                                       mb: 1, 
-                                      bgcolor: snapshotDraggable.isDragging ? alpha(theme.palette.primary.light, 0.2) : theme.palette.action.hover, 
+                                      bgcolor: snapshotDraggable.isDragging 
+                                        ? alpha(theme.palette.primary.main, 0.2) 
+                                        : theme.palette.action.hover, 
                                       display: 'flex', 
                                       alignItems: 'center', 
                                       borderRadius: 2, 
                                       py: 1,
                                       border: `1px solid ${theme.palette.divider}`
                                     }}
-                                    secondaryAction={ <Tooltip title="Remover da seleção"><IconButton size="small" onClick={() => handleRemoveOrderFromSelection(order.id)} sx={{color: theme.palette.error.main}}><DeleteIcon fontSize="inherit" /></IconButton></Tooltip> }
+                                    secondaryAction={
+                                      <Tooltip title="Remover da seleção">
+                                        <IconButton 
+                                          size="small" 
+                                          onClick={() => handleRemoveOrderFromSelection(order.id)} 
+                                          sx={{ color: theme.palette.error.main }}
+                                        >
+                                          <DeleteIcon fontSize="inherit" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    }
                                   >
-                                    <Box {...providedDraggable.dragHandleProps} sx={{ display: 'flex', alignItems: 'center', cursor: 'grab', p: 1, mr:1, color: theme.palette.text.disabled }}><DragIndicatorIcon fontSize="small"/></Box>
-                                    <Avatar sx={{ width: 28, height: 28, bgcolor: theme.palette.primary.main, color: theme.palette.primary.contrastText, fontSize: '0.8rem', fontWeight: 'bold', mr: 2 }}>{order.sorting}</Avatar>
-                                    <ListItemText primary={<Typography variant="body2" fontWeight="medium" noWrap>{order.cliente}</Typography>} secondary={<Typography variant="caption" color="text.secondary" noWrap>{`${order.endereco}, ${order.numero} - ${order.cidade}`}</Typography>} />
-                                    <Chip label={`R$ ${Number(order.valor || 0).toFixed(0)}`} size="small" sx={{ml:1, fontSize: '0.7rem', height: 22, fontWeight:500, bgcolor: alpha(theme.palette.success.light, 0.2), color: theme.palette.success.dark}}/>
+                                    <Box 
+                                      {...providedDraggable.dragHandleProps} 
+                                      sx={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        cursor: 'grab', 
+                                        p: 1, 
+                                        mr: 1, 
+                                        color: theme.palette.text.disabled 
+                                      }}
+                                    >
+                                      <DragIndicatorIcon fontSize="small" />
+                                    </Box>
+                                    <Avatar sx={{ 
+                                      width: 28, 
+                                      height: 28, 
+                                      bgcolor: theme.palette.primary.main, 
+                                      color: theme.palette.primary.contrastText, 
+                                      fontSize: '0.8rem', 
+                                      fontWeight: 'bold', 
+                                      mr: 2 
+                                    }}>
+                                      {order.sorting}
+                                    </Avatar>
+                                    <ListItemText 
+                                      primary={
+                                        <Typography variant="body2" fontWeight="medium" noWrap>
+                                          {order.cliente}
+                                        </Typography>
+                                      } 
+                                      secondary={
+                                        <Typography variant="caption" color="text.secondary" noWrap>
+                                          {`${order.endereco}, ${order.numero} - ${order.cidade}`}
+                                        </Typography>
+                                      } 
+                                    />
+                                    <Chip 
+                                      label={formatCurrency(Number(order.valor || 0))} 
+                                      size="small" 
+                                      sx={{ 
+                                        ml: 1, 
+                                        fontSize: '0.7rem', 
+                                        height: 22, 
+                                        fontWeight: 500, 
+                                        bgcolor: alpha(theme.palette.success.main, 0.1), 
+                                        color: theme.palette.success.main 
+                                      }} 
+                                    />
                                   </ListItem>
                                 )}
                               </Draggable>
                             ))}
                             {providedDroppable.placeholder}
-                            {selectedOrders.length === 0 && ( <Box sx={{ textAlign: 'center', py: 4 }}><RouteIcon sx={{ fontSize: 40, color: theme.palette.text.disabled, mb: 1 }} /><Typography variant="subtitle1" color="text.secondary">Nenhum pedido selecionado</Typography><Typography variant="body2" color="text.secondary">Volte à etapa anterior para adicionar pedidos.</Typography></Box> )}
+                            {selectedOrders.length === 0 && (
+                              <Box sx={{ textAlign: 'center', py: 4 }}>
+                                <RouteIcon sx={{ fontSize: 40, color: theme.palette.text.disabled, mb: 1 }} />
+                                <Typography variant="subtitle1" color="text.secondary">
+                                  Nenhum pedido selecionado
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  Volte à etapa anterior para adicionar pedidos.
+                                </Typography>
+                              </Box>
+                            )}
                           </List>
                         )}
                       </Droppable>
@@ -533,6 +1095,7 @@ const RoteirizacaoPage: React.FC = () => {
             </Grid>
           </Slide>
         );
+
       case 2: // Confirmação Final
         const categoryOfVehicle = selectedVehicleObject && vehicleCategories.find(cat => cat.id === selectedVehicleObject.categoryId);
         return (
@@ -542,56 +1105,158 @@ const RoteirizacaoPage: React.FC = () => {
                 <Typography variant="h5" fontWeight="bold" sx={{ mb: 1, color: theme.palette.primary.main }}>
                   Confirmação do Roteiro
                 </Typography>
-                <Typography variant="body1" color="text.secondary">Revise todos os dados antes de finalizar a criação.</Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Revise todos os dados antes de finalizar a criação.
+                </Typography>
               </Box>
+              
               <Grid container spacing={3}>
                 <Grid item xs={12} md={5}>
                   <Paper elevation={1} sx={{ borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
                     <Box sx={{ p: 3 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}><AirportShuttleIcon sx={{ mr: 1, color: theme.palette.primary.main }} /><Typography variant="h6" fontWeight="medium">Atribuição</Typography></Box>
-                        <List dense disablePadding>
-                            <ListItem divider><ListItemText primary="Motorista:" secondaryTypographyProps={{fontWeight:'bold'}} secondary={selectedDriverObject?.name || 'N/A'} /></ListItem>
-                            <ListItem divider><ListItemText primary="Veículo:" secondaryTypographyProps={{fontWeight:'bold'}} secondary={selectedVehicleObject ? `${selectedVehicleObject.model} (${selectedVehicleObject.plate})` : 'N/A'} /></ListItem>
-                            {categoryOfVehicle && <ListItem divider><ListItemText primary="Cat. Veículo:" secondary={`${categoryOfVehicle.name} (Base: R$ ${Number(categoryOfVehicle.valor || 0).toFixed(2)})`} /></ListItem>}
-                            {majorRegionForFreight && <ListItem divider><ListItemText primary="Região Base (Frete):" secondary={`${majorRegionForFreight.regiao} (R$ ${displaySummarySelectedOrders.majorRegionValue})`} /></ListItem>}
-                            {observacaoRoteiro && <ListItem><ListItemText primary="Observações:" secondary={observacaoRoteiro} sx={{'& .MuiListItemText-secondary': {whiteSpace:'pre-wrap', wordBreak:'break-word'}}} /></ListItem>}
-                        </List>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <AirportShuttleIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                        <Typography variant="h6" fontWeight="medium">Atribuição</Typography>
+                      </Box>
+                      <List dense disablePadding>
+                        <ListItem divider>
+                          <ListItemText 
+                            primary="Motorista:" 
+                            secondaryTypographyProps={{ fontWeight: 'bold' }} 
+                            secondary={selectedDriverObject?.name || 'N/A'} 
+                          />
+                        </ListItem>
+                        <ListItem divider>
+                          <ListItemText 
+                            primary="Veículo:" 
+                            secondaryTypographyProps={{ fontWeight: 'bold' }} 
+                            secondary={selectedVehicleObject ? `${selectedVehicleObject.model} (${selectedVehicleObject.plate})` : 'N/A'} 
+                          />
+                        </ListItem>
+                        {categoryOfVehicle && (
+                          <ListItem divider>
+                            <ListItemText 
+                              primary="Cat. Veículo:" 
+                              secondary={`${categoryOfVehicle.name} (Base: ${formatCurrency(Number(categoryOfVehicle.valor || 0))})`} 
+                            />
+                          </ListItem>
+                        )}
+                        {majorRegionForFreight && (
+                          <ListItem divider>
+                            <ListItemText 
+                              primary="Região Base (Frete):" 
+                              secondary={`${majorRegionForFreight.regiao} (${formatCurrency(Number(displaySummarySelectedOrders.majorRegionValue))})`} 
+                            />
+                          </ListItem>
+                        )}
+                        {observacaoRoteiro && (
+                          <ListItem>
+                            <ListItemText 
+                              primary="Observações:" 
+                              secondary={observacaoRoteiro} 
+                              sx={{ '& .MuiListItemText-secondary': { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } }} 
+                            />
+                          </ListItem>
+                        )}
+                      </List>
                     </Box>
                   </Paper>
                 </Grid>
+                
                 <Grid item xs={12} md={7}>
-                    <Paper elevation={1} sx={{ borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
-                        <Box sx={{ p: 3 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}><MonetizationOnIcon sx={{ mr: 1, color: theme.palette.success.main }} /><Typography variant="h6" fontWeight="medium">Resumo Financeiro e Carga</Typography></Box>
-                            <List dense disablePadding>
-                                <ListItem divider><ListItemText primary="Qtd. Pedidos:" secondary={<Typography component="span" fontWeight="bold">{displaySummarySelectedOrders.count}</Typography>} /></ListItem>
-                                <ListItem divider><ListItemText primary="Peso Total:" secondary={<Typography component="span" fontWeight="bold">{displaySummarySelectedOrders.totalPesoDisplay} Kg</Typography>} /></ListItem>
-                                <ListItem divider><ListItemText primary="Valor Mercadoria:" secondary={<Typography component="span" fontWeight="bold" color="success.dark">R$ {displaySummarySelectedOrders.totalValorDisplay}</Typography>} /></ListItem>
-                                <ListItem divider><ListItemText primary="Frete Estimado:" secondary={<Typography component="span" fontWeight="bold" color="primary.main">R$ {displaySummarySelectedOrders.estimatedFreightDisplay}</Typography>} /></ListItem>
-                                <ListItem><ListItemText primary="% Frete:" secondary={<Typography component="span" fontWeight="bold">{displaySummarySelectedOrders.freightPercentage}%</Typography>} /></ListItem>
-                            </List>
-                        </Box>
-                    </Paper>
+                  <Paper elevation={1} sx={{ borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
+                    <Box sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <MonetizationOnIcon sx={{ mr: 1, color: theme.palette.success.main }} />
+                        <Typography variant="h6" fontWeight="medium">Resumo Financeiro e Carga</Typography>
+                      </Box>
+                      <List dense disablePadding>
+                        <ListItem divider>
+                          <ListItemText 
+                            primary="Qtd. Pedidos:" 
+                            secondary={<Typography component="span" fontWeight="bold">{displaySummarySelectedOrders.count}</Typography>} 
+                          />
+                        </ListItem>
+                        <ListItem divider>
+                          <ListItemText 
+                            primary="Peso Total:" 
+                            secondary={<Typography component="span" fontWeight="bold">{displaySummarySelectedOrders.totalPesoDisplay} Kg</Typography>} 
+                          />
+                        </ListItem>
+                        <ListItem divider>
+                          <ListItemText 
+                            primary="Valor Mercadoria:" 
+                            secondary={<Typography component="span" fontWeight="bold" color="success.dark">{formatCurrency(Number(displaySummarySelectedOrders.totalValorDisplay))}</Typography>} 
+                          />
+                        </ListItem>
+                        <ListItem divider>
+                          <ListItemText 
+                            primary="Frete Estimado:" 
+                            secondary={<Typography component="span" fontWeight="bold" color="primary.main">{formatCurrency(Number(displaySummarySelectedOrders.estimatedFreightDisplay))}</Typography>} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemText 
+                            primary="% Frete:" 
+                            secondary={<Typography component="span" fontWeight="bold">{displaySummarySelectedOrders.freightPercentage}%</Typography>} 
+                          />
+                        </ListItem>
+                      </List>
+                    </Box>
+                  </Paper>
                 </Grid>
+                
                 <Grid item xs={12}>
                   <Paper elevation={1} sx={{ borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
                     <Box sx={{ p: 3 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}><RouteIcon sx={{ mr: 1, color: theme.palette.primary.main }} /><Typography variant="h6" fontWeight="medium">Sequência de Entregas ({selectedOrders.length})</Typography></Box>
-                        <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 260, borderRadius: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <RouteIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                        <Typography variant="h6" fontWeight="medium">
+                          Sequência de Entregas ({selectedOrders.length})
+                        </Typography>
+                      </Box>
+                      <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 260, borderRadius: 2 }}>
                         <Table size="small" stickyHeader>
-                            <TableHead><TableRow><TableCell>Seq.</TableCell><TableCell>Cliente</TableCell><TableCell>Endereço</TableCell><TableCell align="right">Valor</TableCell></TableRow></TableHead>
-                            <TableBody>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Seq.</TableCell>
+                              <TableCell>Cliente</TableCell>
+                              <TableCell>Endereço</TableCell>
+                              <TableCell align="right">Valor</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
                             {selectedOrders.map((order, index) => (
-                                <TableRow key={order.id} sx={{ '&:nth-of-type(odd)': { bgcolor: theme.palette.action.hover } }}>
-                                <TableCell><Chip label={order.sorting} size="small" sx={{fontWeight:'bold', bgcolor: theme.palette.primary.main, color: theme.palette.primary.contrastText}}/></TableCell>
-                                <TableCell><Typography variant="body2">{order.cliente}</Typography></TableCell>
-                                <TableCell><Typography variant="caption" color="text.secondary">{`${order.endereco}, ${order.cidade}`}</Typography></TableCell>
-                                <TableCell align="right"><Typography variant="body2" color="success.dark">R$ {Number(order.valor || 0).toFixed(2)}</Typography></TableCell>
-                                </TableRow>
+                              <TableRow key={order.id} sx={{ '&:nth-of-type(odd)': { bgcolor: theme.palette.action.hover } }}>
+                                <TableCell>
+                                  <Chip 
+                                    label={order.sorting} 
+                                    size="small" 
+                                    sx={{ 
+                                      fontWeight: 'bold', 
+                                      bgcolor: theme.palette.primary.main, 
+                                      color: theme.palette.primary.contrastText 
+                                    }} 
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <Typography variant="body2">{order.cliente}</Typography>
+                                </TableCell>
+                                <TableCell>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {`${order.endereco}, ${order.cidade}`}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Typography variant="body2" color="success.dark">
+                                    {formatCurrency(Number(order.valor || 0))}
+                                  </Typography>
+                                </TableCell>
+                              </TableRow>
                             ))}
-                            </TableBody>
+                          </TableBody>
                         </Table>
-                        </TableContainer>
+                      </TableContainer>
                     </Box>
                   </Paper>
                 </Grid>
@@ -599,12 +1264,21 @@ const RoteirizacaoPage: React.FC = () => {
             </Box>
           </Fade>
         );
-      default: return null;
+      default: 
+        return null;
     }
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <StyledContainer>
+      {/* Loading */}
+      {isLoading && (
+        <Box sx={{ mb: 3 }}>
+          <LinearProgress />
+        </Box>
+      )}
+
+      {/* Stepper Container */}
       <Paper 
         elevation={5} 
         sx={{ 
@@ -616,17 +1290,24 @@ const RoteirizacaoPage: React.FC = () => {
         }}
       >
         <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4, pb: 2 }}>
-          {steps.map((label) => ( <Step key={label}><StepLabel>{label}</StepLabel></Step> ))}
+          {steps.map((label) => (
+            <Step key={label}>
+              <StepLabel>{label}</StepLabel>
+            </Step>
+          ))}
         </Stepper>
 
-        <Box sx={{ minHeight: '500px', position:'relative' }}>
+        <Box sx={{ minHeight: '500px', position: 'relative' }}>
           {isLoading && (activeStep === 0 && !allAvailableOrders.length && !regionSummaries.length) ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '500px' }}><CircularProgress size={50} /></Box>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '500px' }}>
+              <CircularProgress size={50} />
+            </Box>
           ) : (
             renderStepContent()
           )}
         </Box>
 
+        {/* Navigation Buttons */}
         <Box sx={{ display: 'flex', flexDirection: 'row', pt: 3, mt: 3, borderTop: `1px solid ${theme.palette.divider}` }}>
           <Button 
             color="inherit" 
@@ -667,7 +1348,11 @@ const RoteirizacaoPage: React.FC = () => {
           ) : (
             <Button 
               onClick={handleNext} 
-              disabled={ isLoading || (activeStep === 0 && selectedOrders.length === 0) || (activeStep === 1 && (!selectedDriverId || !selectedVehicleId || selectedOrders.length === 0)) }
+              disabled={ 
+                isLoading || 
+                (activeStep === 0 && selectedOrders.length === 0) || 
+                (activeStep === 1 && (!selectedDriverId || !selectedVehicleId || selectedOrders.length === 0)) 
+              }
               sx={{
                 borderRadius: 3,
                 padding: '12px 32px',
@@ -693,22 +1378,60 @@ const RoteirizacaoPage: React.FC = () => {
         </Box>
       </Paper>
 
+      {/* Modal de Detalhes do Pedido */}
       <Dialog open={!!viewingOrderDetails} onClose={handleCloseOrderDetails} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${theme.palette.divider}` }}>
-          <Typography variant="h6" fontWeight="bold">Detalhes do Pedido: {viewingOrderDetails?.numero}</Typography>
-          <IconButton onClick={handleCloseOrderDetails}><CloseIcon /></IconButton>
+          <Typography variant="h6" fontWeight="bold">
+            Detalhes do Pedido: {viewingOrderDetails?.numero}
+          </Typography>
+          <IconButton onClick={handleCloseOrderDetails}>
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
         <DialogContent dividers>
           {viewingOrderDetails && (
             <List dense>
-              <ListItem><ListItemText primary="Cliente:" secondary={viewingOrderDetails.cliente} /></ListItem>
-              <ListItem><ListItemText primary="Endereço:" secondary={`${viewingOrderDetails.endereco}, ${viewingOrderDetails.bairro}, ${viewingOrderDetails.cidade} - ${viewingOrderDetails.uf}, CEP: ${viewingOrderDetails.cep}`} /></ListItem>
-              <ListItem><ListItemText primary="Contato:" secondary={`${viewingOrderDetails.nomeContato} (${viewingOrderDetails.telefone})`} /></ListItem>
-              <ListItem><ListItemText primary="Data:" secondary={new Date(viewingOrderDetails.data).toLocaleDateString('pt-BR')} /></ListItem>
-              <ListItem><ListItemText primary="Peso:" secondary={`${Number(viewingOrderDetails.peso || 0).toFixed(2)} Kg`} /></ListItem>
-              <ListItem><ListItemText primary="Valor:" secondary={`R$ ${Number(viewingOrderDetails.valor || 0).toFixed(2)}`} /></ListItem>
-              <ListItem><ListItemText primary="Status Atual:" secondary={viewingOrderDetails.status} /></ListItem>
-              {viewingOrderDetails.instrucoesEntrega && <ListItem><ListItemText primary="Instruções:" secondary={viewingOrderDetails.instrucoesEntrega} /></ListItem>}
+              <ListItem>
+                <ListItemText primary="Cliente:" secondary={viewingOrderDetails.cliente} />
+              </ListItem>
+              <ListItem>
+                <ListItemText 
+                  primary="Endereço:" 
+                  secondary={`${viewingOrderDetails.endereco}, ${viewingOrderDetails.bairro}, ${viewingOrderDetails.cidade} - ${viewingOrderDetails.uf}, CEP: ${viewingOrderDetails.cep}`} 
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText 
+                  primary="Contato:" 
+                  secondary={`${viewingOrderDetails.nomeContato} (${viewingOrderDetails.telefone})`} 
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText 
+                  primary="Data:" 
+                  secondary={new Date(viewingOrderDetails.data).toLocaleDateString('pt-BR')} 
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText 
+                  primary="Peso:" 
+                  secondary={`${Number(viewingOrderDetails.peso || 0).toFixed(2)} Kg`} 
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText 
+                  primary="Valor:" 
+                  secondary={formatCurrency(Number(viewingOrderDetails.valor || 0))} 
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText primary="Status Atual:" secondary={viewingOrderDetails.status} />
+              </ListItem>
+              {viewingOrderDetails.instrucoesEntrega && (
+                <ListItem>
+                  <ListItemText primary="Instruções:" secondary={viewingOrderDetails.instrucoesEntrega} />
+                </ListItem>
+              )}
             </List>
           )}
         </DialogContent>
@@ -728,7 +1451,7 @@ const RoteirizacaoPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </StyledContainer>
   );
 };
 

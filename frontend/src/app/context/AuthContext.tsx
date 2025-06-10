@@ -1,19 +1,16 @@
 // src/context/AuthContext.tsx
-
 'use client';
 
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { useRouter, usePathname } from 'next/navigation'; // usePathname pode ser útil
-import {
-  getStoredToken,
-  getStoredRefreshToken,
-  decodeToken, // Sua função decodeToken
-  refreshAccessToken,
-  storeTokens,
-  clearTokens
-} from '../../services/authService';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { apiClient, usersService } from '../../services/api/client'; // ✅ Novo API Client
+import type { User } from '../../types';
 
-interface DecodedToken { // Adicione uma interface para o token decodificado se não existir em authService
+// ========================================
+// INTERFACES
+// ========================================
+
+interface DecodedToken {
   email: string;
   sub: string;
   role: string;
@@ -25,118 +22,226 @@ interface DecodedToken { // Adicione uma interface para o token decodificado se 
 interface AuthContextProps {
   isLoggedIn: boolean;
   userRole: string | null;
+  user: User | null;
   token: string | null;
-  login: (token: string, refreshToken: string) => void;
+  login: (token: string, refreshToken: string) => Promise<void>;
   logout: () => void;
-  // Adicione o usuário completo se quiser mais detalhes além da role
-  // user: DecodedToken | null; 
+  refreshUserData: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextProps | undefined>(undefined);
+// ========================================
+// CONTEXT CREATION
+// ========================================
+
+const AuthContext = createContext<AuthContextProps>({} as AuthContextProps);
+
+// ========================================
+// TOKEN UTILITIES
+// ========================================
+
+const decodeToken = (token: string): DecodedToken => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload;
+  } catch (error) {
+    throw new Error('Token inválido');
+  }
+};
+
+const isTokenExpired = (token: string): boolean => {
+  try {
+    const decoded = decodeToken(token);
+    const currentTime = Math.floor(Date.now() / 1000);
+    return decoded.exp ? decoded.exp < currentTime : false;
+  } catch {
+    return true;
+  }
+};
+
+// ========================================
+// AUTH PROVIDER
+// ========================================
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  // const [user, setUser] = useState<DecodedToken | null>(null); // Opcional: para guardar todo o payload
+  const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
   const router = useRouter();
-  const pathname = usePathname(); // Para saber a rota atual
+  const pathname = usePathname();
 
+  // ========================================
+  // INITIALIZE AUTH STATE
+  // ========================================
+  
   useEffect(() => {
-    const storedToken = getStoredToken();
-    const refreshToken = getStoredRefreshToken();
-
-    if (storedToken) {
+    const initializeAuth = async () => {
       try {
-        const decoded = decodeToken(storedToken) as DecodedToken; // Use sua função decodeToken
-        const currentTime = Math.floor(Date.now() / 1000);
-
-        if (decoded.exp && decoded.exp < currentTime) {
-          // Token expirado, tentar refresh se tiver refresh token
-          if (refreshToken) {
-            handleRefreshToken(refreshToken);
+        const storedToken = apiClient.getToken();
+        
+        if (storedToken) {
+          // Verificar se token está expirado
+          if (isTokenExpired(storedToken)) {
+            console.log('Token expirado, tentando refresh...');
+            
+            // Tentar refresh automático via apiClient (ele tem lógica de refresh built-in)
+            try {
+              // O apiClient vai tentar fazer refresh automaticamente na próxima requisição
+              const currentUser = await usersService.getCurrentUser();
+              const newToken = apiClient.getToken(); // Pegar o token novo após refresh
+              
+              if (newToken) {
+                const decoded = decodeToken(newToken);
+                setToken(newToken);
+                setUser(currentUser);
+                setUserRole(decoded.role);
+              }
+            } catch (refreshError) {
+              console.error('Falha no refresh automático:', refreshError);
+              await logoutAndRedirect();
+            }
           } else {
-            // Sem refresh token, deslogar
-            console.log('Token expirado, sem refresh token, deslogando.');
-            logoutAndRedirect();
+            // Token válido, decodificar para pegar role
+            try {
+              const decoded = decodeToken(storedToken);
+              setToken(storedToken);
+              setUserRole(decoded.role);
+              
+              // Buscar dados completos do usuário
+              const currentUser = await usersService.getCurrentUser();
+              setUser(currentUser);
+            } catch (error) {
+              console.error('Erro ao decodificar token ou buscar usuário:', error);
+              await logoutAndRedirect();
+            }
           }
-        } else {
-          // Token válido
-          setToken(storedToken);
-          setIsLoggedIn(true);
-          setUserRole(decoded.role);
-          // setUser(decoded); // Opcional
         }
       } catch (error) {
-        console.error("Erro ao processar token armazenado:", error);
-        logoutAndRedirect(); // Se o token for inválido
+        console.error('Erro ao inicializar autenticação:', error);
+        await logoutAndRedirect();
+      } finally {
+        setIsInitialized(true);
       }
-    } else {
-      setIsLoggedIn(false);
-      setUserRole(null);
-      setToken(null);
-      // setUser(null); // Opcional
-    }
-  // A dependência de 'pathname' aqui é para reavaliar se o usuário tentar acessar /login logado
-  // Mas a lógica de redirecionamento de /login para usuários logados é melhor na própria página de login
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]); // O logoutAndRedirect pode causar loop se router estiver aqui e não houver controle.
+    };
 
+    initializeAuth();
+  }, [pathname]); // Re-avaliar quando mudar de rota
 
-  const handleRefreshToken = async (rToken: string) => {
+  // ========================================
+  // LOGIN FUNCTION
+  // ========================================
+  
+  const login = async (newToken: string, refreshToken: string): Promise<void> => {
     try {
-      const newAccessToken = await refreshAccessToken(rToken);
-      const decoded = decodeToken(newAccessToken) as DecodedToken;
+      // Salvar tokens no apiClient (localStorage)
+      apiClient.setTokens(newToken, refreshToken);
       
-      storeTokens(newAccessToken, rToken); // Armazena o novo token e o mesmo refresh token
-      setToken(newAccessToken);
-      setIsLoggedIn(true);
+      // Decodificar token para pegar role
+      const decoded = decodeToken(newToken);
+      setToken(newToken);
       setUserRole(decoded.role);
-      // setUser(decoded); // Opcional
-      console.log('Token atualizado com sucesso.');
+      
+      // Buscar dados completos do usuário
+      const currentUser = await usersService.getCurrentUser();
+      setUser(currentUser);
+      
+      // ✅ REDIRECIONAMENTO BASEADO EM ROLE (mantendo lógica original)
+      if (decoded.role === 'superadmin') {
+        router.push('/platform');
+      } else {
+        router.push('/estatisticas'); // Ajustado para rota correta
+      }
     } catch (error) {
-      console.error('Falha ao atualizar o token:', error);
-      logoutAndRedirect(); // Se o refresh token falhar, deslogar
+      console.error('Erro ao fazer login:', error);
+      await logoutAndRedirect();
+      throw error;
     }
   };
 
-  const login = (newToken: string, newRefreshToken: string) => {
-    storeTokens(newToken, newRefreshToken);
-    const decoded = decodeToken(newToken) as DecodedToken; // Use sua função decodeToken
-
-    setToken(newToken);
-    setIsLoggedIn(true);
-    setUserRole(decoded.role);
-    // setUser(decoded); // Opcional
-
-    // Redirecionamento baseado na role
-    if (decoded.role === 'superadmin') {
-      router.push('/platform');
-    } else {
-      router.push('/statistics'); 
-    }
-  };
-
-  const logoutAndRedirect = () => {
-    clearTokens();
-    setToken(null);
-    setIsLoggedIn(false);
-    setUserRole(null);
-    if (pathname !== '/login') {
+  // ========================================
+  // LOGOUT FUNCTIONS
+  // ========================================
+  
+  const logoutAndRedirect = async (): Promise<void> => {
+    try {
+      apiClient.clearTokens();
+      setToken(null);
+      setUser(null);
+      setUserRole(null);
+      
+      // Só redirecionar se não estiver já na página de login
+      if (pathname !== '/login') {
         router.push('/login');
+      }
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      // Mesmo com erro, limpar estado local
+      setToken(null);
+      setUser(null);
+      setUserRole(null);
+      if (pathname !== '/login') {
+        router.push('/login');
+      }
     }
   };
-
-  const logout = () => {
+  
+  const logout = (): void => {
     logoutAndRedirect();
   };
 
+  // ========================================
+  // REFRESH USER DATA
+  // ========================================
+  
+  const refreshUserData = async (): Promise<void> => {
+    try {
+      if (!token) return;
+      
+      const currentUser = await usersService.getCurrentUser();
+      setUser(currentUser);
+      
+      // Atualizar role também se o token mudou
+      const decoded = decodeToken(token);
+      setUserRole(decoded.role);
+    } catch (error) {
+      console.error('Erro ao atualizar dados do usuário:', error);
+      await logoutAndRedirect();
+    }
+  };
+
+  // ========================================
+  // CONTEXT VALUE
+  // ========================================
+  
+  const contextValue: AuthContextProps = {
+    isLoggedIn: !!user && !!token,
+    userRole,
+    user,
+    token,
+    login,
+    logout,
+    refreshUserData,
+  };
+
+  // ========================================
+  // RENDER
+  // ========================================
+  
+  // Não renderizar children até auth ser inicializado
+  if (!isInitialized) {
+    return null; // Ou um loading spinner
+  }
+
   return (
-    <AuthContext.Provider value={{ isLoggedIn, userRole, token, login, logout /*, user*/ }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
 };
+
+// ========================================
+// HOOK PARA USAR AUTH
+// ========================================
 
 export const useAuth = (): AuthContextProps => {
   const context = useContext(AuthContext);
@@ -145,3 +250,22 @@ export const useAuth = (): AuthContextProps => {
   }
   return context;
 };
+
+// ========================================
+// COMPATIBILITY EXPORTS (para manter compatibilidade)
+// ========================================
+
+// Export das funções de token para quem ainda usa diretamente
+export const tokenUtils = {
+  decodeToken,
+  isTokenExpired,
+  getToken: () => apiClient.getToken(),
+  clearTokens: () => apiClient.clearTokens(),
+  setTokens: (token: string, refreshToken: string) => apiClient.setTokens(token, refreshToken),
+};
+
+// ========================================
+// EXPORT DEFAULT
+// ========================================
+
+export default AuthProvider;

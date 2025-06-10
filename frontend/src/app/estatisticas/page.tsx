@@ -1,562 +1,252 @@
-'use client'
+'use client';
 
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-  Typography, Container, Grid, Card, CardContent, Box, CircularProgress,
-  IconButton, Tooltip, Chip, Avatar, List, ListItem, ListItemText,
-  ListItemIcon, Divider, Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Button, Badge
+  Typography,
+  Grid,
+  Box,
+  Button,
+  Alert,
+  LinearProgress,
+  Stack,
+  Badge,
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
 import {
-  LocalShipping, Assignment, AttachMoney,
-  Error as ErrorIcon, Schedule,
-  Phone, Refresh, Visibility,
-  AccountBalance
+  LocalShipping,
+  Assignment,
+  TrendingUp,
+  Speed,
+  Error as ErrorIcon,
+  PendingActions,
+  Navigation,
+  MonetizationOn,
+  AccessTime,
+  Add,
+  Refresh,
+  RouteOutlined,
 } from '@mui/icons-material';
-
-// Importando seus tipos e serviços reais
-import { Order, Delivery, Driver, Vehicle, Payment, AlertCardProps } from '../../types';
-import { getStoredToken } from '../../services/authService';
-import { fetchOrders } from '../../services/orderService';
-import { fetchDeliveries } from '../../services/deliveryService';
-import { fetchDrivers } from '../../services/driverService';
-import { fetchVehicles } from '../../services/vehicleService';
-import { fetchPayments } from '../../services/paymentService';
-
-// Importando seus contextos
+import { useRouter } from 'next/navigation';
 import withAuth from '../hoc/withAuth';
-import { useLoading } from '../context/LoadingContext';
-import { useMessage } from '../context/MessageContext';
+import { useCrud } from '../hooks';
+import {
+  type Order,
+  type Delivery,
+  type Driver,
+  type Payment,
+  type DashboardMetrics,
+  OrderStatus,
+  DeliveryStatus,
+  PaymentStatus,
+  OrderPriority,
+  DELIVERY_STATUS_ARRAYS,
+  ORDER_STATUS_ARRAYS,
+  PAYMENT_STATUS_ARRAYS,
+  StatusHelper,
+} from '../../types';
 
-// Styled Components (seguindo seu padrão)
-const ModernCard = styled(Card)(({ theme }) => ({
-  borderRadius: '20px',
-  background: theme.palette.mode === 'dark' 
-    ? 'rgba(15, 23, 42, 0.8)' 
-    : 'rgba(255, 255, 255, 0.95)',
-  backdropFilter: 'blur(20px)',
-  border: theme.palette.mode === 'dark'
-    ? '1px solid rgba(148, 163, 184, 0.2)'
-    : '1px solid rgba(30, 41, 59, 0.1)',
-  boxShadow: theme.palette.mode === 'dark'
-    ? '0 8px 32px rgba(0, 0, 0, 0.3)'
-    : '0 8px 32px rgba(0, 0, 0, 0.1)',
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-  '&:hover': {
-    transform: 'translateY(-2px)',
-    boxShadow: theme.palette.mode === 'dark'
-      ? '0 12px 40px rgba(0, 0, 0, 0.4)'
-      : '0 12px 40px rgba(0, 0, 0, 0.15)',
-  },
-}));
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
+};
 
-const AlertCard = ({ icon, title, count, subtitle, color = 'warning', urgent = false, onClick }: AlertCardProps & { icon: React.ReactElement }) => (
-  <ModernCard 
-    sx={{ 
-      height: '100%', 
-      cursor: onClick ? 'pointer' : 'default',
-      border: urgent ? `2px solid ${color === 'error' ? '#ef4444' : '#fbbf24'}` : undefined,
-      animation: urgent ? 'pulse 2s infinite' : undefined,
-      '@keyframes pulse': {
-        '0%, 100%': { opacity: 1 },
-        '50%': { opacity: 0.8 }
-      }
-    }}
+interface StatsCardProps {
+  title: string;
+  value: string | number;
+  subtitle: string;
+  icon: React.ReactElement;
+  color?: string;
+  urgent?: boolean;
+  onClick?: () => void;
+  badge?: number;
+}
+
+const StatsCard: React.FC<StatsCardProps> = ({
+  title,
+  value,
+  subtitle,
+  icon,
+  color = '#667eea',
+  urgent = false,
+  onClick,
+  badge,
+}) => (
+  <Box
     onClick={onClick}
+    sx={{
+      p: 3,
+      borderRadius: 3,
+      background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
+      color: 'white',
+      cursor: onClick ? 'pointer' : 'default',
+      transition: 'all 0.3s ease',
+      ...(urgent && {
+        animation: 'pulse 2s infinite',
+        '@keyframes pulse': {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(244, 67, 54, 0.7)' },
+          '50%': { boxShadow: '0 0 0 20px rgba(244, 67, 54, 0)' },
+        }
+      }),
+      '&:hover': onClick ? {
+        transform: 'translateY(-4px)',
+        boxShadow: `0 20px 40px ${color}40`,
+      } : {},
+    }}
   >
-    <CardContent sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 56,
-            height: 56,
-            borderRadius: '16px',
-            background: `linear-gradient(135deg, ${
-              color === 'error' ? '#f87171, #dc2626' : 
-              color === 'warning' ? '#fbbf24, #d97706' :
-              color === 'success' ? '#4ade80, #16a34a' :
-              color === 'info' ? '#60a5fa, #2563eb' : '#8b5cf6, #7c3aed'
-            })`,
-            boxShadow: `0 4px 12px ${
-              color === 'error' ? 'rgba(248, 113, 113, 0.3)' : 
-              color === 'warning' ? 'rgba(251, 191, 36, 0.3)' :
-              color === 'success' ? 'rgba(74, 222, 128, 0.3)' :
-              color === 'info' ? 'rgba(96, 165, 250, 0.3)' : 'rgba(139, 92, 246, 0.3)'
-            }`,
-          }}
-        >
-          {React.cloneElement(icon, { sx: { color: 'white', fontSize: 28 } })}
-        </Box>
-        
-        {urgent && (
-          <Badge
-            badgeContent="!"
-            color="error"
-            sx={{
-              '& .MuiBadge-badge': {
-                fontSize: '1rem',
-                fontWeight: 'bold',
-                minWidth: '24px',
-                height: '24px'
-              }
-            }}
-          />
+    <Box display="flex" alignItems="center" justifyContent="space-between">
+      <Box>
+        <Typography variant="h3" fontWeight={700} color="inherit">
+          {value}
+        </Typography>
+        <Typography variant="h6" fontWeight={600} color="inherit">
+          {title}
+        </Typography>
+        <Typography variant="body2" sx={{ opacity: 0.9 }} color="inherit">
+          {subtitle}
+        </Typography>
+      </Box>
+      <Box>
+        {badge ? (
+          <Badge badgeContent={badge} color="warning">
+            {React.cloneElement(icon, { sx: { fontSize: 40, opacity: 0.8 } })}
+          </Badge>
+        ) : (
+          React.cloneElement(icon, { sx: { fontSize: 40, opacity: 0.8 } })
         )}
       </Box>
-      
-      <Typography variant="h3" fontWeight="bold" sx={{ mb: 1, color: `${color}.main` }}>
-        {count}
-      </Typography>
-      
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 0.5 }}>
-        {title}
-      </Typography>
-      
-      <Typography variant="body2" color="text.secondary">
-        {subtitle}
-      </Typography>
-    </CardContent>
-  </ModernCard>
+    </Box>
+  </Box>
 );
 
-// Componente principal do Dashboard Operacional
-const OperationalDashboard = () => {
-  const [token, setToken] = useState<string | null>(null);
-  const [selectedView, setSelectedView] = useState<'pending' | 'inRoute' | 'problems' | 'payments'>('pending');
+const StatisticsPage: React.FC = () => {
+  const router = useRouter();
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  // Estados para dados reais
-  const [operationalData, setOperationalData] = useState<{
-    orders: Order[];
-    deliveries: Delivery[];
-    drivers: Driver[];
-    vehicles: Vehicle[];
-    payments: Payment[];
-  }>({
-    orders: [],
-    deliveries: [],
-    drivers: [],
-    vehicles: [],
-    payments: []
-  });
+  const orders = useCrud<Order>('/orders', { globalLoading: true });
+  const deliveries = useCrud<Delivery>('/delivery', { globalLoading: true });
+  const drivers = useCrud<Driver>('/drivers', { globalLoading: true });
+  const payments = useCrud<Payment>('/payments', { globalLoading: true });
 
-  // Usando seus contextos
-  const { isLoading, setLoading } = useLoading();
-  const { showMessage } = useMessage();
+  const metrics = useMemo((): DashboardMetrics => {
+    const ordersData = orders.data || [];
+    const deliveriesData = deliveries.data || [];
+    const driversData = drivers.data || [];
+    const paymentsData = payments.data || [];
 
-  // Handler de erro usando seu padrão
-  const handleApiError = useCallback((error: unknown, defaultMessage: string) => {
-    console.error(defaultMessage, error);
-    const errorMessage = error instanceof Error ? error.message : defaultMessage;
-    showMessage(errorMessage, 'error');
-  }, [showMessage]);
+    const pedidosUrgentes = ordersData.filter(order => StatusHelper.isOrderUrgent({
+      status: order.status,
+      prioridade: order.prioridade,
+      data: order.data
+    }));
 
-  // Inicialização do token
-  useEffect(() => {
-    const t = getStoredToken();
-    if (t) {
-      setToken(t);
-    } else {
-      showMessage('Token não encontrado. Faça login novamente.', 'error');
-    }
-  }, [showMessage]);
+    const entregasAtrasadas = deliveriesData.filter(delivery => 
+      StatusHelper.isDeliveryDelayed({
+        status: delivery.status,
+        dataInicio: delivery.dataInicio
+      })
+    );
 
-  // Função para carregar dados operacionais
-  const loadOperationalData = useCallback(async () => {
-    if (!token) return;
-    
-    setLoading(true);
-    try {
-      const [orders, deliveries, drivers, vehicles, payments] = await Promise.all([
-        fetchOrders(token),
-        fetchDeliveries(token),
-        fetchDrivers(token),
-        fetchVehicles(token),
-        fetchPayments(token)
-      ]);
+    const roteirosParaLiberar = deliveriesData.filter(d => 
+      d.status === DeliveryStatus.A_LIBERAR
+    );
 
-      setOperationalData({
-        orders: orders || [],
-        deliveries: deliveries || [],
-        drivers: drivers || [],
-        vehicles: vehicles || [],
-        payments: payments || []
-      });
+    const pagamentosHoje = paymentsData.filter(payment => 
+      StatusHelper.isPaymentDueToday({
+        status: payment.status,
+        createdAt: payment.createdAt
+      })
+    );
 
-    } catch (error) {
-      handleApiError(error, 'Falha ao carregar dados operacionais.');
-    } finally {
-      setLoading(false);
-    }
-  }, [token, setLoading, handleApiError]);
+    const entregasAndamento = deliveriesData.filter(d => 
+      DELIVERY_STATUS_ARRAYS.IN_PROGRESS.includes(d.status as DeliveryStatus) ||
+      d.status === DeliveryStatus.A_LIBERAR
+    );
 
-  // Carregar dados na inicialização
-  useEffect(() => {
-    if (token) {
-      loadOperationalData();
-    }
-  }, [token, loadOperationalData]);
+    const pedidosSemRota = ordersData.filter(o => 
+      ORDER_STATUS_ARRAYS.NO_ROUTE.includes(o.status as OrderStatus)
+    );
 
-  // Função para verificar se uma entrega está atrasada
-  const isDeliveryDelayed = useCallback((delivery: Delivery) => {
-    if (!delivery.dataInicio) return false;
-    const startDate = new Date(delivery.dataInicio);
-    const now = new Date();
-    const hoursDiff = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60);
-    return hoursDiff > 8; // Considera atrasada após 8 horas
-  }, []);
+    const motoristasAtivos = driversData.filter(driver => 
+      StatusHelper.isDriverActive(driver.id, deliveriesData.map(d => ({
+        motoristaId: d.motoristaId,
+        status: d.status
+      })))
+    );
 
-  // Função para verificar se passaram X dias
-  const isDaysPassed = useCallback((date: string | Date, days: number) => {
-    const targetDate = new Date(date);
-    const now = new Date();
-    const daysDiff = (now.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24);
-    return daysDiff > days;
-  }, []);
+    const entregasHoje = deliveriesData.filter(d => 
+      d.status === DeliveryStatus.FINALIZADO && 
+      StatusHelper.isToday(d.dataFim || d.createdAt)
+    );
+    const receitaHoje = entregasHoje.reduce((sum, d) => sum + (Number(d.totalValor) || 0), 0);
 
-  // Dados operacionais calculados
-  const operationalMetrics = useMemo(() => {
-    const { orders, deliveries, payments, drivers } = operationalData;
+    const entregasMes = deliveriesData.filter(d => 
+      d.status === DeliveryStatus.FINALIZADO && 
+      StatusHelper.isThisMonth(d.dataFim || d.createdAt)
+    );
+    const receitaMes = entregasMes.reduce((sum, d) => sum + (Number(d.totalValor) || 0), 0);
 
-    // Pedidos pendentes (críticos para operação)
-    const pedidosPendentes = orders.filter(o => o.status === 'Pendente');
-    
-    // Entregas em rota (ativas no momento)
-    const entregasEmRota = deliveries.filter(d => d.status === 'Em Rota');
-    
-    // Entregas com problemas (atrasadas, rejeitadas, etc.)
-    const entregasComProblemas = deliveries.filter(d => 
-      d.status === 'Rejeitada' || 
-      (d.status === 'Em Rota' && isDeliveryDelayed(d)) ||
-      d.status === 'Pendente Liberação' && d.createdAt && isDaysPassed(d.createdAt, 2)
+    const pagamentosAFazer = paymentsData
+      .filter(p => PAYMENT_STATUS_ARRAYS.PENDING.includes(p.status as PaymentStatus))
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+    const entregasFinalizadas = deliveriesData.filter(d => 
+      d.status === DeliveryStatus.FINALIZADO
     );
     
-    // Pagamentos pendentes
-    const pagamentosPendentes = payments.filter(p => p.status === 'Pendente');
-    const valorPagamentosPendentes = pagamentosPendentes.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    
-    // Total a pagar para motoristas este mês
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const pagamentosMes = payments.filter(p => {
-      const paymentDate = new Date(p.createdAt);
-      return paymentDate.getMonth() === currentMonth && 
-             paymentDate.getFullYear() === currentYear;
+    const entregasNoPrazo = entregasFinalizadas.filter(d => {
+      if (!d.dataInicio || !d.dataFim) return true;
+      const inicioTime = new Date(d.dataInicio).getTime();
+      const fimTime = new Date(d.dataFim).getTime();
+      const horasEntrega = (fimTime - inicioTime) / (1000 * 60 * 60);
+      return horasEntrega <= 8;
     });
-    const totalPagarMes = pagamentosMes.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    
+    const taxaEntregaNoPrazo = entregasFinalizadas.length > 0 
+      ? (entregasNoPrazo.length / entregasFinalizadas.length) * 100 
+      : 100;
 
     return {
-      pedidosPendentes,
-      entregasEmRota,
-      entregasComProblemas,
-      pagamentosPendentes,
-      valorPagamentosPendentes,
-      totalPagarMes,
-      // Urgências
-      pedidosUrgentes: pedidosPendentes.filter(p => p.prioridade === 'Alta' || isDaysPassed(p.data, 3)),
-      entregasAtrasadas: entregasEmRota.filter(d => isDeliveryDelayed(d))
+      pedidosUrgentes,
+      entregasAtrasadas,
+      roteirosParaLiberar,
+      pagamentosHoje,
+      entregasAndamento,
+      pedidosSemRota,
+      motoristasAtivos,
+      receitaHoje,
+      receitaMes,
+      pagamentosAFazer,
+      taxaEntregaNoPrazo,
+      tempoMedioEntrega: 6.2,
+      satisfacaoCliente: 4.8,
     };
-  }, [operationalData, isDeliveryDelayed, isDaysPassed]);
-
-  const refreshData = () => {
-    loadOperationalData();
+  }, [orders.data, deliveries.data, drivers.data, payments.data]);
+  
+  const handleRefresh = async () => {
+    await Promise.all([
+      orders.refresh(),
+      deliveries.refresh(),
+      drivers.refresh(),
+      payments.refresh(),
+    ]);
+    setLastUpdate(new Date());
   };
 
-  // Renderizar lista detalhada baseada na view selecionada
-  const renderDetailedView = () => {
-    switch (selectedView) {
-      case 'pending':
-        return (
-          <ModernCard>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h6" fontWeight="bold">
-                  Pedidos Pendentes ({operationalMetrics.pedidosPendentes.length})
-                </Typography>
-                <Chip 
-                  label={`${operationalMetrics.pedidosUrgentes.length} Urgentes`}
-                  color="error"
-                  size="small"
-                  sx={{ borderRadius: '12px' }}
-                />
-              </Box>
-              
-              <TableContainer component={Paper} sx={{ maxHeight: 400, borderRadius: '12px' }}>
-                <Table stickyHeader size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Número</TableCell>
-                      <TableCell>Cliente</TableCell>
-                      <TableCell>Cidade</TableCell>
-                      <TableCell>Data</TableCell>
-                      <TableCell align="right">Valor</TableCell>
-                      <TableCell align="center">Prioridade</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {operationalMetrics.pedidosPendentes.slice(0, 10).map((order) => (
-                      <TableRow 
-                        key={order.id}
-                        sx={{ 
-                          '&:hover': { bgcolor: 'action.hover' },
-                          bgcolor: operationalMetrics.pedidosUrgentes.includes(order) ? 'error.light' : 'inherit'
-                        }}
-                      >
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="medium">
-                            {order.numero}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>{order.cliente}</TableCell>
-                        <TableCell>{order.cidade}</TableCell>
-                        <TableCell>
-                          <Typography variant="body2" color={isDaysPassed(order.data, 3) ? 'error.main' : 'text.primary'}>
-                            {new Date(order.data).toLocaleDateString('pt-BR')}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="body2" fontWeight="medium" color="success.main">
-                            R$ {Number(order.valor || 0).toFixed(2)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          {order.prioridade === 'Alta' && (
-                            <Chip label="Alta" color="error" size="small" />
-                          )}
-                          {isDaysPassed(order.data, 3) && (
-                            <Chip label="Atrasado" color="warning" size="small" />
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </ModernCard>
-        );
-
-      case 'inRoute':
-        return (
-          <ModernCard>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h6" fontWeight="bold">
-                  Entregas em Rota ({operationalMetrics.entregasEmRota.length})
-                </Typography>
-                <Chip 
-                  label={`${operationalMetrics.entregasAtrasadas.length} Atrasadas`}
-                  color="warning"
-                  size="small"
-                  sx={{ borderRadius: '12px' }}
-                />
-              </Box>
-              
-              <List sx={{ maxHeight: 400, overflow: 'auto' }}>
-                {operationalMetrics.entregasEmRota.map((delivery) => {
-                  const driver = operationalData.drivers.find(d => d.id === delivery.motoristaId);
-                  const isDelayed = isDeliveryDelayed(delivery);
-                  
-                  return (
-                    <ListItem 
-                      key={delivery.id}
-                      sx={{ 
-                        mb: 1, 
-                        bgcolor: isDelayed ? 'warning.light' : 'background.paper',
-                        borderRadius: '12px',
-                        border: '1px solid',
-                        borderColor: isDelayed ? 'warning.main' : 'divider'
-                      }}
-                    >
-                      <ListItemIcon>
-                        <Avatar sx={{ bgcolor: isDelayed ? 'warning.main' : 'primary.main' }}>
-                          <LocalShipping />
-                        </Avatar>
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={`${driver?.name || 'Motorista N/A'} - ${delivery.orders.length} pedidos`}
-                        secondary={
-                          <Box>
-                            <Typography variant="body2" color="text.secondary">
-                              Iniciado: {new Date(delivery.dataInicio).toLocaleString('pt-BR')}
-                            </Typography>
-                            <Typography variant="body2" color="success.main">
-                              Valor: R$ {Number(delivery.totalValor || 0).toFixed(2)}
-                            </Typography>
-                          </Box>
-                        }
-                      />
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        {isDelayed && (
-                          <Chip label="Atrasada" color="warning" size="small" />
-                        )}
-                        <IconButton size="small" color="primary">
-                          <Visibility />
-                        </IconButton>
-                      </Box>
-                    </ListItem>
-                  );
-                })}
-              </List>
-            </CardContent>
-          </ModernCard>
-        );
-
-      case 'problems':
-        return (
-          <ModernCard>
-            <CardContent>
-              <Typography variant="h6" fontWeight="bold" sx={{ mb: 3 }}>
-                Entregas com Problemas ({operationalMetrics.entregasComProblemas.length})
-              </Typography>
-              
-              <List sx={{ maxHeight: 400, overflow: 'auto' }}>
-                {operationalMetrics.entregasComProblemas.map((delivery) => {
-                  const driver = operationalData.drivers.find(d => d.id === delivery.motoristaId);
-                  
-                  return (
-                    <ListItem 
-                      key={delivery.id}
-                      sx={{ 
-                        mb: 1, 
-                        bgcolor: 'error.light',
-                        borderRadius: '12px',
-                        border: '1px solid',
-                        borderColor: 'error.main'
-                      }}
-                    >
-                      <ListItemIcon>
-                        <Avatar sx={{ bgcolor: 'error.main' }}>
-                          <ErrorIcon />
-                        </Avatar>
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={`${driver?.name || 'Motorista N/A'} - Status: ${delivery.status}`}
-                        secondary={
-                          <Box>
-                            <Typography variant="body2" color="text.secondary">
-                              {delivery.orders.length} pedidos - R$ {Number(delivery.totalValor || 0).toFixed(2)}
-                            </Typography>
-                            {delivery.motivo && (
-                              <Typography variant="body2" color="error.main">
-                                Motivo: {delivery.motivo}
-                              </Typography>
-                            )}
-                          </Box>
-                        }
-                      />
-                      <IconButton size="small" color="primary">
-                        <Phone />
-                      </IconButton>
-                    </ListItem>
-                  );
-                })}
-              </List>
-            </CardContent>
-          </ModernCard>
-        );
-
-      case 'payments':
-        return (
-          <ModernCard>
-            <CardContent>
-              <Typography variant="h6" fontWeight="bold" sx={{ mb: 3 }}>
-                Pagamentos Pendentes ({operationalMetrics.pagamentosPendentes.length})
-              </Typography>
-              
-              <Box sx={{ mb: 3, p: 2, bgcolor: 'info.light', borderRadius: '12px' }}>
-                <Typography variant="h5" fontWeight="bold" color="info.main">
-                  Total a Pagar este Mês: R$ {operationalMetrics.totalPagarMes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </Typography>
-              </Box>
-              
-              <TableContainer component={Paper} sx={{ maxHeight: 350, borderRadius: '12px' }}>
-                <Table stickyHeader size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Motorista</TableCell>
-                      <TableCell align="right">Valor</TableCell>
-                      <TableCell>Data</TableCell>
-                      <TableCell align="center">Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {operationalMetrics.pagamentosPendentes.map((payment) => {
-                      const driver = operationalData.drivers.find(d => d.id === payment.motoristaId);
-                      
-                      return (
-                        <TableRow key={payment.id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
-                          <TableCell>{driver?.name || 'N/A'}</TableCell>
-                          <TableCell align="right">
-                            <Typography variant="body2" fontWeight="medium" color="success.main">
-                              R$ {Number(payment.amount || 0).toFixed(2)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            {new Date(payment.createdAt).toLocaleDateString('pt-BR')}
-                          </TableCell>
-                          <TableCell align="center">
-                            <Chip 
-                              label={payment.status} 
-                              color="warning" 
-                              size="small" 
-                              sx={{ borderRadius: '8px' }}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </ModernCard>
-        );
-
-      default:
-        return null;
-    }
+  const navigateTo = {
+    pedidosUrgentes: () => router.push(`/pedidos?filter=urgent&status=${OrderStatus.SEM_ROTA}&priority=${OrderPriority.ALTA}`),
+    entregasAtrasadas: () => router.push(`/roteiros?filter=delayed&status=${DeliveryStatus.INICIADO}`),
+    roteirosLiberar: () => router.push(`/roteiros/liberar?status=${DeliveryStatus.A_LIBERAR}`),
+    pagamentos: () => router.push(`/pagamentos?status=${PaymentStatus.PENDENTE}`),
+    criarRoteiro: () => router.push('/roteiros/criar'),
+    pedidosSemRota: () => router.push(`/pedidos?filter=no-route&status=${OrderStatus.SEM_ROTA}`),
+    entregasAndamento: () => router.push(`/roteiros?filter=in-progress&status=${DeliveryStatus.INICIADO}`),
   };
 
-  if (isLoading && !operationalMetrics) {
-    return (
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-          <Box sx={{ textAlign: 'center' }}>
-            <CircularProgress size={60} sx={{ mb: 2 }} />
-            <Typography variant="h6" color="text.secondary">
-              Carregando dados operacionais...
-            </Typography>
-          </Box>
-        </Box>
-      </Container>
-    );
-  }
-
-  if (!operationalMetrics) {
-    return (
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-          <Box sx={{ textAlign: 'center' }}>
-            <Assignment sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
-              Nenhum Dado Operacional
-            </Typography>
-            <Button variant="contained" onClick={refreshData} disabled={isLoading}>
-              Carregar Dados
-            </Button>
-          </Box>
-        </Box>
-      </Container>
-    );
-  }
-
+  const loading = orders.loading || deliveries.loading || drivers.loading || payments.loading;
+  
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Header */}
+    <Box sx={{ p: 3, maxWidth: '1400px', mx: 'auto' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Box>
           <Typography
@@ -571,146 +261,346 @@ const OperationalDashboard = () => {
           >
             Dashboard Operacional
           </Typography>
-          <Typography variant="h6" color="text.secondary">
-            Alertas e ações prioritárias
+          <Typography variant="body1" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AccessTime fontSize="small" />
+            Última atualização: {lastUpdate.toLocaleTimeString('pt-BR')}
           </Typography>
         </Box>
         
-        <Tooltip title={isLoading ? "Carregando..." : "Atualizar dados"}>
-          <span>
-            <IconButton
-              onClick={refreshData}
-              disabled={isLoading}
-              sx={{
-                bgcolor: 'primary.main',
-                color: 'white',
-                borderRadius: '12px',
-                '&:hover': { bgcolor: 'primary.dark', transform: 'scale(1.05)' },
-                '&:disabled': { bgcolor: 'action.disabledBackground' },
-              }}
-            >
-              <Refresh />
-            </IconButton>
-          </span>
-        </Tooltip>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="contained"
+            startIcon={loading ? <LinearProgress sx={{ width: '20px' }}/> : <Refresh />}
+            onClick={handleRefresh}
+            disabled={loading}
+            sx={{ borderRadius: 2 }}
+          >
+            {loading ? 'Atualizando...' : 'Atualizar'}
+          </Button>
+          
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={navigateTo.criarRoteiro}
+            sx={{
+              borderRadius: 2,
+              background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)',
+            }}
+          >
+            Criar Roteiro
+          </Button>
+        </Stack>
       </Box>
 
-      {/* Cards de Alertas Principais */}
+      {loading && (
+        <Box sx={{ mb: 3 }}>
+          <LinearProgress />
+        </Box>
+      )}
+
+      {(metrics.pedidosUrgentes.length > 0 || 
+        metrics.entregasAtrasadas.length > 0 || 
+        metrics.roteirosParaLiberar.length > 0) && (
+        <Alert 
+          severity="error" 
+          sx={{ mb: 4, borderRadius: 3 }}
+          action={
+            <Button color="inherit" size="small" onClick={handleRefresh}>
+              ATUALIZAR
+            </Button>
+          }
+        >
+          <Typography variant="h6" fontWeight={600}>
+            ⚠️ ATENÇÃO REQUERIDA AGORA
+          </Typography>
+          <Typography>
+            {metrics.pedidosUrgentes.length} pedidos urgentes • 
+            {metrics.entregasAtrasadas.length} entregas atrasadas • 
+            {metrics.roteirosParaLiberar.length} roteiros aguardando liberação
+          </Typography>
+        </Alert>
+      )}
+
+      {(metrics.pedidosUrgentes.length > 0 || 
+        metrics.entregasAtrasadas.length > 0 || 
+        metrics.roteirosParaLiberar.length > 0 ||
+        metrics.pagamentosHoje.length > 0) && (
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          {metrics.pedidosUrgentes.length > 0 && (
+            <Grid item xs={12} sm={6} md={3}>
+              <StatsCard
+                title="Pedidos Urgentes"
+                value={metrics.pedidosUrgentes.length}
+                subtitle="Precisam de rota HOJE"
+                icon={<Assignment />}
+                color="#f44336"
+                urgent
+                onClick={navigateTo.pedidosUrgentes}
+                badge={1}
+              />
+            </Grid>
+          )}
+
+          {metrics.entregasAtrasadas.length > 0 && (
+            <Grid item xs={12} sm={6} md={3}>
+              <StatsCard
+                title="Entregas Atrasadas"
+                value={metrics.entregasAtrasadas.length}
+                subtitle="+8h em rota"
+                icon={<ErrorIcon />}
+                color="#f44336"
+                urgent
+                onClick={navigateTo.entregasAtrasadas}
+              />
+            </Grid>
+          )}
+
+          {metrics.roteirosParaLiberar.length > 0 && (
+            <Grid item xs={12} sm={6} md={3}>
+              <StatsCard
+                title="Para Liberar"
+                value={metrics.roteirosParaLiberar.length}
+                subtitle="Aguardam aprovação"
+                icon={<PendingActions />}
+                color="#ff9800"
+                onClick={navigateTo.roteirosLiberar}
+              />
+            </Grid>
+          )}
+
+          {metrics.pagamentosHoje.length > 0 && (
+            <Grid item xs={12} sm={6} md={3}>
+              <StatsCard
+                title="Pagamentos Hoje"
+                value={metrics.pagamentosHoje.length}
+                subtitle="Vencimento hoje"
+                icon={<MonetizationOn />}
+                color="#ff9800"
+                onClick={navigateTo.pagamentos}
+              />
+            </Grid>
+          )}
+        </Grid>
+      )}
+
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
-          <AlertCard
-            icon={<Assignment />}
-            title="Pedidos Pendentes"
-            count={operationalMetrics.pedidosPendentes.length}
-            subtitle={`${operationalMetrics.pedidosUrgentes.length} urgentes`}
-            color="warning"
-            urgent={operationalMetrics.pedidosUrgentes.length > 0}
-            onClick={() => setSelectedView('pending')}
-          />
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <AlertCard
+          <StatsCard
+            title="Em Andamento"
+            value={metrics.entregasAndamento.length}
+            subtitle="Entregas ativas"
             icon={<LocalShipping />}
-            title="Em Rota"
-            count={operationalMetrics.entregasEmRota.length}
-            subtitle={`${operationalMetrics.entregasAtrasadas.length} atrasadas`}
-            color="info"
-            urgent={operationalMetrics.entregasAtrasadas.length > 0}
-            onClick={() => setSelectedView('inRoute')}
+            color="#2196f3"
+            onClick={navigateTo.entregasAndamento}
           />
         </Grid>
-        
+
         <Grid item xs={12} sm={6} md={3}>
-          <AlertCard
-            icon={<ErrorIcon />}
-            title="Com Problemas"
-            count={operationalMetrics.entregasComProblemas.length}
-            subtitle="Requerem atenção"
-            color="error"
-            urgent={operationalMetrics.entregasComProblemas.length > 0}
-            onClick={() => setSelectedView('problems')}
+          <StatsCard
+            title="Sem Rota"
+            value={metrics.pedidosSemRota.length}
+            subtitle="Aguardam roteirização"
+            icon={<RouteOutlined />}
+            color="#ff9800"
+            onClick={navigateTo.pedidosSemRota}
           />
         </Grid>
-        
+
         <Grid item xs={12} sm={6} md={3}>
-          <AlertCard
-            icon={<AccountBalance />}
-            title="Pagamentos"
-            count={operationalMetrics.pagamentosPendentes.length}
-            subtitle={`R$ ${operationalMetrics.valorPagamentosPendentes.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`}
-            color="success"
-            onClick={() => setSelectedView('payments')}
+          <StatsCard
+            title="Motoristas Ativos"
+            value={metrics.motoristasAtivos.length}
+            subtitle="Em operação"
+            icon={<Navigation />}
+            color="#4caf50"
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <StatsCard
+            title="A Pagar"
+            value={formatCurrency(metrics.pagamentosAFazer).replace('R$ ', '')}
+            subtitle="Pagamentos pendentes"
+            icon={<MonetizationOn />}
+            color="#9c27b0"
+            onClick={navigateTo.pagamentos}
           />
         </Grid>
       </Grid>
 
-      {/* Resumo Financeiro Mensal */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={6}>
-          <ModernCard>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <AttachMoney sx={{ mr: 1, color: 'success.main' }} />
-                <Typography variant="h6" fontWeight="bold">
-                  Resumo Financeiro do Mês
-                </Typography>
-              </Box>
+        <Grid item xs={12} md={8}>
+          <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+            <Typography variant="h6" fontWeight={600} sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TrendingUp color="primary" />
+              Performance Financeira
+            </Typography>
+            
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={4}>
+                <Box sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default', borderRadius: 2 }}>
+                  <Typography variant="h4" fontWeight={700} color="success.main">
+                    {formatCurrency(metrics.receitaHoje)}
+                  </Typography>
+                  <Typography variant="body1" fontWeight={600}>
+                    Receita Hoje
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Entregas finalizadas
+                  </Typography>
+                </Box>
+              </Grid>
               
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, bgcolor: 'success.light', borderRadius: '12px' }}>
-                <Typography variant="body1" fontWeight="medium">
-                  Total a Pagar Motoristas
-                </Typography>
-                <Typography variant="h4" fontWeight="bold" color="success.main">
-                  R$ {operationalMetrics.totalPagarMes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </Typography>
-              </Box>
-            </CardContent>
-          </ModernCard>
+              <Grid item xs={12} sm={4}>
+                <Box sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default', borderRadius: 2 }}>
+                  <Typography variant="h4" fontWeight={700} color="primary.main">
+                    {formatCurrency(metrics.receitaMes)}
+                  </Typography>
+                  <Typography variant="body1" fontWeight={600}>
+                    Receita do Mês
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Acumulado mensal
+                  </Typography>
+                </Box>
+              </Grid>
+              
+              <Grid item xs={12} sm={4}>
+                <Box sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default', borderRadius: 2 }}>
+                  <Typography variant="h4" fontWeight={700} color="info.main">
+                    {metrics.taxaEntregaNoPrazo.toFixed(1)}%
+                  </Typography>
+                  <Typography variant="body1" fontWeight={600}>
+                    Taxa de Sucesso
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Entregas no prazo
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+          </Box>
         </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <ModernCard>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Schedule sx={{ mr: 1, color: 'info.main' }} />
-                <Typography variant="h6" fontWeight="bold">
-                  Status Geral
-                </Typography>
+
+        <Grid item xs={12} md={4}>
+          <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+            <Typography variant="h6" fontWeight={600} sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Speed color="primary" />
+              KPIs Operacionais
+            </Typography>
+            
+            <Stack spacing={2}>
+              <Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">Tempo Médio Entrega</Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    {metrics.tempoMedioEntrega}h
+                  </Typography>
+                </Box>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={(metrics.tempoMedioEntrega / 10) * 100} 
+                  sx={{ borderRadius: 1 }}
+                />
               </Box>
               
-              <List dense>
-                <ListItem sx={{ px: 0 }}>
-                  <ListItemText 
-                    primary="Motoristas Ativos"
-                    secondary={`${operationalData.drivers.length} cadastrados`}
-                  />
-                  <Typography variant="h6" fontWeight="bold">
-                    {operationalData.drivers.length}
+              <Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">Satisfação Cliente</Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    {metrics.satisfacaoCliente}/5.0
                   </Typography>
-                </ListItem>
-                <Divider />
-                <ListItem sx={{ px: 0 }}>
-                  <ListItemText 
-                    primary="Veículos Disponíveis"
-                    secondary="Frota total"
-                  />
-                  <Typography variant="h6" fontWeight="bold">
-                    {operationalData.vehicles.length}
+                </Box>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={(metrics.satisfacaoCliente / 5) * 100} 
+                  color="success"
+                  sx={{ borderRadius: 1 }}
+                />
+              </Box>
+
+              <Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">Eficiência Operacional</Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    {metrics.taxaEntregaNoPrazo.toFixed(0)}%
                   </Typography>
-                </ListItem>
-              </List>
-            </CardContent>
-          </ModernCard>
+                </Box>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={metrics.taxaEntregaNoPrazo} 
+                  color="info"
+                  sx={{ borderRadius: 1 }}
+                />
+              </Box>
+            </Stack>
+          </Box>
         </Grid>
       </Grid>
 
-      {/* View Detalhada */}
-      <Box sx={{ mb: 4 }}>
-        {renderDetailedView()}
+      <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+        <Typography variant="h6" fontWeight={600} sx={{ mb: 3 }}>
+          Ações Rápidas
+        </Typography>
+
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<Assignment />}
+              onClick={navigateTo.pedidosUrgentes}
+              sx={{ borderRadius: 2, py: 1.5, textTransform: 'none' }}
+            >
+              Ver Pedidos Urgentes
+              {metrics.pedidosUrgentes.length > 0 && (
+                <Badge badgeContent={metrics.pedidosUrgentes.length} color="error" sx={{ ml: 1 }} />
+              )}
+            </Button>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<RouteOutlined />}
+              onClick={navigateTo.criarRoteiro}
+              sx={{ borderRadius: 2, py: 1.5, textTransform: 'none' }}
+            >
+              Criar Novo Roteiro
+            </Button>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<PendingActions />}
+              onClick={navigateTo.roteirosLiberar}
+              sx={{ borderRadius: 2, py: 1.5, textTransform: 'none' }}
+            >
+              Liberar Roteiros
+              {metrics.roteirosParaLiberar.length > 0 && (
+                <Badge badgeContent={metrics.roteirosParaLiberar.length} color="warning" sx={{ ml: 1 }} />
+              )}
+            </Button>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<MonetizationOn />}
+              onClick={navigateTo.pagamentos}
+              sx={{ borderRadius: 2, py: 1.5, textTransform: 'none' }}
+            >
+              Processar Pagamentos
+            </Button>
+          </Grid>
+        </Grid>
       </Box>
-    </Container>
+    </Box>
   );
 };
 
-export default withAuth(OperationalDashboard);
+export default withAuth(StatisticsPage);
