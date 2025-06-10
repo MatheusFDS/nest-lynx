@@ -1,606 +1,569 @@
-'use client';
-
-import React, { useState, useMemo } from 'react';
+'use client'
+import { useEffect, useState } from 'react'
 import {
-  Typography,
-  Grid,
   Box,
-  Button,
+  Typography,
+  Card,
+  CardContent,
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
   Alert,
-  LinearProgress,
-  Stack,
-  Badge,
-} from '@mui/material';
+  CircularProgress,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Divider,
+  Chip,
+  Avatar,
+  TextField,
+  Button,
+} from '@mui/material'
 import {
-  LocalShipping,
-  Assignment,
-  TrendingUp,
-  Speed,
-  Error as ErrorIcon,
-  PendingActions,
-  Navigation,
-  MonetizationOn,
-  AccessTime,
-  Add,
-  Refresh,
-  RouteOutlined,
-} from '@mui/icons-material';
-import { useRouter } from 'next/navigation';
-import withAuth from '../hoc/withAuth';
-import { useCrud } from '../hooks';
-import {
-  type Order,
-  type Delivery,
-  type Driver,
-  type Payment,
-  type DashboardMetrics,
-  OrderStatus,
-  DeliveryStatus,
-  PaymentStatus,
-  OrderPriority,
-  DELIVERY_STATUS_ARRAYS,
-  ORDER_STATUS_ARRAYS,
-  PAYMENT_STATUS_ARRAYS,
-  StatusHelper,
-} from '../../types';
+  BarChart as BarChartIcon,
+  TrendingUp as TrendingUpIcon,
+  Assessment as AssessmentIcon,
+  LocalShipping as DeliveryIcon,
+  Assignment as OrderIcon,
+  Payment as PaymentIcon,
+  Person as PersonIcon,
+  LocationOn as LocationIcon,
+  Search as SearchIcon,
+  Refresh as RefreshIcon,
+} from '@mui/icons-material'
+import { useAuth } from '../contexts/AuthContext'
+import { api } from '../services/api'
+import type { Statistics, Driver } from '../types/api'
+import AppLayout from '../components/layout/AppLayout'
+import AuthGuard from '../components/guards/AuthGuard'
 
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-};
+export default function EstatisticasPage() {
+  const { user } = useAuth()
+  const [statistics, setStatistics] = useState<Statistics | null>(null)
+  const [drivers, setDrivers] = useState<Driver[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-interface StatsCardProps {
-  title: string;
-  value: string | number;
-  subtitle: string;
-  icon: React.ReactElement;
-  color?: string;
-  urgent?: boolean;
-  onClick?: () => void;
-  badge?: number;
-}
+  // Filters
+  const [startDate, setStartDate] = useState<string>(
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
+  )
+  const [endDate, setEndDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  )
+  const [selectedDriver, setSelectedDriver] = useState<string>('')
 
-const StatsCard: React.FC<StatsCardProps> = ({
-  title,
-  value,
-  subtitle,
-  icon,
-  color = '#667eea',
-  urgent = false,
-  onClick,
-  badge,
-}) => (
-  <Box
-    onClick={onClick}
-    sx={{
-      p: 3,
-      borderRadius: 3,
-      background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
-      color: 'white',
-      cursor: onClick ? 'pointer' : 'default',
-      transition: 'all 0.3s ease',
-      ...(urgent && {
-        animation: 'pulse 2s infinite',
-        '@keyframes pulse': {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(244, 67, 54, 0.7)' },
-          '50%': { boxShadow: '0 0 0 20px rgba(244, 67, 54, 0)' },
-        }
-      }),
-      '&:hover': onClick ? {
-        transform: 'translateY(-4px)',
-        boxShadow: `0 20px 40px ${color}40`,
-      } : {},
-    }}
-  >
-    <Box display="flex" alignItems="center" justifyContent="space-between">
-      <Box>
-        <Typography variant="h3" fontWeight={700} color="inherit">
-          {value}
-        </Typography>
-        <Typography variant="h6" fontWeight={600} color="inherit">
-          {title}
-        </Typography>
-        <Typography variant="body2" sx={{ opacity: 0.9 }} color="inherit">
-          {subtitle}
-        </Typography>
-      </Box>
-      <Box>
-        {badge ? (
-          <Badge badgeContent={badge} color="warning">
-            {React.cloneElement(icon, { sx: { fontSize: 40, opacity: 0.8 } })}
-          </Badge>
-        ) : (
-          React.cloneElement(icon, { sx: { fontSize: 40, opacity: 0.8 } })
-        )}
-      </Box>
-    </Box>
-  </Box>
-);
+  useEffect(() => {
+    loadDrivers()
+  }, [])
 
-const StatisticsPage: React.FC = () => {
-  const router = useRouter();
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  useEffect(() => {
+    if (startDate && endDate) {
+      loadStatistics()
+    }
+  }, [startDate, endDate, selectedDriver])
 
-  const orders = useCrud<Order>('/orders', { globalLoading: true });
-  const deliveries = useCrud<Delivery>('/delivery', { globalLoading: true });
-  const drivers = useCrud<Driver>('/drivers', { globalLoading: true });
-  const payments = useCrud<Payment>('/payments', { globalLoading: true });
+  const loadDrivers = async () => {
+    try {
+      const driversData = await api.getDrivers()
+      setDrivers(driversData)
+    } catch (err) {
+      console.error('Erro ao carregar motoristas:', err)
+    }
+  }
 
-  const metrics = useMemo((): DashboardMetrics => {
-    const ordersData = orders.data || [];
-    const deliveriesData = deliveries.data || [];
-    const driversData = drivers.data || [];
-    const paymentsData = payments.data || [];
+  const loadStatistics = async () => {
+    try {
+      setLoading(true)
+      setError('')
 
-    const pedidosUrgentes = ordersData.filter(order => StatusHelper.isOrderUrgent({
-      status: order.status,
-      prioridade: order.prioridade,
-      data: order.data
-    }));
+      const statsData = await api.getStatistics(
+        startDate,
+        endDate,
+        selectedDriver || undefined,
+        true
+      )
+      
+      setStatistics(statsData)
+    } catch (err) {
+      console.error('Erro ao carregar estatísticas:', err)
+      setError('Erro ao carregar estatísticas')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-    const entregasAtrasadas = deliveriesData.filter(delivery => 
-      StatusHelper.isDeliveryDelayed({
-        status: delivery.status,
-        dataInicio: delivery.dataInicio
-      })
-    );
+  const getDriverName = (driverId: string) => {
+    const driver = drivers.find(d => d.id === driverId)
+    return driver?.name || 'Motorista não encontrado'
+  }
 
-    const roteirosParaLiberar = deliveriesData.filter(d => 
-      d.status === DeliveryStatus.A_LIBERAR
-    );
+  const formatPeriod = () => {
+    const start = new Date(startDate).toLocaleDateString('pt-BR')
+    const end = new Date(endDate).toLocaleDateString('pt-BR')
+    return `${start} - ${end}`
+  }
 
-    const pagamentosHoje = paymentsData.filter(payment => 
-      StatusHelper.isPaymentDueToday({
-        status: payment.status,
-        createdAt: payment.createdAt
-      })
-    );
+  const setCurrentMonth = () => {
+    const now = new Date()
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+    setStartDate(firstDay.toISOString().split('T')[0])
+    setEndDate(now.toISOString().split('T')[0])
+  }
 
-    const entregasAndamento = deliveriesData.filter(d => 
-      DELIVERY_STATUS_ARRAYS.IN_PROGRESS.includes(d.status as DeliveryStatus) ||
-      d.status === DeliveryStatus.A_LIBERAR
-    );
+  const setLastMonth = () => {
+    const now = new Date()
+    const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+    setStartDate(firstDayLastMonth.toISOString().split('T')[0])
+    setEndDate(lastDayLastMonth.toISOString().split('T')[0])
+  }
 
-    const pedidosSemRota = ordersData.filter(o => 
-      ORDER_STATUS_ARRAYS.NO_ROUTE.includes(o.status as OrderStatus)
-    );
+  const clearError = () => setError('')
 
-    const motoristasAtivos = driversData.filter(driver => 
-      StatusHelper.isDriverActive(driver.id, deliveriesData.map(d => ({
-        motoristaId: d.motoristaId,
-        status: d.status
-      })))
-    );
+  if (loading && !statistics) {
+    return (
+      <AppLayout>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+          <CircularProgress size={60} />
+        </Box>
+      </AppLayout>
+    )
+  }
 
-    const entregasHoje = deliveriesData.filter(d => 
-      d.status === DeliveryStatus.FINALIZADO && 
-      StatusHelper.isToday(d.dataFim || d.createdAt)
-    );
-    const receitaHoje = entregasHoje.reduce((sum, d) => sum + (Number(d.totalValor) || 0), 0);
-
-    const entregasMes = deliveriesData.filter(d => 
-      d.status === DeliveryStatus.FINALIZADO && 
-      StatusHelper.isThisMonth(d.dataFim || d.createdAt)
-    );
-    const receitaMes = entregasMes.reduce((sum, d) => sum + (Number(d.totalValor) || 0), 0);
-
-    const pagamentosAFazer = paymentsData
-      .filter(p => PAYMENT_STATUS_ARRAYS.PENDING.includes(p.status as PaymentStatus))
-      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-
-    const entregasFinalizadas = deliveriesData.filter(d => 
-      d.status === DeliveryStatus.FINALIZADO
-    );
-    
-    const entregasNoPrazo = entregasFinalizadas.filter(d => {
-      if (!d.dataInicio || !d.dataFim) return true;
-      const inicioTime = new Date(d.dataInicio).getTime();
-      const fimTime = new Date(d.dataFim).getTime();
-      const horasEntrega = (fimTime - inicioTime) / (1000 * 60 * 60);
-      return horasEntrega <= 8;
-    });
-    
-    const taxaEntregaNoPrazo = entregasFinalizadas.length > 0 
-      ? (entregasNoPrazo.length / entregasFinalizadas.length) * 100 
-      : 100;
-
-    return {
-      pedidosUrgentes,
-      entregasAtrasadas,
-      roteirosParaLiberar,
-      pagamentosHoje,
-      entregasAndamento,
-      pedidosSemRota,
-      motoristasAtivos,
-      receitaHoje,
-      receitaMes,
-      pagamentosAFazer,
-      taxaEntregaNoPrazo,
-      tempoMedioEntrega: 6.2,
-      satisfacaoCliente: 4.8,
-    };
-  }, [orders.data, deliveries.data, drivers.data, payments.data]);
-  
-  const handleRefresh = async () => {
-    await Promise.all([
-      orders.refresh(),
-      deliveries.refresh(),
-      drivers.refresh(),
-      payments.refresh(),
-    ]);
-    setLastUpdate(new Date());
-  };
-
-  const navigateTo = {
-    pedidosUrgentes: () => router.push(`/pedidos?filter=urgent&status=${OrderStatus.SEM_ROTA}&priority=${OrderPriority.ALTA}`),
-    entregasAtrasadas: () => router.push(`/roteiros?filter=delayed&status=${DeliveryStatus.INICIADO}`),
-    roteirosLiberar: () => router.push(`/roteiros/liberar?status=${DeliveryStatus.A_LIBERAR}`),
-    pagamentos: () => router.push(`/pagamentos?status=${PaymentStatus.PENDENTE}`),
-    criarRoteiro: () => router.push('/roteiros/criar'),
-    pedidosSemRota: () => router.push(`/pedidos?filter=no-route&status=${OrderStatus.SEM_ROTA}`),
-    entregasAndamento: () => router.push(`/roteiros?filter=in-progress&status=${DeliveryStatus.INICIADO}`),
-  };
-
-  const loading = orders.loading || deliveries.loading || drivers.loading || payments.loading;
-  
   return (
-    <Box sx={{ p: 3, maxWidth: '1400px', mx: 'auto' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Box>
-          <Typography
-            variant="h3"
-            fontWeight="bold"
-            sx={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              mb: 1,
-            }}
-          >
-            Dashboard Operacional
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <AccessTime fontSize="small" />
-            Última atualização: {lastUpdate.toLocaleTimeString('pt-BR')}
-          </Typography>
-        </Box>
-        
-        <Stack direction="row" spacing={1}>
-          <Button
-            variant="contained"
-            startIcon={loading ? <LinearProgress sx={{ width: '20px' }}/> : <Refresh />}
-            onClick={handleRefresh}
-            disabled={loading}
-            sx={{ borderRadius: 2 }}
-          >
-            {loading ? 'Atualizando...' : 'Atualizar'}
-          </Button>
-          
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={navigateTo.criarRoteiro}
-            sx={{
-              borderRadius: 2,
-              background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)',
-            }}
-          >
-            Criar Roteiro
-          </Button>
-        </Stack>
-      </Box>
-
-      {loading && (
-        <Box sx={{ mb: 3 }}>
-          <LinearProgress />
-        </Box>
-      )}
-
-      {(metrics.pedidosUrgentes.length > 0 || 
-        metrics.entregasAtrasadas.length > 0 || 
-        metrics.roteirosParaLiberar.length > 0) && (
-        <Alert 
-          severity="error" 
-          sx={{ mb: 4, borderRadius: 3 }}
-          action={
-            <Button color="inherit" size="small" onClick={handleRefresh}>
-              ATUALIZAR
-            </Button>
-          }
-        >
-          <Typography variant="h6" fontWeight={600}>
-            ⚠️ ATENÇÃO REQUERIDA AGORA
-          </Typography>
-          <Typography>
-            {metrics.pedidosUrgentes.length} pedidos urgentes • 
-            {metrics.entregasAtrasadas.length} entregas atrasadas • 
-            {metrics.roteirosParaLiberar.length} roteiros aguardando liberação
-          </Typography>
-        </Alert>
-      )}
-
-      {(metrics.pedidosUrgentes.length > 0 || 
-        metrics.entregasAtrasadas.length > 0 || 
-        metrics.roteirosParaLiberar.length > 0 ||
-        metrics.pagamentosHoje.length > 0) && (
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          {metrics.pedidosUrgentes.length > 0 && (
-            <Grid item xs={12} sm={6} md={3}>
-              <StatsCard
-                title="Pedidos Urgentes"
-                value={metrics.pedidosUrgentes.length}
-                subtitle="Precisam de rota HOJE"
-                icon={<Assignment />}
-                color="#f44336"
-                urgent
-                onClick={navigateTo.pedidosUrgentes}
-                badge={1}
-              />
-            </Grid>
-          )}
-
-          {metrics.entregasAtrasadas.length > 0 && (
-            <Grid item xs={12} sm={6} md={3}>
-              <StatsCard
-                title="Entregas Atrasadas"
-                value={metrics.entregasAtrasadas.length}
-                subtitle="+8h em rota"
-                icon={<ErrorIcon />}
-                color="#f44336"
-                urgent
-                onClick={navigateTo.entregasAtrasadas}
-              />
-            </Grid>
-          )}
-
-          {metrics.roteirosParaLiberar.length > 0 && (
-            <Grid item xs={12} sm={6} md={3}>
-              <StatsCard
-                title="Para Liberar"
-                value={metrics.roteirosParaLiberar.length}
-                subtitle="Aguardam aprovação"
-                icon={<PendingActions />}
-                color="#ff9800"
-                onClick={navigateTo.roteirosLiberar}
-              />
-            </Grid>
-          )}
-
-          {metrics.pagamentosHoje.length > 0 && (
-            <Grid item xs={12} sm={6} md={3}>
-              <StatsCard
-                title="Pagamentos Hoje"
-                value={metrics.pagamentosHoje.length}
-                subtitle="Vencimento hoje"
-                icon={<MonetizationOn />}
-                color="#ff9800"
-                onClick={navigateTo.pagamentos}
-              />
-            </Grid>
-          )}
-        </Grid>
-      )}
-
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatsCard
-            title="Em Andamento"
-            value={metrics.entregasAndamento.length}
-            subtitle="Entregas ativas"
-            icon={<LocalShipping />}
-            color="#2196f3"
-            onClick={navigateTo.entregasAndamento}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <StatsCard
-            title="Sem Rota"
-            value={metrics.pedidosSemRota.length}
-            subtitle="Aguardam roteirização"
-            icon={<RouteOutlined />}
-            color="#ff9800"
-            onClick={navigateTo.pedidosSemRota}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <StatsCard
-            title="Motoristas Ativos"
-            value={metrics.motoristasAtivos.length}
-            subtitle="Em operação"
-            icon={<Navigation />}
-            color="#4caf50"
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <StatsCard
-            title="A Pagar"
-            value={formatCurrency(metrics.pagamentosAFazer).replace('R$ ', '')}
-            subtitle="Pagamentos pendentes"
-            icon={<MonetizationOn />}
-            color="#9c27b0"
-            onClick={navigateTo.pagamentos}
-          />
-        </Grid>
-      </Grid>
-
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={8}>
-          <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
-            <Typography variant="h6" fontWeight={600} sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <TrendingUp color="primary" />
-              Performance Financeira
+    <AuthGuard requiredRoles={['admin']}>
+      <AppLayout>
+        <Box sx={{ flexGrow: 1 }}>
+          {/* Header */}
+          <Box mb={4}>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Estatísticas & Relatórios
             </Typography>
-            
-            <Grid container spacing={3}>
-              <Grid item xs={12} sm={4}>
-                <Box sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default', borderRadius: 2 }}>
-                  <Typography variant="h4" fontWeight={700} color="success.main">
-                    {formatCurrency(metrics.receitaHoje)}
-                  </Typography>
-                  <Typography variant="body1" fontWeight={600}>
-                    Receita Hoje
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Entregas finalizadas
-                  </Typography>
-                </Box>
-              </Grid>
-              
-              <Grid item xs={12} sm={4}>
-                <Box sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default', borderRadius: 2 }}>
-                  <Typography variant="h4" fontWeight={700} color="primary.main">
-                    {formatCurrency(metrics.receitaMes)}
-                  </Typography>
-                  <Typography variant="body1" fontWeight={600}>
-                    Receita do Mês
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Acumulado mensal
-                  </Typography>
-                </Box>
-              </Grid>
-              
-              <Grid item xs={12} sm={4}>
-                <Box sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default', borderRadius: 2 }}>
-                  <Typography variant="h4" fontWeight={700} color="info.main">
-                    {metrics.taxaEntregaNoPrazo.toFixed(1)}%
-                  </Typography>
-                  <Typography variant="body1" fontWeight={600}>
-                    Taxa de Sucesso
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Entregas no prazo
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
-            <Typography variant="h6" fontWeight={600} sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Speed color="primary" />
-              KPIs Operacionais
+            <Typography variant="body1" color="text.secondary">
+              Análise detalhada de performance e métricas do sistema
             </Typography>
-            
-            <Stack spacing={2}>
-              <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">Tempo Médio Entrega</Typography>
-                  <Typography variant="body2" fontWeight={600}>
-                    {metrics.tempoMedioEntrega}h
-                  </Typography>
-                </Box>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={(metrics.tempoMedioEntrega / 10) * 100} 
-                  sx={{ borderRadius: 1 }}
-                />
-              </Box>
-              
-              <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">Satisfação Cliente</Typography>
-                  <Typography variant="body2" fontWeight={600}>
-                    {metrics.satisfacaoCliente}/5.0
-                  </Typography>
-                </Box>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={(metrics.satisfacaoCliente / 5) * 100} 
-                  color="success"
-                  sx={{ borderRadius: 1 }}
-                />
-              </Box>
-
-              <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">Eficiência Operacional</Typography>
-                  <Typography variant="body2" fontWeight={600}>
-                    {metrics.taxaEntregaNoPrazo.toFixed(0)}%
-                  </Typography>
-                </Box>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={metrics.taxaEntregaNoPrazo} 
-                  color="info"
-                  sx={{ borderRadius: 1 }}
-                />
-              </Box>
-            </Stack>
           </Box>
-        </Grid>
-      </Grid>
 
-      <Box sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 3 }}>
-          Ações Rápidas
-        </Typography>
+          {/* Error Alert */}
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }} onClose={clearError}>
+              {error}
+            </Alert>
+          )}
 
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<Assignment />}
-              onClick={navigateTo.pedidosUrgentes}
-              sx={{ borderRadius: 2, py: 1.5, textTransform: 'none' }}
-            >
-              Ver Pedidos Urgentes
-              {metrics.pedidosUrgentes.length > 0 && (
-                <Badge badgeContent={metrics.pedidosUrgentes.length} color="error" sx={{ ml: 1 }} />
+          {/* Filters */}
+          <Card sx={{ mb: 4 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Filtros
+              </Typography>
+              <Grid container spacing={3} alignItems="center">
+                <Grid item xs={12} sm={6} md={2}>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    label="Data Inicial"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={2}>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    label="Data Final"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Motorista</InputLabel>
+                    <Select
+                      value={selectedDriver}
+                      onChange={(e) => setSelectedDriver(e.target.value)}
+                    >
+                      <MenuItem value="">Todos os motoristas</MenuItem>
+                      {drivers.map((driver) => (
+                        <MenuItem key={driver.id} value={driver.id}>
+                          {driver.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6} md={2}>
+                  <Box display="flex" gap={1}>
+                    <Button size="small" variant="outlined" onClick={setCurrentMonth}>
+                      Mês Atual
+                    </Button>
+                    <Button size="small" variant="outlined" onClick={setLastMonth}>
+                      Mês Anterior
+                    </Button>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6} md={2}>
+                  <Button
+                    variant="contained"
+                    startIcon={<SearchIcon />}
+                    onClick={loadStatistics}
+                    disabled={loading}
+                    fullWidth
+                  >
+                    Consultar
+                  </Button>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="body2" color="text.secondary">
+                    Período selecionado: {formatPeriod()}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+
+          {statistics ? (
+            <>
+              {/* Main Statistics Cards */}
+              <Grid container spacing={3} mb={4}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card>
+                    <CardContent>
+                      <Box display="flex" alignItems="center">
+                        <OrderIcon sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
+                        <div>
+                          <Typography color="textSecondary" gutterBottom>
+                            Pedidos Pendentes
+                          </Typography>
+                          <Typography variant="h4">
+                            {statistics.ordersPending}
+                          </Typography>
+                        </div>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card>
+                    <CardContent>
+                      <Box display="flex" alignItems="center">
+                        <DeliveryIcon sx={{ fontSize: 40, color: 'info.main', mr: 2 }} />
+                        <div>
+                          <Typography color="textSecondary" gutterBottom>
+                            Pedidos em Rota
+                          </Typography>
+                          <Typography variant="h4">
+                            {statistics.ordersInRoute}
+                          </Typography>
+                        </div>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card>
+                    <CardContent>
+                      <Box display="flex" alignItems="center">
+                        <AssessmentIcon sx={{ fontSize: 40, color: 'success.main', mr: 2 }} />
+                        <div>
+                          <Typography color="textSecondary" gutterBottom>
+                            Pedidos Finalizados
+                          </Typography>
+                          <Typography variant="h4">
+                            {statistics.ordersFinalized}
+                          </Typography>
+                        </div>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card>
+                    <CardContent>
+                      <Box display="flex" alignItems="center">
+                        <PaymentIcon sx={{ fontSize: 40, color: 'warning.main', mr: 2 }} />
+                        <div>
+                          <Typography color="textSecondary" gutterBottom>
+                            Fretes a Pagar
+                          </Typography>
+                          <Typography variant="h4">
+                            {statistics.freightsToPay}
+                          </Typography>
+                        </div>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+
+              {/* Delivery Statistics */}
+              <Grid container spacing={3} mb={4}>
+                <Grid item xs={12} sm={6}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Entregas por Status
+                      </Typography>
+                      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                        <Typography variant="body2">Em Rota</Typography>
+                        <Chip 
+                          label={statistics.deliveriesInRoute} 
+                          color="primary" 
+                          size="small"
+                        />
+                      </Box>
+                      <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="body2">Finalizadas</Typography>
+                        <Chip 
+                          label={statistics.deliveriesFinalized} 
+                          color="success" 
+                          size="small"
+                        />
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Resumo Financeiro
+                      </Typography>
+                      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                        <Typography variant="body2">Fretes Pagos</Typography>
+                        <Chip 
+                          label={statistics.freightsPaid} 
+                          color="success" 
+                          size="small"
+                        />
+                      </Box>
+                      <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="body2">Fretes Pendentes</Typography>
+                        <Chip 
+                          label={statistics.freightsToPay} 
+                          color="warning" 
+                          size="small"
+                        />
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+
+              {/* Regional Analysis */}
+              {statistics.notesByRegion && statistics.notesByRegion.length > 0 && (
+                <Grid container spacing={3} mb={4}>
+                  <Grid item xs={12}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom>
+                          <LocationIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                          Distribuição por Região
+                        </Typography>
+                        <TableContainer component={Paper} variant="outlined">
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Região</TableCell>
+                                <TableCell align="right">Quantidade de Pedidos</TableCell>
+                                <TableCell align="right">Percentual</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {statistics.notesByRegion
+                                .sort((a, b) => b.count - a.count)
+                                .slice(0, 10)
+                                .map((region) => {
+                                  const total = statistics.notesByRegion.reduce((sum, r) => sum + r.count, 0)
+                                  const percentage = total > 0 ? (region.count / total * 100).toFixed(1) : '0'
+                                  return (
+                                    <TableRow key={region.region}>
+                                      <TableCell>{region.region}</TableCell>
+                                      <TableCell align="right">{region.count}</TableCell>
+                                      <TableCell align="right">{percentage}%</TableCell>
+                                    </TableRow>
+                                  )
+                                })}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </Grid>
               )}
-            </Button>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<RouteOutlined />}
-              onClick={navigateTo.criarRoteiro}
-              sx={{ borderRadius: 2, py: 1.5, textTransform: 'none' }}
-            >
-              Criar Novo Roteiro
-            </Button>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<PendingActions />}
-              onClick={navigateTo.roteirosLiberar}
-              sx={{ borderRadius: 2, py: 1.5, textTransform: 'none' }}
-            >
-              Liberar Roteiros
-              {metrics.roteirosParaLiberar.length > 0 && (
-                <Badge badgeContent={metrics.roteirosParaLiberar.length} color="warning" sx={{ ml: 1 }} />
-              )}
-            </Button>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<MonetizationOn />}
-              onClick={navigateTo.pagamentos}
-              sx={{ borderRadius: 2, py: 1.5, textTransform: 'none' }}
-            >
-              Processar Pagamentos
-            </Button>
-          </Grid>
-        </Grid>
-      </Box>
-    </Box>
-  );
-};
 
-export default withAuth(StatisticsPage);
+              {/* Driver Performance */}
+              {statistics.avgOrdersPerDriver && statistics.avgOrdersPerDriver.length > 0 && (
+                <Grid container spacing={3} mb={4}>
+                  <Grid item xs={12} md={4}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom>
+                          <TrendingUpIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                          Média de Pedidos por Motorista
+                        </Typography>
+                        <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+                          {statistics.avgOrdersPerDriver.map((item) => (
+                            <Box key={item.driverId} display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                              <Box display="flex" alignItems="center">
+                                <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: 'primary.main' }}>
+                                  <PersonIcon fontSize="small" />
+                                </Avatar>
+                                <Typography variant="body2">
+                                  {getDriverName(item.driverId)}
+                                </Typography>
+                              </Box>
+                              <Chip 
+                                label={`${item.average} pedidos`} 
+                                size="small" 
+                                color="primary"
+                              />
+                            </Box>
+                          ))}
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  
+                  {statistics.avgValueNotesPerDriver && (
+                    <Grid item xs={12} md={4}>
+                      <Card>
+                        <CardContent>
+                          <Typography variant="h6" gutterBottom>
+                            <BarChartIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                            Valor Médio por Motorista
+                          </Typography>
+                          <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+                            {statistics.avgValueNotesPerDriver.map((item) => (
+                              <Box key={item.driverId} display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                                <Box display="flex" alignItems="center">
+                                  <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: 'success.main' }}>
+                                    <PersonIcon fontSize="small" />
+                                  </Avatar>
+                                  <Typography variant="body2">
+                                    {getDriverName(item.driverId)}
+                                  </Typography>
+                                </Box>
+                                <Chip 
+                                  label={new Intl.NumberFormat('pt-BR', {
+                                    style: 'currency',
+                                    currency: 'BRL'
+                                  }).format(item.average)} 
+                                  size="small" 
+                                  color="success"
+                                />
+                              </Box>
+                            ))}
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  )}
+                  
+                  {statistics.avgWeightPerDriver && (
+                    <Grid item xs={12} md={4}>
+                      <Card>
+                        <CardContent>
+                          <Typography variant="h6" gutterBottom>
+                            <AssessmentIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                            Peso Médio por Motorista
+                          </Typography>
+                          <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+                            {statistics.avgWeightPerDriver.map((item) => (
+                              <Box key={item.driverId} display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                                <Box display="flex" alignItems="center">
+                                  <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: 'info.main' }}>
+                                    <PersonIcon fontSize="small" />
+                                  </Avatar>
+                                  <Typography variant="body2">
+                                    {getDriverName(item.driverId)}
+                                  </Typography>
+                                </Box>
+                                <Chip 
+                                  label={`${item.average.toFixed(1)} kg`} 
+                                  size="small" 
+                                  color="info"
+                                />
+                              </Box>
+                            ))}
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  )}
+                </Grid>
+              )}
+
+              {/* Summary Footer */}
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    Resumo do Período
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Typography variant="body2" color="text.secondary">
+                        Total de Pedidos
+                      </Typography>
+                      <Typography variant="h6">
+                        {statistics.ordersPending + statistics.ordersInRoute + statistics.ordersFinalized}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Typography variant="body2" color="text.secondary">
+                        Taxa de Finalização
+                      </Typography>
+                      <Typography variant="h6">
+                        {((statistics.ordersFinalized / (statistics.ordersPending + statistics.ordersInRoute + statistics.ordersFinalized)) * 100).toFixed(1)}%
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Typography variant="body2" color="text.secondary">
+                        Entregas Ativas
+                      </Typography>
+                      <Typography variant="h6">
+                        {statistics.deliveriesInRoute}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Typography variant="body2" color="text.secondary">
+                        Regiões Atendidas
+                      </Typography>
+                      <Typography variant="h6">
+                        {statistics.notesByRegion?.length || 0}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Box textAlign="center" py={8}>
+              <AssessmentIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">
+                Selecione um período e clique em "Consultar" para visualizar as estatísticas
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </AppLayout>
+    </AuthGuard>
+  )
+}

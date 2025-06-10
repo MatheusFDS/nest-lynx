@@ -1,17 +1,32 @@
-// src/app/page.tsx
-'use client';
+'use client'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Box, CircularProgress } from '@mui/material'
+import { useAuth } from './contexts/AuthContext'
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-
-const HomePage = () => {
-  const router = useRouter();
+export default function HomePage() {
+  const { isAuthenticated, isLoading } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
-    router.push('/login');
-  }, [router]);
+    if (!isLoading) {
+      if (isAuthenticated) {
+        router.push('/dashboard')
+      } else {
+        router.push('/login')
+      }
+    }
+  }, [isAuthenticated, isLoading, router])
 
-  return null;
-};
-
-export default HomePage;
+  return (
+    <Box
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      minHeight="100vh"
+      bgcolor="background.default"
+    >
+      <CircularProgress size={60} />
+    </Box>
+  )
+}

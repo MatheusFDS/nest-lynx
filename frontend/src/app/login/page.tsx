@@ -1,305 +1,250 @@
-// src/app/login/page.tsx
-'use client';
-
-import React, { useState, useEffect } from 'react';
+'use client'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Box,
-  Container,
-  Paper,
+  Card,
+  CardContent,
   TextField,
   Button,
   Typography,
-  FormControlLabel,
-  Checkbox,
-  IconButton,
-  InputAdornment,
   Alert,
   CircularProgress,
-  Avatar,
-  Fade,
-} from '@mui/material';
+  Container,
+  IconButton,
+  InputAdornment,
+  Divider,
+} from '@mui/material'
 import {
   Visibility,
   VisibilityOff,
-  Email,
-  Lock,
-  Login as LoginIcon,
-} from '@mui/icons-material';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '../context/AuthContext';
-import { apiClient } from '../../services/api/client';
+  LocalShipping as DeliveryIcon,
+} from '@mui/icons-material'
+import { useAuth } from '../contexts/AuthContext'
 
-// ========================================
-// TYPES
-// ========================================
-
-interface LoginForm {
-  email: string;
-  password: string;
-  rememberMe: boolean;
-}
-
-// ========================================
-// MAIN COMPONENT
-// ========================================
-
-const LoginPage: React.FC = () => {
-  const router = useRouter();
-  const { login, isLoggedIn, userRole } = useAuth();
-
-  // ========================================
-  // STATES
-  // ========================================
+export default function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
-  const [formData, setFormData] = useState<LoginForm>({
-    email: '',
-    password: '',
-    rememberMe: false,
-  });
-  
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const { login, isAuthenticated, isLoading } = useAuth()
+  const router = useRouter()
 
-  // ========================================
-  // EFFECTS
-  // ========================================
-  
-  // Redirect if already logged in
+  // Redirecionar se já estiver autenticado
   useEffect(() => {
-    if (isLoggedIn && userRole) {
-      const redirectPath = userRole === 'superadmin' ? '/plataforma' : '/estatisticas';
-      router.push(redirectPath);
+    if (isAuthenticated && !isLoading) {
+      router.push('/dashboard')
     }
-  }, [isLoggedIn, userRole, router]);
+  }, [isAuthenticated, isLoading, router])
 
-  // Load remembered email
-  useEffect(() => {
-    const rememberedEmail = localStorage.getItem('rememberMeEmail');
-    if (rememberedEmail) {
-      setFormData(prev => ({ 
-        ...prev, 
-        email: rememberedEmail, 
-        rememberMe: true 
-      }));
-    }
-  }, []);
+  // Validação simples de email
+  const isEmailValid = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
 
-  // ========================================
-  // HANDLERS
-  // ========================================
-  
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-    setError('');
-  };
+  // Validação do formulário
+  const isFormValid = () => {
+    return email.trim() !== '' && password.trim() !== '' && isEmailValid(email)
+  }
 
-  const toggleShowPassword = () => {
-    setShowPassword(prev => !prev);
-  };
-
+  // Envio do formulário
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
+    e.preventDefault()
+    
+    if (!isFormValid()) {
+      setError('Por favor, preencha todos os campos corretamente.')
+      return
+    }
+
+    setIsSubmitting(true)
+    setError('')
 
     try {
-      const response = await apiClient.post('/auth/login', {
-        email: formData.email,
-        password: formData.password,
-      }, {
-        skipAuth: true,
-      });
-
-      await login(response.access_token, response.refresh_token);
-
-      if (formData.rememberMe) {
-        localStorage.setItem('rememberMeEmail', formData.email);
+      const success = await login(email.trim(), password)
+      
+      if (success) {
+        router.push('/dashboard')
       } else {
-        localStorage.removeItem('rememberMeEmail');
+        setError('Email ou senha incorretos. Tente novamente.')
       }
-
-    } catch (err: any) {
-      setError(err.message || 'Credenciais inválidas. Tente novamente.');
+    } catch (err) {
+      setError('Erro ao fazer login. Tente novamente mais tarde.')
+      console.error('Erro no login:', err)
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
-  // ========================================
-  // RENDER
-  // ========================================
-  
+  // Mostrar loading inicial
+  if (isLoading) {
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="100vh"
+        bgcolor="background.default"
+      >
+        <CircularProgress size={60} />
+      </Box>
+    )
+  }
+
+  // Se já autenticado, não mostrar tela de login
+  if (isAuthenticated) {
+    return null
+  }
+
   return (
     <Box
       sx={{
-        width: '100vw',
         minHeight: '100vh',
+        backgroundColor: 'background.default',
+        backgroundImage: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: 'background.default',
         p: 2,
       }}
     >
-      <Container maxWidth="xs">
-        <Fade in timeout={600}>
-          <Paper
-            elevation={2}
-            sx={{
-              p: 4,
-              textAlign: 'center',
-            }}
-          >
-            {/* Header Section */}
-            <Box sx={{ mb: 4 }}>
-              <Avatar
-                sx={{
-                  width: 56,
-                  height: 56,
-                  bgcolor: 'primary.main',
-                  margin: '0 auto 16px',
-                }}
-              >
-                <LoginIcon />
-              </Avatar>
-              
-              <Typography 
-                variant="h4" 
-                component="h1" 
-                gutterBottom
-                color="text.primary"
-                sx={{ fontWeight: 500 }}
-              >
-                Login
-              </Typography>
-              
-              <Typography 
-                variant="body1" 
-                color="text.secondary"
-              >
-                Acesse sua conta para continuar
+      <Container maxWidth="sm">
+        <Card
+          elevation={24}
+          sx={{
+            borderRadius: 4,
+            overflow: 'hidden',
+            backdropFilter: 'blur(10px)',
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          }}
+        >
+          <CardContent sx={{ p: 6 }}>
+            {/* Logo e Título */}
+            <Box display="flex" alignItems="center" justifyContent="center" mb={3}>
+              <DeliveryIcon sx={{ fontSize: 48, color: 'primary.main', mr: 2 }} />
+              <Typography variant="h4" component="h1" fontWeight="bold">
+                Delivery System
               </Typography>
             </Box>
 
-            {/* Login Form */}
-            <form onSubmit={handleSubmit}>
+            <Typography
+              variant="h6"
+              color="text.secondary"
+              textAlign="center"
+              mb={4}
+            >
+              Acesse sua conta para continuar
+            </Typography>
+
+            <Divider sx={{ mb: 4 }} />
+
+            {/* Formulário */}
+            <Box component="form" onSubmit={handleSubmit}>
+              {error && (
+                <Alert severity="error" sx={{ mb: 3 }}>
+                  {error}
+                </Alert>
+              )}
+
               <TextField
                 fullWidth
-                name="email"
-                label="E-mail"
+                label="Email"
                 type="email"
-                value={formData.email}
-                onChange={handleChange}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                error={email !== '' && !isEmailValid(email)}
+                helperText={
+                  email !== '' && !isEmailValid(email)
+                    ? 'Digite um email válido'
+                    : ''
+                }
+                margin="normal"
                 required
-                disabled={isLoading}
+                autoFocus
+                autoComplete="email"
+                disabled={isSubmitting}
                 sx={{ mb: 2 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Email color="action" />
-                    </InputAdornment>
-                  ),
-                }}
               />
 
               <TextField
                 fullWidth
-                name="password"
                 label="Senha"
                 type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={handleChange}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                margin="normal"
                 required
-                disabled={isLoading}
-                sx={{ mb: 2 }}
+                autoComplete="current-password"
+                disabled={isSubmitting}
                 InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Lock color="action" />
-                    </InputAdornment>
-                  ),
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
-                        onClick={toggleShowPassword}
-                        disabled={isLoading}
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword(!showPassword)}
                         edge="end"
+                        disabled={isSubmitting}
                       >
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     </InputAdornment>
                   ),
                 }}
+                sx={{ mb: 4 }}
               />
 
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    name="rememberMe"
-                    checked={formData.rememberMe}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                  />
-                }
-                label="Lembrar-me"
-                sx={{ mb: 2, alignSelf: 'flex-start' }}
-              />
-
-              {/* Error Alert */}
-              {error && (
-                <Alert 
-                  severity="error" 
-                  sx={{ mb: 2, textAlign: 'left' }}
-                >
-                  {error}
-                </Alert>
-              )}
-
-              {/* Submit Button */}
               <Button
                 type="submit"
                 fullWidth
                 variant="contained"
                 size="large"
-                disabled={isLoading}
-                startIcon={
-                  isLoading ? (
-                    <CircularProgress size={20} color="inherit" />
-                  ) : (
-                    <LoginIcon />
-                  )
-                }
+                disabled={!isFormValid() || isSubmitting}
                 sx={{
                   py: 1.5,
-                  mb: 3,
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  borderRadius: 2,
+                  textTransform: 'none',
                 }}
               >
-                {isLoading ? 'Entrando...' : 'Entrar'}
+                {isSubmitting ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : (
+                  'Entrar'
+                )}
               </Button>
-            </form>
+            </Box>
 
-            {/* Footer */}
-            <Box 
-              sx={{ 
-                pt: 2, 
-                borderTop: 1, 
-                borderColor: 'divider',
-              }}
-            >
-              <Typography variant="caption" color="text.secondary">
-                Gera Rota © {new Date().getFullYear()}
+            {/* Informações adicionais */}
+            <Box mt={4} textAlign="center">
+              <Typography variant="body2" color="text.secondary">
+                Esqueceu sua senha?{' '}
+                <Button
+                  variant="text"
+                  size="small"
+                  disabled={isSubmitting}
+                  sx={{ textTransform: 'none' }}
+                >
+                  Recuperar senha
+                </Button>
               </Typography>
             </Box>
-          </Paper>
-        </Fade>
+
+            {/* Demo credentials para desenvolvimento */}
+            {process.env.NODE_ENV === 'development' && (
+              <Box mt={3} p={2} bgcolor="grey.100" borderRadius={2}>
+                <Typography variant="body2" color="text.secondary" textAlign="center">
+                  <strong>Demo:</strong><br />
+                  Admin: admin@sistema.com / 123456<br />
+                  Motorista: motorista@sistema.com / 123456
+                </Typography>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
       </Container>
     </Box>
-  );
-};
-
-export default LoginPage;
+  )
+}

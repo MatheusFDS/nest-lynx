@@ -1,348 +1,516 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
+'use client'
+import { useEffect, useState } from 'react'
 import {
+  Box,
   Typography,
-  Container,
   Button,
-  Paper,
-  TextField,
-  IconButton,
+  Card,
+  CardContent,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  Paper,
+  Chip,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  SelectChangeEvent,
-  Chip,
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
-import { Delete, Edit, Person } from '@mui/icons-material';
-import withAuth from '../hoc/withAuth';
+  Alert,
+  CircularProgress,
+  Grid,
+  Tooltip,
+  Avatar,
+} from '@mui/material'
 import {
-  fetchDrivers,
-  addDriver,
-  updateDriver,
-  deleteDriver,
-  fetchAvailableUsers,
-} from '../../services/driverService';
-import SkeletonLoader from '../components/SkeletonLoader';
-import { useLoading } from '../context/LoadingContext';
-import { useMessage } from '../context/MessageContext';
-import { Driver, AvailableUser } from '../../types';
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Person as PersonIcon,
+  DirectionsCar as CarIcon,
+  Phone as PhoneIcon,
+  Email as EmailIcon,
+} from '@mui/icons-material'
+import { useAuth } from '../contexts/AuthContext'
+import { api } from '../services/api'
+import type { Driver, User, CreateDriverDto, UpdateDriverDto } from '../types/api'
+import AppLayout from '../components/layout/AppLayout'
+import AuthGuard from '../components/guards/AuthGuard'
+import RoleGuard from '../components/guards/RoleGuard'
 
-const StyledButton = styled(Button)({
-  margin: '8px',
-  padding: '8px 16px',
-  backgroundColor: '#1976d2',
-  color: '#fff',
-  '&:hover': {
-    backgroundColor: '#115293',
-  },
-});
+export default function MotoristasPage() {
+  const { user } = useAuth()
+  const [drivers, setDrivers] = useState<Driver[]>([])
+  const [availableUsers, setAvailableUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
-const DriversPage: React.FC = () => {
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [filteredDrivers, setFilteredDrivers] = useState<Driver[]>([]);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [newDriver, setNewDriver] = useState<Partial<Driver>>({});
-  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
-  const [showForm, setShowForm] = useState<boolean>(false);
-  const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
-  const { isLoading, setLoading } = useLoading();
-  const { showMessage } = useMessage();
-
-  const token = localStorage.getItem('token') || '';
-
-  const loadDrivers = async () => {
-    setLoading(true);
-    try {
-      const data = await fetchDrivers(token);
-      setDrivers(data);
-      setFilteredDrivers(data);
-    } catch (error: unknown) {
-      console.error('Erro ao buscar motoristas:', error);
-      showMessage('Falha ao buscar motoristas.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadAvailableUsers = async () => {
-    try {
-      const users = await fetchAvailableUsers(token);
-      setAvailableUsers(users);
-    } catch (error: unknown) {
-      console.error('Erro ao buscar usuários disponíveis:', error);
-      showMessage('Falha ao buscar usuários disponíveis.', 'error');
-    }
-  };
+  // Create/Edit Dialog
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingDriver, setEditingDriver] = useState<Driver | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  
+  // Form fields
+  const [name, setName] = useState('')
+  const [license, setLicense] = useState('')
+  const [cpf, setCpf] = useState('')
+  const [userId, setUserId] = useState('')
 
   useEffect(() => {
-    loadDrivers();
-    loadAvailableUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    loadData()
+  }, [])
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const term = e.target.value;
-    setSearchTerm(term);
-    const filtered = drivers.filter((driver) =>
-      driver.name.toLowerCase().includes(term.toLowerCase()) ||
-      driver.cpf.toLowerCase().includes(term.toLowerCase()) ||
-      driver.license.toLowerCase().includes(term.toLowerCase()) ||
-      (driver.User?.name?.toLowerCase().includes(term.toLowerCase()) ?? false) ||
-      (driver.User?.email?.toLowerCase().includes(term.toLowerCase()) ?? false)
-    );
-    setFilteredDrivers(filtered);
-  };
-
-const handleAddDriver = async () => {
-  if (!newDriver.name || !newDriver.license || !newDriver.cpf) {
-    showMessage('Por favor, preencha todos os campos obrigatórios.', 'warning');
-    return;
-  }
-
-  setLoading(true);
-  try {
-    // Criar objeto apenas com campos permitidos para evitar envio de dados desnecessários
-    const driverData = {
-      name: newDriver.name,
-      license: newDriver.license,
-      cpf: newDriver.cpf,
-      userId: newDriver.userId || undefined, // Enviar undefined se não selecionado
-    };
-
-    if (selectedDriver) {
-      await updateDriver(token, selectedDriver.id, driverData);
-      showMessage('Motorista atualizado com sucesso!', 'success');
-    } else {
-      await addDriver(token, driverData);
-      showMessage('Motorista adicionado com sucesso!', 'success');
-    }
-    
-    setNewDriver({});
-    setSelectedDriver(null);
-    setShowForm(false);
-    await loadDrivers();
-    await loadAvailableUsers();
-  } catch (error: unknown) {
-    console.error('Erro ao submeter motorista:', error);
-    showMessage('Falha ao submeter motorista.', 'error');
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const handleEdit = (driver: Driver) => {
-    setSelectedDriver(driver);
-    setNewDriver(driver);
-    setShowForm(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    setLoading(true);
+  const loadData = async () => {
     try {
-      await deleteDriver(token, id);
-      showMessage('Motorista deletado com sucesso!', 'success');
-      await loadDrivers();
-      await loadAvailableUsers(); // Recarregar usuários disponíveis
-    } catch (error: unknown) {
-      console.error('Erro ao deletar motorista:', error);
-      showMessage('Falha ao deletar motorista.', 'error');
+      setLoading(true)
+      const [driversData, usersData] = await Promise.all([
+        api.getDrivers(),
+        api.getAvailableUsers()
+      ])
+      
+      setDrivers(driversData)
+      setAvailableUsers(usersData)
+      
+    } catch (err) {
+      console.error('Erro ao carregar motoristas:', err)
+      setError('Erro ao carregar dados dos motoristas')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  const handleFormClose = () => {
-    setSelectedDriver(null);
-    setNewDriver({});
-    setShowForm(false);
-  };
+  const handleCreateDriver = async () => {
+    if (!name.trim() || !license.trim() || !cpf.trim()) {
+      setError('Nome, CNH e CPF são obrigatórios')
+      return
+    }
 
-  const handleUserSelect = (event: SelectChangeEvent<string>) => {
-    const userId = event.target.value;
-    setNewDriver({ ...newDriver, userId: userId || undefined });
-  };
+    try {
+      setSubmitting(true)
+      setError('')
+
+      const driverData: CreateDriverDto = {
+        name: name.trim(),
+        license: license.trim(),
+        cpf: cpf.trim(),
+        userId: userId || undefined
+      }
+
+      await api.createDriver(driverData)
+      setSuccess('Motorista criado com sucesso!')
+      setDialogOpen(false)
+      resetForm()
+      loadData()
+
+    } catch (err) {
+      console.error('Erro ao criar motorista:', err)
+      setError('Erro ao criar motorista')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleUpdateDriver = async () => {
+    if (!editingDriver || !name.trim() || !license.trim() || !cpf.trim()) {
+      setError('Nome, CNH e CPF são obrigatórios')
+      return
+    }
+
+    try {
+      setSubmitting(true)
+      setError('')
+
+      const updateData: UpdateDriverDto = {
+        name: name.trim(),
+        license: license.trim(),
+        cpf: cpf.trim(),
+        userId: userId || undefined
+      }
+
+      await api.updateDriver(editingDriver.id, updateData)
+      setSuccess('Motorista atualizado com sucesso!')
+      setDialogOpen(false)
+      resetForm()
+      loadData()
+
+    } catch (err) {
+      console.error('Erro ao atualizar motorista:', err)
+      setError('Erro ao atualizar motorista')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDeleteDriver = async (driverId: string, driverName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o motorista "${driverName}"?`)) return
+
+    try {
+      await api.deleteDriver(driverId)
+      setSuccess('Motorista excluído com sucesso!')
+      loadData()
+    } catch (err) {
+      console.error('Erro ao excluir motorista:', err)
+      setError('Erro ao excluir motorista')
+    }
+  }
+
+  const openCreateDialog = () => {
+    setEditingDriver(null)
+    resetForm()
+    setDialogOpen(true)
+  }
+
+  const openEditDialog = (driver: Driver) => {
+    setEditingDriver(driver)
+    setName(driver.name)
+    setLicense(driver.license)
+    setCpf(driver.cpf)
+    setUserId(driver.userId || '')
+    setDialogOpen(true)
+  }
+
+  const resetForm = () => {
+    setName('')
+    setLicense('')
+    setCpf('')
+    setUserId('')
+    setEditingDriver(null)
+  }
+
+  const formatCpf = (value: string) => {
+    const cleaned = value.replace(/\D/g, '')
+    return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+  }
+
+  const handleCpfChange = (value: string) => {
+    const cleaned = value.replace(/\D/g, '')
+    if (cleaned.length <= 11) {
+      setCpf(cleaned)
+    }
+  }
+
+  const clearMessages = () => {
+    setError('')
+    setSuccess('')
+  }
+
+  const getDriverStats = () => {
+    const total = drivers.length
+    const withUser = drivers.filter(d => d.userId).length
+    const withoutUser = total - withUser
+    
+    return { total, withUser, withoutUser }
+  }
+
+  const stats = getDriverStats()
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+          <CircularProgress size={60} />
+        </Box>
+      </AppLayout>
+    )
+  }
 
   return (
-    <Container>
-      {/* Campo de Busca */}
-      <TextField
-        label="Buscar Motoristas"
-        value={searchTerm}
-        onChange={handleSearch}
-        fullWidth
-        margin="normal"
-        placeholder="Busque por nome, CPF, CNH, usuário relacionado..."
-      />
-
-      {/* Botão para Adicionar Motorista */}
-      <StyledButton
-        variant="contained"
-        color="primary"
-        onClick={() => setShowForm(true)}
-      >
-        Adicionar Motorista
-      </StyledButton>
-
-      {/* Formulário de Adição/Atualização de Motorista */}
-      {showForm && (
-        <Paper elevation={3} style={{ padding: '16px', marginTop: '16px' }}>
-          <Typography variant="h6" gutterBottom>
-            {selectedDriver ? 'Editar Motorista' : 'Adicionar Motorista'}
-          </Typography>
-          
-          <TextField
-            label="Nome do Motorista *"
-            value={newDriver.name || ''}
-            onChange={(e) =>
-              setNewDriver({ ...newDriver, name: e.target.value })
-            }
-            fullWidth
-            margin="normal"
-            required
-          />
-          
-          <TextField
-            label="CNH *"
-            value={newDriver.license || ''}
-            onChange={(e) =>
-              setNewDriver({ ...newDriver, license: e.target.value })
-            }
-            fullWidth
-            margin="normal"
-            required
-          />
-          
-          <TextField
-            label="CPF *"
-            value={newDriver.cpf || ''}
-            onChange={(e) =>
-              setNewDriver({ ...newDriver, cpf: e.target.value })
-            }
-            fullWidth
-            margin="normal"
-            required
-          />
-
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="user-select-label">Usuário Relacionado (Opcional)</InputLabel>
-            <Select
-              labelId="user-select-label"
-              value={newDriver.userId || ''}
-              onChange={handleUserSelect}
-              label="Usuário Relacionado (Opcional)"
-            >
-              <MenuItem value="">
-                <em>Nenhum usuário selecionado</em>
-              </MenuItem>
-              {availableUsers.map((user) => (
-                <MenuItem key={user.id} value={user.id}>
-                  {user.name} - {user.email}
-                </MenuItem>
-              ))}
-              {/* Se estiver editando e o motorista já tem um usuário, incluir na lista */}
-              {selectedDriver?.User && !availableUsers.find(u => u.id === selectedDriver.User?.id) && (
-                <MenuItem key={selectedDriver.User.id} value={selectedDriver.User.id}>
-                  {selectedDriver.User.name} - {selectedDriver.User.email} (Atual)
-                </MenuItem>
-              )}
-            </Select>
-          </FormControl>
-
-          <div style={{ marginTop: '16px' }}>
+    <AuthGuard requiredRoles={['admin']}>
+      <AppLayout>
+        <Box sx={{ flexGrow: 1 }}>
+          {/* Header */}
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+            <div>
+              <Typography variant="h4" component="h1" gutterBottom>
+                Motoristas
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Gerencie o cadastro de motoristas da empresa
+              </Typography>
+            </div>
+            
             <Button
               variant="contained"
-              color="primary"
-              onClick={handleAddDriver}
-              style={{ marginRight: '8px' }}
+              startIcon={<AddIcon />}
+              onClick={openCreateDialog}
             >
-              {selectedDriver ? 'Atualizar Motorista' : 'Adicionar Motorista'}
+              Novo Motorista
             </Button>
-            <Button variant="outlined" onClick={handleFormClose}>
-              Cancelar
-            </Button>
-          </div>
-        </Paper>
-      )}
+          </Box>
 
-      {/* Tabela de Motoristas */}
-      {isLoading ? (
-        <SkeletonLoader />
-      ) : (
-        <TableContainer component={Paper} style={{ marginTop: '16px' }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Nome</TableCell>
-                <TableCell>CNH</TableCell>
-                <TableCell>CPF</TableCell>
-                <TableCell>Usuário Relacionado</TableCell>
-                <TableCell>Ações</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredDrivers.map((driver) => (
-                <TableRow key={driver.id}>
-                  <TableCell>{driver.name}</TableCell>
-                  <TableCell>{driver.license}</TableCell>
-                  <TableCell>{driver.cpf}</TableCell>
-                  <TableCell>
-                    {driver.User ? (
-                      <Chip
-                        icon={<Person />}
-                        label={`${driver.User.name} (${driver.User.email})`}
-                        color="primary"
-                        variant="outlined"
-                        size="small"
-                      />
-                    ) : (
-                      <Chip
-                        label="Nenhum usuário"
-                        color="default"
-                        variant="outlined"
-                        size="small"
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <IconButton
-                      onClick={() => handleEdit(driver)}
-                      aria-label="editar"
-                      title="Editar"
-                    >
-                      <Edit />
-                    </IconButton>
-                    <IconButton
-                      onClick={() => handleDelete(driver.id)}
-                      aria-label="deletar"
-                      title="Deletar"
-                    >
-                      <Delete />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredDrivers.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} align="center">
-                    Nenhum motorista encontrado.
-                  </TableCell>
-                </TableRow>
+          {/* Messages */}
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }} onClose={clearMessages}>
+              {error}
+            </Alert>
+          )}
+          
+          {success && (
+            <Alert severity="success" sx={{ mb: 3 }} onClose={clearMessages}>
+              {success}
+            </Alert>
+          )}
+
+          {/* Summary Cards */}
+          <Grid container spacing={3} mb={4}>
+            <Grid item xs={12} sm={6} md={4}>
+              <Card>
+                <CardContent>
+                  <Box display="flex" alignItems="center">
+                    <PersonIcon sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
+                    <div>
+                      <Typography color="textSecondary" gutterBottom>
+                        Total de Motoristas
+                      </Typography>
+                      <Typography variant="h4">
+                        {stats.total}
+                      </Typography>
+                    </div>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <Card>
+                <CardContent>
+                  <Box display="flex" alignItems="center">
+                    <EmailIcon sx={{ fontSize: 40, color: 'success.main', mr: 2 }} />
+                    <div>
+                      <Typography color="textSecondary" gutterBottom>
+                        Com Usuário
+                      </Typography>
+                      <Typography variant="h4">
+                        {stats.withUser}
+                      </Typography>
+                    </div>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <Card>
+                <CardContent>
+                  <Box display="flex" alignItems="center">
+                    <PersonIcon sx={{ fontSize: 40, color: 'warning.main', mr: 2 }} />
+                    <div>
+                      <Typography color="textSecondary" gutterBottom>
+                        Sem Usuário
+                      </Typography>
+                      <Typography variant="h4">
+                        {stats.withoutUser}
+                      </Typography>
+                    </div>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* Drivers Table */}
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Lista de Motoristas ({drivers.length})
+              </Typography>
+              
+              {drivers.length === 0 ? (
+                <Box textAlign="center" py={4}>
+                  <PersonIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                  <Typography variant="body1" color="text.secondary">
+                    Nenhum motorista cadastrado
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" mt={1}>
+                    Adicione motoristas para começar a gerenciar entregas
+                  </Typography>
+                </Box>
+              ) : (
+                <TableContainer component={Paper} sx={{ mt: 2 }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Motorista</TableCell>
+                        <TableCell>CNH</TableCell>
+                        <TableCell>CPF</TableCell>
+                        <TableCell>Usuário do Sistema</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell align="center">Ações</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {drivers.map((driver) => (
+                        <TableRow key={driver.id} hover>
+                          <TableCell>
+                            <Box display="flex" alignItems="center">
+                              <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
+                                {driver.name.charAt(0).toUpperCase()}
+                              </Avatar>
+                              <div>
+                                <Typography variant="body2" fontWeight="medium">
+                                  {driver.name}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  ID: {driver.id.slice(0, 8)}...
+                                </Typography>
+                              </div>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" fontFamily="monospace">
+                              {driver.license}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" fontFamily="monospace">
+                              {formatCpf(driver.cpf)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            {driver.User ? (
+                              <Box>
+                                <Typography variant="body2" fontWeight="medium">
+                                  {driver.User.name}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {driver.User.email}
+                                </Typography>
+                              </Box>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                Não vinculado
+                              </Typography>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={driver.User ? 'Ativo' : 'Inativo'}
+                              color={driver.User ? 'success' : 'warning'}
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Tooltip title="Editar motorista">
+                              <IconButton 
+                                size="small" 
+                                onClick={() => openEditDialog(driver)}
+                              >
+                                <EditIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Excluir motorista">
+                              <IconButton 
+                                size="small" 
+                                color="error"
+                                onClick={() => handleDeleteDriver(driver.id, driver.name)}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
               )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Container>
-  );
-};
+            </CardContent>
+          </Card>
 
-export default withAuth(DriversPage);
+          {/* Create/Edit Driver Dialog */}
+          <Dialog
+            open={dialogOpen}
+            onClose={() => !submitting && setDialogOpen(false)}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>
+              {editingDriver ? 'Editar Motorista' : 'Novo Motorista'}
+            </DialogTitle>
+            <DialogContent>
+              <Grid container spacing={3} sx={{ mt: 1 }}>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Nome do Motorista"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    disabled={submitting}
+                    required
+                  />
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="CNH"
+                    value={license}
+                    onChange={(e) => setLicense(e.target.value)}
+                    disabled={submitting}
+                    required
+                    helperText="Número da Carteira de Habilitação"
+                  />
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="CPF"
+                    value={formatCpf(cpf)}
+                    onChange={(e) => handleCpfChange(e.target.value)}
+                    disabled={submitting}
+                    required
+                    helperText="Apenas números"
+                  />
+                </Grid>
+                
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Usuário do Sistema (Opcional)</InputLabel>
+                    <Select
+                      value={userId}
+                      onChange={(e) => setUserId(e.target.value)}
+                      disabled={submitting}
+                    >
+                      <MenuItem value="">
+                        <em>Nenhum usuário</em>
+                      </MenuItem>
+                      {availableUsers.map((user) => (
+                        <MenuItem key={user.id} value={user.id}>
+                          {user.name} ({user.email})
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => setDialogOpen(false)}
+                disabled={submitting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={editingDriver ? handleUpdateDriver : handleCreateDriver}
+                variant="contained"
+                disabled={submitting || !name.trim() || !license.trim() || !cpf.trim()}
+                startIcon={submitting ? <CircularProgress size={20} /> : editingDriver ? <EditIcon /> : <AddIcon />}
+              >
+                {submitting ? 'Salvando...' : editingDriver ? 'Atualizar' : 'Criar'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </Box>
+      </AppLayout>
+    </AuthGuard>
+  )
+}
