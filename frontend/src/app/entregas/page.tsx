@@ -26,9 +26,9 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
-  Grid,
   Tooltip,
   Autocomplete,
+  Stack,
 } from '@mui/material'
 import {
   Add as AddIcon,
@@ -56,7 +56,6 @@ export default function EntregasPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Create Dialog
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [selectedDriver, setSelectedDriver] = useState('')
@@ -64,7 +63,6 @@ export default function EntregasPage() {
   const [selectedOrders, setSelectedOrders] = useState<Order[]>([])
   const [observacao, setObservacao] = useState('')
 
-  // Reject Dialog
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
@@ -88,7 +86,6 @@ export default function EntregasPage() {
       setDrivers(driversData)
       setVehicles(vehiclesData)
       
-      // Filtrar apenas pedidos sem rota
       const availableOrdersData = ordersData.filter(order => order.status === 'SEM_ROTA')
       setAvailableOrders(availableOrdersData)
       
@@ -232,17 +229,10 @@ export default function EntregasPage() {
     <AuthGuard requiredRoles={['admin', 'user']}>
       <AppLayout>
         <Box sx={{ flexGrow: 1 }}>
-          {/* Header */}
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-            <div>
-              <Typography variant="h4" component="h1" gutterBottom>
-                Entregas & Roteiros
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Gerencie roteiros de entrega e acompanhe o status
-              </Typography>
-            </div>
-            
+            <Typography variant="h6">
+              Lista de Roteiros ({deliveries.length})
+            </Typography>
             <RoleGuard allowedRoles={['admin']}>
               <Button
                 variant="contained"
@@ -254,7 +244,6 @@ export default function EntregasPage() {
             </RoleGuard>
           </Box>
 
-          {/* Messages */}
           {error && (
             <Alert severity="error" sx={{ mb: 3 }} onClose={clearMessages}>
               {error}
@@ -267,73 +256,13 @@ export default function EntregasPage() {
             </Alert>
           )}
 
-          {/* Summary Cards */}
-          <Grid container spacing={3} mb={4}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Typography color="textSecondary" gutterBottom>
-                    Aguardando Liberação
-                  </Typography>
-                  <Typography variant="h4">
-                    {deliveries.filter(d => d.status === 'A_LIBERAR').length}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Typography color="textSecondary" gutterBottom>
-                    Em Andamento
-                  </Typography>
-                  <Typography variant="h4">
-                    {deliveries.filter(d => d.status === 'INICIADO').length}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Typography color="textSecondary" gutterBottom>
-                    Finalizados
-                  </Typography>
-                  <Typography variant="h4">
-                    {deliveries.filter(d => d.status === 'FINALIZADO').length}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Typography color="textSecondary" gutterBottom>
-                    Pedidos Disponíveis
-                  </Typography>
-                  <Typography variant="h4">
-                    {availableOrders.length}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-
-          {/* Deliveries Table */}
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Lista de Roteiros ({deliveries.length})
-              </Typography>
-              
               {deliveries.length === 0 ? (
                 <Box textAlign="center" py={4}>
                   <DeliveryIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
                   <Typography variant="body1" color="text.secondary">
                     Nenhum roteiro encontrado
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" mt={1}>
-                    Crie um novo roteiro para começar
                   </Typography>
                 </Box>
               ) : (
@@ -448,7 +377,6 @@ export default function EntregasPage() {
             </CardContent>
           </Card>
 
-          {/* Create Delivery Dialog */}
           <Dialog
             open={createDialogOpen}
             onClose={() => !creating && setCreateDialogOpen(false)}
@@ -457,8 +385,8 @@ export default function EntregasPage() {
           >
             <DialogTitle>Criar Novo Roteiro</DialogTitle>
             <DialogContent>
-              <Grid container spacing={3} sx={{ mt: 1 }}>
-                <Grid item xs={12} md={6}>
+              <Stack spacing={3} sx={{ mt: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
                   <FormControl fullWidth>
                     <InputLabel>Motorista</InputLabel>
                     <Select
@@ -473,9 +401,6 @@ export default function EntregasPage() {
                       ))}
                     </Select>
                   </FormControl>
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
                   <FormControl fullWidth>
                     <InputLabel>Veículo</InputLabel>
                     <Select
@@ -490,38 +415,32 @@ export default function EntregasPage() {
                       ))}
                     </Select>
                   </FormControl>
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <Autocomplete
-                    multiple
-                    options={availableOrders}
-                    getOptionLabel={(option) => `${option.numero} - ${option.cliente} (${option.cidade})`}
-                    value={selectedOrders}
-                    onChange={(event, newValue) => setSelectedOrders(newValue)}
-                    disabled={creating}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Pedidos"
-                        placeholder="Selecione os pedidos para este roteiro"
-                      />
-                    )}
-                  />
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Observações"
-                    multiline
-                    rows={3}
-                    value={observacao}
-                    onChange={(e) => setObservacao(e.target.value)}
-                    disabled={creating}
-                  />
-                </Grid>
-              </Grid>
+                </Box>
+                <Autocomplete
+                  multiple
+                  options={availableOrders}
+                  getOptionLabel={(option) => `${option.numero} - ${option.cliente} (${option.cidade})`}
+                  value={selectedOrders}
+                  onChange={(event, newValue) => setSelectedOrders(newValue)}
+                  disabled={creating}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Pedidos"
+                      placeholder="Selecione os pedidos para este roteiro"
+                    />
+                  )}
+                />
+                <TextField
+                  fullWidth
+                  label="Observações"
+                  multiline
+                  rows={3}
+                  value={observacao}
+                  onChange={(e) => setObservacao(e.target.value)}
+                  disabled={creating}
+                />
+              </Stack>
             </DialogContent>
             <DialogActions>
               <Button
@@ -541,7 +460,6 @@ export default function EntregasPage() {
             </DialogActions>
           </Dialog>
 
-          {/* Reject Dialog */}
           <Dialog
             open={rejectDialogOpen}
             onClose={() => !rejecting && setRejectDialogOpen(false)}

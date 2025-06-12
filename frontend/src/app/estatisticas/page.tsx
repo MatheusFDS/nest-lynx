@@ -5,7 +5,6 @@ import {
   Typography,
   Card,
   CardContent,
-  Grid,
   FormControl,
   InputLabel,
   Select,
@@ -24,6 +23,7 @@ import {
   Avatar,
   TextField,
   Button,
+  Stack,
 } from '@mui/material'
 import {
   BarChart as BarChartIcon,
@@ -35,7 +35,6 @@ import {
   Person as PersonIcon,
   LocationOn as LocationIcon,
   Search as SearchIcon,
-  Refresh as RefreshIcon,
 } from '@mui/icons-material'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../services/api'
@@ -50,7 +49,6 @@ export default function EstatisticasPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // Filters
   const [startDate, setStartDate] = useState<string>(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
   )
@@ -61,13 +59,8 @@ export default function EstatisticasPage() {
 
   useEffect(() => {
     loadDrivers()
+    loadStatistics()
   }, [])
-
-  useEffect(() => {
-    if (startDate && endDate) {
-      loadStatistics()
-    }
-  }, [startDate, endDate, selectedDriver])
 
   const loadDrivers = async () => {
     try {
@@ -82,14 +75,12 @@ export default function EstatisticasPage() {
     try {
       setLoading(true)
       setError('')
-
       const statsData = await api.getStatistics(
         startDate,
         endDate,
         selectedDriver || undefined,
         true
       )
-      
       setStatistics(statsData)
     } catch (err) {
       console.error('Erro ao carregar estatísticas:', err)
@@ -99,17 +90,21 @@ export default function EstatisticasPage() {
     }
   }
 
+  const handleFilter = () => {
+    loadStatistics()
+  }
+
   const getDriverName = (driverId: string) => {
     const driver = drivers.find(d => d.id === driverId)
     return driver?.name || 'Motorista não encontrado'
   }
 
   const formatPeriod = () => {
-    const start = new Date(startDate).toLocaleDateString('pt-BR')
-    const end = new Date(endDate).toLocaleDateString('pt-BR')
+    const start = new Date(startDate + 'T00:00:00').toLocaleDateString('pt-BR')
+    const end = new Date(endDate + 'T00:00:00').toLocaleDateString('pt-BR')
     return `${start} - ${end}`
   }
-
+  
   const setCurrentMonth = () => {
     const now = new Date()
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -141,7 +136,6 @@ export default function EstatisticasPage() {
     <AuthGuard requiredRoles={['admin']}>
       <AppLayout>
         <Box sx={{ flexGrow: 1 }}>
-          {/* Header */}
           <Box mb={4}>
             <Typography variant="h4" component="h1" gutterBottom>
               Estatísticas & Relatórios
@@ -151,409 +145,234 @@ export default function EstatisticasPage() {
             </Typography>
           </Box>
 
-          {/* Error Alert */}
           {error && (
             <Alert severity="error" sx={{ mb: 3 }} onClose={clearError}>
               {error}
             </Alert>
           )}
 
-          {/* Filters */}
           <Card sx={{ mb: 4 }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Filtros
+              <Typography variant="h6" gutterBottom>Filtros</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+                <TextField
+                  type="date"
+                  label="Data Inicial"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                  sx={{ flexGrow: 1, minWidth: '150px' }}
+                />
+                <TextField
+                  type="date"
+                  label="Data Final"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                  sx={{ flexGrow: 1, minWidth: '150px' }}
+                />
+                <FormControl size="small" sx={{ flexGrow: 1, minWidth: '200px' }}>
+                  <InputLabel>Motorista</InputLabel>
+                  <Select value={selectedDriver} onChange={(e) => setSelectedDriver(e.target.value)}>
+                    <MenuItem value="">Todos os motoristas</MenuItem>
+                    {drivers.map((driver) => (
+                      <MenuItem key={driver.id} value={driver.id}>{driver.name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Box display="flex" gap={1}>
+                  <Button size="small" variant="outlined" onClick={setCurrentMonth}>Mês Atual</Button>
+                  <Button size="small" variant="outlined" onClick={setLastMonth}>Mês Anterior</Button>
+                </Box>
+                <Button variant="contained" startIcon={<SearchIcon />} onClick={handleFilter} disabled={loading}>
+                  Consultar
+                </Button>
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                Período selecionado: {formatPeriod()}
               </Typography>
-              <Grid container spacing={3} alignItems="center">
-                <Grid item xs={12} sm={6} md={2}>
-                  <TextField
-                    fullWidth
-                    type="date"
-                    label="Data Inicial"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    size="small"
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={2}>
-                  <TextField
-                    fullWidth
-                    type="date"
-                    label="Data Final"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    size="small"
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Motorista</InputLabel>
-                    <Select
-                      value={selectedDriver}
-                      onChange={(e) => setSelectedDriver(e.target.value)}
-                    >
-                      <MenuItem value="">Todos os motoristas</MenuItem>
-                      {drivers.map((driver) => (
-                        <MenuItem key={driver.id} value={driver.id}>
-                          {driver.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6} md={2}>
-                  <Box display="flex" gap={1}>
-                    <Button size="small" variant="outlined" onClick={setCurrentMonth}>
-                      Mês Atual
-                    </Button>
-                    <Button size="small" variant="outlined" onClick={setLastMonth}>
-                      Mês Anterior
-                    </Button>
-                  </Box>
-                </Grid>
-                <Grid item xs={12} sm={6} md={2}>
-                  <Button
-                    variant="contained"
-                    startIcon={<SearchIcon />}
-                    onClick={loadStatistics}
-                    disabled={loading}
-                    fullWidth
-                  >
-                    Consultar
-                  </Button>
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography variant="body2" color="text.secondary">
-                    Período selecionado: {formatPeriod()}
-                  </Typography>
-                </Grid>
-              </Grid>
             </CardContent>
           </Card>
 
           {statistics ? (
-            <>
-              {/* Main Statistics Cards */}
-              <Grid container spacing={3} mb={4}>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card>
-                    <CardContent>
-                      <Box display="flex" alignItems="center">
-                        <OrderIcon sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
-                        <div>
-                          <Typography color="textSecondary" gutterBottom>
-                            Pedidos Pendentes
-                          </Typography>
-                          <Typography variant="h4">
-                            {statistics.ordersPending}
-                          </Typography>
-                        </div>
+            <Stack spacing={4}>
+              <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' } }}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center">
+                      <OrderIcon sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
+                      <Box>
+                        <Typography color="textSecondary" gutterBottom>Pedidos Pendentes</Typography>
+                        <Typography variant="h4">{statistics.ordersPending}</Typography>
                       </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card>
-                    <CardContent>
-                      <Box display="flex" alignItems="center">
-                        <DeliveryIcon sx={{ fontSize: 40, color: 'info.main', mr: 2 }} />
-                        <div>
-                          <Typography color="textSecondary" gutterBottom>
-                            Pedidos em Rota
-                          </Typography>
-                          <Typography variant="h4">
-                            {statistics.ordersInRoute}
-                          </Typography>
-                        </div>
+                    </Box>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center">
+                      <DeliveryIcon sx={{ fontSize: 40, color: 'info.main', mr: 2 }} />
+                      <Box>
+                        <Typography color="textSecondary" gutterBottom>Pedidos em Rota</Typography>
+                        <Typography variant="h4">{statistics.ordersInRoute}</Typography>
                       </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card>
-                    <CardContent>
-                      <Box display="flex" alignItems="center">
-                        <AssessmentIcon sx={{ fontSize: 40, color: 'success.main', mr: 2 }} />
-                        <div>
-                          <Typography color="textSecondary" gutterBottom>
-                            Pedidos Finalizados
-                          </Typography>
-                          <Typography variant="h4">
-                            {statistics.ordersFinalized}
-                          </Typography>
-                        </div>
+                    </Box>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center">
+                      <AssessmentIcon sx={{ fontSize: 40, color: 'success.main', mr: 2 }} />
+                      <Box>
+                        <Typography color="textSecondary" gutterBottom>Pedidos Finalizados</Typography>
+                        <Typography variant="h4">{statistics.ordersFinalized}</Typography>
                       </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card>
-                    <CardContent>
-                      <Box display="flex" alignItems="center">
-                        <PaymentIcon sx={{ fontSize: 40, color: 'warning.main', mr: 2 }} />
-                        <div>
-                          <Typography color="textSecondary" gutterBottom>
-                            Fretes a Pagar
-                          </Typography>
-                          <Typography variant="h4">
-                            {statistics.freightsToPay}
-                          </Typography>
-                        </div>
+                    </Box>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center">
+                      <PaymentIcon sx={{ fontSize: 40, color: 'warning.main', mr: 2 }} />
+                      <Box>
+                        <Typography color="textSecondary" gutterBottom>Fretes a Pagar</Typography>
+                        <Typography variant="h4">{statistics.freightsToPay}</Typography>
                       </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Box>
 
-              {/* Delivery Statistics */}
-              <Grid container spacing={3} mb={4}>
-                <Grid item xs={12} sm={6}>
+              <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>
                   <Card>
                     <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        Entregas por Status
-                      </Typography>
+                      <Typography variant="h6" gutterBottom>Entregas por Status</Typography>
                       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                         <Typography variant="body2">Em Rota</Typography>
-                        <Chip 
-                          label={statistics.deliveriesInRoute} 
-                          color="primary" 
-                          size="small"
-                        />
+                        <Chip label={statistics.deliveriesInRoute} color="primary" size="small" />
                       </Box>
                       <Box display="flex" justifyContent="space-between" alignItems="center">
                         <Typography variant="body2">Finalizadas</Typography>
-                        <Chip 
-                          label={statistics.deliveriesFinalized} 
-                          color="success" 
-                          size="small"
-                        />
+                        <Chip label={statistics.deliveriesFinalized} color="success" size="small" />
                       </Box>
                     </CardContent>
                   </Card>
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
                   <Card>
                     <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        Resumo Financeiro
-                      </Typography>
+                      <Typography variant="h6" gutterBottom>Resumo Financeiro</Typography>
                       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                         <Typography variant="body2">Fretes Pagos</Typography>
-                        <Chip 
-                          label={statistics.freightsPaid} 
-                          color="success" 
-                          size="small"
-                        />
+                        <Chip label={statistics.freightsPaid} color="success" size="small" />
                       </Box>
                       <Box display="flex" justifyContent="space-between" alignItems="center">
                         <Typography variant="body2">Fretes Pendentes</Typography>
-                        <Chip 
-                          label={statistics.freightsToPay} 
-                          color="warning" 
-                          size="small"
-                        />
+                        <Chip label={statistics.freightsToPay} color="warning" size="small" />
                       </Box>
                     </CardContent>
                   </Card>
-                </Grid>
-              </Grid>
+              </Box>
 
-              {/* Regional Analysis */}
-              {statistics.notesByRegion && statistics.notesByRegion.length > 0 && (
-                <Grid container spacing={3} mb={4}>
-                  <Grid item xs={12}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          <LocationIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                          Distribuição por Região
-                        </Typography>
-                        <TableContainer component={Paper} variant="outlined">
-                          <Table size="small">
-                            <TableHead>
-                              <TableRow>
-                                <TableCell>Região</TableCell>
-                                <TableCell align="right">Quantidade de Pedidos</TableCell>
-                                <TableCell align="right">Percentual</TableCell>
+              {statistics.notesByRegion?.length > 0 && (
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom><LocationIcon sx={{ mr: 1, verticalAlign: 'middle' }} />Distribuição por Região</Typography>
+                    <TableContainer component={Paper} variant="outlined">
+                      <Table size="small">
+                        <TableHead><TableRow><TableCell>Região</TableCell><TableCell align="right">Qtd. Pedidos</TableCell><TableCell align="right">%</TableCell></TableRow></TableHead>
+                        <TableBody>
+                          {statistics.notesByRegion.sort((a, b) => b.count - a.count).slice(0, 10).map((region) => {
+                            const total = statistics.notesByRegion.reduce((sum, r) => sum + r.count, 0)
+                            const percentage = total > 0 ? (region.count / total * 100).toFixed(1) : '0'
+                            return (
+                              <TableRow key={region.region}>
+                                <TableCell>{region.region}</TableCell>
+                                <TableCell align="right">{region.count}</TableCell>
+                                <TableCell align="right">{percentage}%</TableCell>
                               </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {statistics.notesByRegion
-                                .sort((a, b) => b.count - a.count)
-                                .slice(0, 10)
-                                .map((region) => {
-                                  const total = statistics.notesByRegion.reduce((sum, r) => sum + r.count, 0)
-                                  const percentage = total > 0 ? (region.count / total * 100).toFixed(1) : '0'
-                                  return (
-                                    <TableRow key={region.region}>
-                                      <TableCell>{region.region}</TableCell>
-                                      <TableCell align="right">{region.count}</TableCell>
-                                      <TableCell align="right">{percentage}%</TableCell>
-                                    </TableRow>
-                                  )
-                                })}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                </Grid>
+                            )
+                          })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </CardContent>
+                </Card>
               )}
 
-              {/* Driver Performance */}
-              {statistics.avgOrdersPerDriver && statistics.avgOrdersPerDriver.length > 0 && (
-                <Grid container spacing={3} mb={4}>
-                  <Grid item xs={12} md={4}>
+              {statistics.avgOrdersPerDriver?.length > 0 && (
+                 <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
                     <Card>
                       <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          <TrendingUpIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                          Média de Pedidos por Motorista
-                        </Typography>
+                        <Typography variant="h6" gutterBottom><TrendingUpIcon sx={{ mr: 1, verticalAlign: 'middle' }} />Média de Pedidos/Motorista</Typography>
                         <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
                           {statistics.avgOrdersPerDriver.map((item) => (
                             <Box key={item.driverId} display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                              <Box display="flex" alignItems="center">
-                                <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: 'primary.main' }}>
-                                  <PersonIcon fontSize="small" />
-                                </Avatar>
-                                <Typography variant="body2">
-                                  {getDriverName(item.driverId)}
-                                </Typography>
-                              </Box>
-                              <Chip 
-                                label={`${item.average} pedidos`} 
-                                size="small" 
-                                color="primary"
-                              />
+                              <Box display="flex" alignItems="center" gap={1}><Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}><PersonIcon fontSize="small" /></Avatar><Typography variant="body2">{getDriverName(item.driverId)}</Typography></Box>
+                              <Chip label={`${item.average} pedidos`} size="small" color="primary" />
                             </Box>
                           ))}
                         </Box>
                       </CardContent>
                     </Card>
-                  </Grid>
-                  
-                  {statistics.avgValueNotesPerDriver && (
-                    <Grid item xs={12} md={4}>
+                    {statistics.avgValueNotesPerDriver && (
                       <Card>
                         <CardContent>
-                          <Typography variant="h6" gutterBottom>
-                            <BarChartIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                            Valor Médio por Motorista
-                          </Typography>
+                          <Typography variant="h6" gutterBottom><BarChartIcon sx={{ mr: 1, verticalAlign: 'middle' }} />Valor Médio/Motorista</Typography>
                           <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
                             {statistics.avgValueNotesPerDriver.map((item) => (
                               <Box key={item.driverId} display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                                <Box display="flex" alignItems="center">
-                                  <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: 'success.main' }}>
-                                    <PersonIcon fontSize="small" />
-                                  </Avatar>
-                                  <Typography variant="body2">
-                                    {getDriverName(item.driverId)}
-                                  </Typography>
-                                </Box>
-                                <Chip 
-                                  label={new Intl.NumberFormat('pt-BR', {
-                                    style: 'currency',
-                                    currency: 'BRL'
-                                  }).format(item.average)} 
-                                  size="small" 
-                                  color="success"
-                                />
+                                <Box display="flex" alignItems="center" gap={1}><Avatar sx={{ width: 32, height: 32, bgcolor: 'success.main' }}><PersonIcon fontSize="small" /></Avatar><Typography variant="body2">{getDriverName(item.driverId)}</Typography></Box>
+                                <Chip label={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.average)} size="small" color="success" />
                               </Box>
                             ))}
                           </Box>
                         </CardContent>
                       </Card>
-                    </Grid>
-                  )}
-                  
-                  {statistics.avgWeightPerDriver && (
-                    <Grid item xs={12} md={4}>
+                    )}
+                    {statistics.avgWeightPerDriver && (
                       <Card>
                         <CardContent>
-                          <Typography variant="h6" gutterBottom>
-                            <AssessmentIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                            Peso Médio por Motorista
-                          </Typography>
+                          <Typography variant="h6" gutterBottom><AssessmentIcon sx={{ mr: 1, verticalAlign: 'middle' }} />Peso Médio/Motorista</Typography>
                           <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
                             {statistics.avgWeightPerDriver.map((item) => (
                               <Box key={item.driverId} display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                                <Box display="flex" alignItems="center">
-                                  <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: 'info.main' }}>
-                                    <PersonIcon fontSize="small" />
-                                  </Avatar>
-                                  <Typography variant="body2">
-                                    {getDriverName(item.driverId)}
-                                  </Typography>
-                                </Box>
-                                <Chip 
-                                  label={`${item.average.toFixed(1)} kg`} 
-                                  size="small" 
-                                  color="info"
-                                />
+                                <Box display="flex" alignItems="center" gap={1}><Avatar sx={{ width: 32, height: 32, bgcolor: 'info.main' }}><PersonIcon fontSize="small" /></Avatar><Typography variant="body2">{getDriverName(item.driverId)}</Typography></Box>
+                                <Chip label={`${item.average.toFixed(1)} kg`} size="small" color="info" />
                               </Box>
                             ))}
                           </Box>
                         </CardContent>
                       </Card>
-                    </Grid>
-                  )}
-                </Grid>
+                    )}
+                </Box>
               )}
 
-              {/* Summary Footer */}
               <Card>
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Resumo do Período
-                  </Typography>
+                  <Typography variant="h6" gutterBottom>Resumo do Período</Typography>
                   <Divider sx={{ mb: 2 }} />
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Typography variant="body2" color="text.secondary">
-                        Total de Pedidos
-                      </Typography>
-                      <Typography variant="h6">
-                        {statistics.ordersPending + statistics.ordersInRoute + statistics.ordersFinalized}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Typography variant="body2" color="text.secondary">
-                        Taxa de Finalização
-                      </Typography>
-                      <Typography variant="h6">
-                        {((statistics.ordersFinalized / (statistics.ordersPending + statistics.ordersInRoute + statistics.ordersFinalized)) * 100).toFixed(1)}%
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Typography variant="body2" color="text.secondary">
-                        Entregas Ativas
-                      </Typography>
-                      <Typography variant="h6">
-                        {statistics.deliveriesInRoute}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                      <Typography variant="body2" color="text.secondary">
-                        Regiões Atendidas
-                      </Typography>
-                      <Typography variant="h6">
-                        {statistics.notesByRegion?.length || 0}
-                      </Typography>
-                    </Grid>
-                  </Grid>
+                  <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' } }}>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Total de Pedidos</Typography>
+                      <Typography variant="h6">{statistics.ordersPending + statistics.ordersInRoute + statistics.ordersFinalized}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Taxa de Finalização</Typography>
+                      <Typography variant="h6">{((statistics.ordersFinalized / (statistics.ordersPending + statistics.ordersInRoute + statistics.ordersFinalized)) * 100 || 0).toFixed(1)}%</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Entregas Ativas</Typography>
+                      <Typography variant="h6">{statistics.deliveriesInRoute}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Regiões Atendidas</Typography>
+                      <Typography variant="h6">{statistics.notesByRegion?.length || 0}</Typography>
+                    </Box>
+                  </Box>
                 </CardContent>
               </Card>
-            </>
+            </Stack>
           ) : (
             <Box textAlign="center" py={8}>
               <AssessmentIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />

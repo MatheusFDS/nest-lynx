@@ -26,18 +26,16 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
-  Grid,
   Tooltip,
   Avatar,
+  Stack,
 } from '@mui/material'
+import Grid from '@mui/material/Grid'
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Person as PersonIcon,
-  DirectionsCar as CarIcon,
-  Phone as PhoneIcon,
-  Email as EmailIcon,
 } from '@mui/icons-material'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../services/api'
@@ -54,12 +52,10 @@ export default function MotoristasPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Create/Edit Dialog
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null)
   const [submitting, setSubmitting] = useState(false)
   
-  // Form fields
   const [name, setName] = useState('')
   const [license, setLicense] = useState('')
   const [cpf, setCpf] = useState('')
@@ -203,16 +199,6 @@ export default function MotoristasPage() {
     setSuccess('')
   }
 
-  const getDriverStats = () => {
-    const total = drivers.length
-    const withUser = drivers.filter(d => d.userId).length
-    const withoutUser = total - withUser
-    
-    return { total, withUser, withoutUser }
-  }
-
-  const stats = getDriverStats()
-
   if (loading) {
     return (
       <AppLayout>
@@ -227,17 +213,10 @@ export default function MotoristasPage() {
     <AuthGuard requiredRoles={['admin']}>
       <AppLayout>
         <Box sx={{ flexGrow: 1 }}>
-          {/* Header */}
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-            <div>
-              <Typography variant="h4" component="h1" gutterBottom>
-                Motoristas
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Gerencie o cadastro de motoristas da empresa
-              </Typography>
-            </div>
-            
+            <Typography variant="h6">
+              Lista de Motoristas ({drivers.length})
+            </Typography>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -247,7 +226,6 @@ export default function MotoristasPage() {
             </Button>
           </Box>
 
-          {/* Messages */}
           {error && (
             <Alert severity="error" sx={{ mb: 3 }} onClose={clearMessages}>
               {error}
@@ -260,76 +238,13 @@ export default function MotoristasPage() {
             </Alert>
           )}
 
-          {/* Summary Cards */}
-          <Grid container spacing={3} mb={4}>
-            <Grid item xs={12} sm={6} md={4}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center">
-                    <PersonIcon sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
-                    <div>
-                      <Typography color="textSecondary" gutterBottom>
-                        Total de Motoristas
-                      </Typography>
-                      <Typography variant="h4">
-                        {stats.total}
-                      </Typography>
-                    </div>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center">
-                    <EmailIcon sx={{ fontSize: 40, color: 'success.main', mr: 2 }} />
-                    <div>
-                      <Typography color="textSecondary" gutterBottom>
-                        Com Usuário
-                      </Typography>
-                      <Typography variant="h4">
-                        {stats.withUser}
-                      </Typography>
-                    </div>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center">
-                    <PersonIcon sx={{ fontSize: 40, color: 'warning.main', mr: 2 }} />
-                    <div>
-                      <Typography color="textSecondary" gutterBottom>
-                        Sem Usuário
-                      </Typography>
-                      <Typography variant="h4">
-                        {stats.withoutUser}
-                      </Typography>
-                    </div>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-
-          {/* Drivers Table */}
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Lista de Motoristas ({drivers.length})
-              </Typography>
-              
               {drivers.length === 0 ? (
                 <Box textAlign="center" py={4}>
                   <PersonIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
                   <Typography variant="body1" color="text.secondary">
                     Nenhum motorista cadastrado
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" mt={1}>
-                    Adicione motoristas para começar a gerenciar entregas
                   </Typography>
                 </Box>
               ) : (
@@ -424,7 +339,6 @@ export default function MotoristasPage() {
             </CardContent>
           </Card>
 
-          {/* Create/Edit Driver Dialog */}
           <Dialog
             open={dialogOpen}
             onClose={() => !submitting && setDialogOpen(false)}
@@ -435,62 +349,51 @@ export default function MotoristasPage() {
               {editingDriver ? 'Editar Motorista' : 'Novo Motorista'}
             </DialogTitle>
             <DialogContent>
-              <Grid container spacing={3} sx={{ mt: 1 }}>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Nome do Motorista"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+              <Stack spacing={3} sx={{ mt: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Nome do Motorista"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={submitting}
+                  required
+                />
+                <TextField
+                  fullWidth
+                  label="CNH"
+                  value={license}
+                  onChange={(e) => setLicense(e.target.value)}
+                  disabled={submitting}
+                  required
+                  helperText="Número da Carteira de Habilitação"
+                />
+                <TextField
+                  fullWidth
+                  label="CPF"
+                  value={formatCpf(cpf)}
+                  onChange={(e) => handleCpfChange(e.target.value)}
+                  disabled={submitting}
+                  required
+                  helperText="Apenas números"
+                />
+                <FormControl fullWidth>
+                  <InputLabel>Usuário do Sistema (Opcional)</InputLabel>
+                  <Select
+                    value={userId}
+                    onChange={(e) => setUserId(e.target.value)}
                     disabled={submitting}
-                    required
-                  />
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="CNH"
-                    value={license}
-                    onChange={(e) => setLicense(e.target.value)}
-                    disabled={submitting}
-                    required
-                    helperText="Número da Carteira de Habilitação"
-                  />
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="CPF"
-                    value={formatCpf(cpf)}
-                    onChange={(e) => handleCpfChange(e.target.value)}
-                    disabled={submitting}
-                    required
-                    helperText="Apenas números"
-                  />
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <FormControl fullWidth>
-                    <InputLabel>Usuário do Sistema (Opcional)</InputLabel>
-                    <Select
-                      value={userId}
-                      onChange={(e) => setUserId(e.target.value)}
-                      disabled={submitting}
-                    >
-                      <MenuItem value="">
-                        <em>Nenhum usuário</em>
+                  >
+                    <MenuItem value="">
+                      <em>Nenhum usuário</em>
+                    </MenuItem>
+                    {availableUsers.map((user) => (
+                      <MenuItem key={user.id} value={user.id}>
+                        {user.name} ({user.email})
                       </MenuItem>
-                      {availableUsers.map((user) => (
-                        <MenuItem key={user.id} value={user.id}>
-                          {user.name} ({user.email})
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Stack>
             </DialogContent>
             <DialogActions>
               <Button

@@ -17,6 +17,7 @@ import {
   Menu,
   MenuItem,
   Chip,
+  ListSubheader,
 } from '@mui/material'
 import {
   Menu as MenuIcon,
@@ -30,6 +31,10 @@ import {
   Settings as SettingsIcon,
   AccountCircle as AccountIcon,
   Logout as LogoutIcon,
+  Category as CategoryIcon,
+  Map as MapIcon,
+  Business as BusinessIcon,
+  PersonAdd as UsersIcon,
 } from '@mui/icons-material'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
@@ -44,15 +49,43 @@ interface MenuItem {
   roles?: string[]
 }
 
-const menuItems: MenuItem[] = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { text: 'Pedidos', icon: <OrdersIcon />, path: '/pedidos', roles: ['admin', 'user'] },
-  { text: 'Entregas', icon: <DeliveryIcon />, path: '/entregas', roles: ['admin', 'user'] },
-  { text: 'Motoristas', icon: <DriversIcon />, path: '/motoristas', roles: ['admin'] },
-  { text: 'Veículos', icon: <VehiclesIcon />, path: '/veiculos', roles: ['admin'] },
-  { text: 'Pagamentos', icon: <PaymentsIcon />, path: '/pagamentos', roles: ['admin'] },
-  { text: 'Estatísticas', icon: <StatsIcon />, path: '/estatisticas', roles: ['admin'] },
-  { text: 'Configurações', icon: <SettingsIcon />, path: '/configuracoes', roles: ['admin'] },
+interface MenuSection {
+  title: string
+  items: MenuItem[]
+}
+
+const menuSections: MenuSection[] = [
+  {
+    title: 'Dashboard',
+    items: [
+      { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+    ]
+  },
+  {
+    title: 'Cadastros Básicos',
+    items: [
+      { text: 'Categorias', icon: <CategoryIcon />, path: '/categorias', roles: ['admin'] },
+      { text: 'Regiões', icon: <MapIcon />, path: '/regioes', roles: ['admin'] },
+      { text: 'Motoristas', icon: <DriversIcon />, path: '/motoristas', roles: ['admin'] },
+      { text: 'Veículos', icon: <VehiclesIcon />, path: '/veiculos', roles: ['admin'] },
+    ]
+  },
+  {
+    title: 'Operacional',
+    items: [
+      { text: 'Pedidos', icon: <OrdersIcon />, path: '/pedidos', roles: ['admin', 'user'] },
+      { text: 'Entregas', icon: <DeliveryIcon />, path: '/entregas', roles: ['admin', 'user'] },
+      { text: 'Pagamentos', icon: <PaymentsIcon />, path: '/pagamentos', roles: ['admin'] },
+      { text: 'Estatísticas', icon: <StatsIcon />, path: '/estatisticas', roles: ['admin'] },
+    ]
+  },
+  {
+    title: 'Configurações',
+    items: [
+      { text: 'Usuários', icon: <UsersIcon />, path: '/usuarios', roles: ['admin'] },
+      { text: 'Empresa', icon: <BusinessIcon />, path: '/empresa', roles: ['admin'] },
+    ]
+  },
 ]
 
 interface AppLayoutProps {
@@ -87,39 +120,83 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const drawer = (
     <div>
       <Toolbar>
-        <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-          Delivery System
-        </Typography>
+        <Box display="flex" alignItems="center" width="100%">
+          <DeliveryIcon sx={{ fontSize: 28, color: 'primary.main', mr: 1 }} />
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
+            Delivery System
+          </Typography>
+        </Box>
       </Toolbar>
       <Divider />
-      <List>
-        {menuItems.map((item) => (
-          <RoleGuard key={item.text} allowedRoles={item.roles || ['admin', 'user', 'driver']}>
-            <ListItem disablePadding>
-              <ListItemButton
-                selected={pathname === item.path}
-                onClick={() => router.push(item.path)}
-                sx={{
-                  '&.Mui-selected': {
-                    backgroundColor: 'primary.light',
-                    color: 'primary.contrastText',
-                    '&:hover': {
-                      backgroundColor: 'primary.main',
-                    },
-                  },
+      
+      <List sx={{ px: 1 }}>
+        {menuSections.map((section, sectionIndex) => (
+          <Box key={section.title}>
+            {sectionIndex > 0 && <Divider sx={{ my: 1, mx: 2 }} />}
+            
+            {section.title !== 'Dashboard' && (
+              <ListSubheader 
+                component="div" 
+                sx={{ 
+                  px: 2, 
+                  py: 1, 
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: 'text.secondary',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  lineHeight: 1.5,
+                  backgroundColor: 'transparent',
                 }}
               >
-                <ListItemIcon
-                  sx={{
-                    color: pathname === item.path ? 'inherit' : 'text.secondary',
-                  }}
-                >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText primary={item.text} />
-              </ListItemButton>
-            </ListItem>
-          </RoleGuard>
+                {section.title}
+              </ListSubheader>
+            )}
+            
+            {section.items.map((item) => (
+              <RoleGuard key={item.text} allowedRoles={item.roles || ['admin', 'user', 'driver']}>
+                <ListItem disablePadding sx={{ px: 1 }}>
+                  <ListItemButton
+                    selected={pathname === item.path}
+                    onClick={() => router.push(item.path)}
+                    sx={{
+                      borderRadius: 2,
+                      mb: 0.5,
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(0, 105, 92, 0.12)',
+                        color: 'primary.main',
+                        '&:hover': {
+                          backgroundColor: 'rgba(0, 105, 92, 0.16)',
+                        },
+                        '& .MuiListItemIcon-root': {
+                          color: 'primary.main',
+                        },
+                      },
+                      '&:hover': {
+                        backgroundColor: 'rgba(0, 105, 92, 0.08)',
+                      },
+                    }}
+                  >
+                    <ListItemIcon
+                      sx={{
+                        minWidth: 36,
+                        color: pathname === item.path ? 'primary.main' : 'text.secondary',
+                      }}
+                    >
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={item.text}
+                      primaryTypographyProps={{
+                        fontSize: '0.875rem',
+                        fontWeight: pathname === item.path ? 600 : 500,
+                      }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              </RoleGuard>
+            ))}
+          </Box>
         ))}
       </List>
     </div>
@@ -132,6 +209,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
+          backgroundColor: 'background.paper',
+          color: 'text.primary',
+          boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.08), 0px 2px 2px rgba(0, 0, 0, 0.12)',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
         }}
       >
         <Toolbar>
@@ -144,28 +226,48 @@ export default function AppLayout({ children }: AppLayoutProps) {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Sistema de Delivery
-          </Typography>
+          
+          <Box display="flex" alignItems="center" sx={{ flexGrow: 1 }}>
+            <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 600 }}>
+              Sistema de Delivery
+            </Typography>
+          </Box>
           
           {user && (
             <Box display="flex" alignItems="center" gap={2}>
               <Chip 
                 label={user.role} 
                 size="small" 
-                color="secondary" 
+                color="primary" 
                 variant="outlined"
+                sx={{ 
+                  textTransform: 'capitalize',
+                  fontWeight: 500,
+                  fontSize: '0.75rem'
+                }}
               />
-              <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
-                {user.name}
-              </Typography>
+              <Box sx={{ display: { xs: 'none', sm: 'flex' }, flexDirection: 'column', alignItems: 'flex-end' }}>
+                <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2 }}>
+                  {user.name}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1 }}>
+                  {user.email}
+                </Typography>
+              </Box>
               <IconButton
                 size="large"
                 edge="end"
                 onClick={handleMenuOpen}
                 color="inherit"
+                sx={{ ml: 1 }}
               >
-                <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
+                <Avatar sx={{ 
+                  width: 36, 
+                  height: 36, 
+                  bgcolor: 'primary.main',
+                  fontSize: '1rem',
+                  fontWeight: 600
+                }}>
                   {user.name.charAt(0).toUpperCase()}
                 </Avatar>
               </IconButton>
@@ -176,20 +278,35 @@ export default function AppLayout({ children }: AppLayoutProps) {
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
             onClose={handleMenuClose}
-            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            PaperProps={{
+              sx: {
+                mt: 1,
+                minWidth: 200,
+                borderRadius: 2,
+                boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.12)',
+              }
+            }}
           >
-            <MenuItem onClick={handleMenuClose}>
+            <MenuItem onClick={handleMenuClose} sx={{ py: 1.5 }}>
               <ListItemIcon>
                 <AccountIcon fontSize="small" />
               </ListItemIcon>
-              Meu Perfil
+              <ListItemText 
+                primary="Meu Perfil"
+                primaryTypographyProps={{ fontSize: '0.875rem' }}
+              />
             </MenuItem>
-            <MenuItem onClick={handleLogout}>
+            <Divider />
+            <MenuItem onClick={handleLogout} sx={{ py: 1.5, color: 'error.main' }}>
               <ListItemIcon>
-                <LogoutIcon fontSize="small" />
+                <LogoutIcon fontSize="small" sx={{ color: 'error.main' }} />
               </ListItemIcon>
-              Sair
+              <ListItemText 
+                primary="Sair"
+                primaryTypographyProps={{ fontSize: '0.875rem' }}
+              />
             </MenuItem>
           </Menu>
         </Toolbar>
@@ -203,7 +320,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
           ModalProps={{ keepMounted: true }}
           sx={{
             display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            '& .MuiDrawer-paper': { 
+              boxSizing: 'border-box', 
+              width: drawerWidth,
+              backgroundColor: 'background.paper',
+            },
           }}
         >
           {drawer}
@@ -212,7 +333,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
           variant="permanent"
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            '& .MuiDrawer-paper': { 
+              boxSizing: 'border-box', 
+              width: drawerWidth,
+              backgroundColor: 'background.paper',
+            },
           }}
           open
         >

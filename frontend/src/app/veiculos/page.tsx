@@ -26,17 +26,16 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
-  Grid,
   Tooltip,
   Avatar,
+  Stack,
 } from '@mui/material'
+import Grid from '@mui/material/Grid'
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   DirectionsCar as CarIcon,
-  Person as PersonIcon,
-  Category as CategoryIcon,
 } from '@mui/icons-material'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../services/api'
@@ -53,12 +52,10 @@ export default function VeiculosPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Create/Edit Dialog
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [submitting, setSubmitting] = useState(false)
   
-  // Form fields
   const [model, setModel] = useState('')
   const [plate, setPlate] = useState('')
   const [driverId, setDriverId] = useState('')
@@ -188,10 +185,8 @@ export default function VeiculosPage() {
   }
 
   const formatPlate = (value: string) => {
-    // Remove caracteres não alfanuméricos e converte para maiúsculo
     const cleaned = value.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
     
-    // Formato padrão brasileiro: ABC-1234 ou ABC1D23 (Mercosul)
     if (cleaned.length <= 7) {
       if (cleaned.length >= 4) {
         return cleaned.slice(0, 3) + '-' + cleaned.slice(3)
@@ -211,16 +206,6 @@ export default function VeiculosPage() {
     setSuccess('')
   }
 
-  const getVehicleStats = () => {
-    const total = vehicles.length
-    const byCategory = categories.map(cat => ({
-      name: cat.name,
-      count: vehicles.filter(v => v.categoryId === cat.id).length
-    }))
-    
-    return { total, byCategory }
-  }
-
   const getDriverName = (driverId: string) => {
     const driver = drivers.find(d => d.id === driverId)
     return driver?.name || 'Driver não encontrado'
@@ -230,8 +215,6 @@ export default function VeiculosPage() {
     const category = categories.find(c => c.id === categoryId)
     return category?.name || 'Categoria não encontrada'
   }
-
-  const stats = getVehicleStats()
 
   if (loading) {
     return (
@@ -247,17 +230,10 @@ export default function VeiculosPage() {
     <AuthGuard requiredRoles={['admin']}>
       <AppLayout>
         <Box sx={{ flexGrow: 1 }}>
-          {/* Header */}
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-            <div>
-              <Typography variant="h4" component="h1" gutterBottom>
-                Veículos
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Gerencie a frota de veículos da empresa
-              </Typography>
-            </div>
-            
+            <Typography variant="h6">
+              Lista de Veículos ({vehicles.length})
+            </Typography>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -267,7 +243,6 @@ export default function VeiculosPage() {
             </Button>
           </Box>
 
-          {/* Messages */}
           {error && (
             <Alert severity="error" sx={{ mb: 3 }} onClose={clearMessages}>
               {error}
@@ -280,66 +255,13 @@ export default function VeiculosPage() {
             </Alert>
           )}
 
-          {/* Summary Cards */}
-          <Grid container spacing={3} mb={4}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center">
-                    <CarIcon sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
-                    <div>
-                      <Typography color="textSecondary" gutterBottom>
-                        Total de Veículos
-                      </Typography>
-                      <Typography variant="h4">
-                        {stats.total}
-                      </Typography>
-                    </div>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            {stats.byCategory.slice(0, 3).map((category, index) => (
-              <Grid item xs={12} sm={6} md={3} key={category.name}>
-                <Card>
-                  <CardContent>
-                    <Box display="flex" alignItems="center">
-                      <CategoryIcon sx={{ 
-                        fontSize: 40, 
-                        color: index === 0 ? 'success.main' : index === 1 ? 'warning.main' : 'info.main', 
-                        mr: 2 
-                      }} />
-                      <div>
-                        <Typography color="textSecondary" gutterBottom>
-                          {category.name}
-                        </Typography>
-                        <Typography variant="h4">
-                          {category.count}
-                        </Typography>
-                      </div>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-
-          {/* Vehicles Table */}
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Lista de Veículos ({vehicles.length})
-              </Typography>
-              
               {vehicles.length === 0 ? (
                 <Box textAlign="center" py={4}>
                   <CarIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
                   <Typography variant="body1" color="text.secondary">
                     Nenhum veículo cadastrado
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" mt={1}>
-                    Adicione veículos para gerenciar a frota
                   </Typography>
                 </Box>
               ) : (
@@ -426,7 +348,6 @@ export default function VeiculosPage() {
             </CardContent>
           </Card>
 
-          {/* Create/Edit Vehicle Dialog */}
           <Dialog
             open={dialogOpen}
             onClose={() => !submitting && setDialogOpen(false)}
@@ -437,20 +358,17 @@ export default function VeiculosPage() {
               {editingVehicle ? 'Editar Veículo' : 'Novo Veículo'}
             </DialogTitle>
             <DialogContent>
-              <Grid container spacing={3} sx={{ mt: 1 }}>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Modelo do Veículo"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    disabled={submitting}
-                    required
-                    placeholder="Ex: Ford Transit, Volkswagen Delivery, etc."
-                  />
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
+              <Stack spacing={3} sx={{ mt: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Modelo do Veículo"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  disabled={submitting}
+                  required
+                  placeholder="Ex: Ford Transit, Volkswagen Delivery, etc."
+                />
+                <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
                   <TextField
                     fullWidth
                     label="Placa"
@@ -461,9 +379,6 @@ export default function VeiculosPage() {
                     placeholder="ABC-1234"
                     helperText="Formato: ABC-1234"
                   />
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
                   <FormControl fullWidth required>
                     <InputLabel>Categoria</InputLabel>
                     <Select
@@ -478,25 +393,22 @@ export default function VeiculosPage() {
                       ))}
                     </Select>
                   </FormControl>
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <FormControl fullWidth required>
-                    <InputLabel>Motorista</InputLabel>
-                    <Select
-                      value={driverId}
-                      onChange={(e) => setDriverId(e.target.value)}
-                      disabled={submitting}
-                    >
-                      {drivers.map((driver) => (
-                        <MenuItem key={driver.id} value={driver.id}>
-                          {driver.name} (CNH: {driver.license})
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
+                </Box>
+                <FormControl fullWidth required>
+                  <InputLabel>Motorista</InputLabel>
+                  <Select
+                    value={driverId}
+                    onChange={(e) => setDriverId(e.target.value)}
+                    disabled={submitting}
+                  >
+                    {drivers.map((driver) => (
+                      <MenuItem key={driver.id} value={driver.id}>
+                        {driver.name} (CNH: {driver.license})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Stack>
             </DialogContent>
             <DialogActions>
               <Button

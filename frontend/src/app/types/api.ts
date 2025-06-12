@@ -23,6 +23,7 @@ export interface User {
   name: string
   email: string
   role: string
+  roleId: string
   tenantId: string
   isActive: boolean
   createdAt: string
@@ -201,6 +202,30 @@ export interface CreateCategoryDto {
 export interface UpdateCategoryDto {
   name?: string
   valor?: number
+}
+
+// Tipos de Direção/Região
+export interface Direction {
+  id: string
+  regiao: string
+  rangeInicio: string
+  rangeFim: string
+  valorDirecao: number
+  tenantId: string
+}
+
+export interface CreateDirectionDto {
+  regiao: string
+  rangeInicio: string
+  rangeFim: string
+  valorDirecao: number
+}
+
+export interface UpdateDirectionDto {
+  regiao?: string
+  rangeInicio?: string
+  rangeFim?: string
+  valorDirecao?: number
 }
 
 // Tipos de Estatísticas

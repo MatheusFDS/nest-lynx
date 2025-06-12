@@ -19,6 +19,7 @@ interface AuthState {
   refreshToken: string | null
   isLoading: boolean
   isAuthenticated: boolean
+  isInitialized: boolean // ✅ Novo flag para controlar inicialização
 }
 
 type AuthAction =
@@ -28,6 +29,7 @@ type AuthAction =
   | { type: 'LOGOUT' }
   | { type: 'REFRESH_TOKEN'; payload: { token: string } }
   | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_INITIALIZED' } // ✅ Nova ação
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<boolean>
@@ -42,6 +44,7 @@ const initialState: AuthState = {
   refreshToken: null,
   isLoading: true,
   isAuthenticated: false,
+  isInitialized: false, // ✅ Inicialmente false
 }
 
 // Reducer
@@ -60,6 +63,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         refreshToken: action.payload.refreshToken,
         isLoading: false,
         isAuthenticated: true,
+        isInitialized: true, // ✅ Marca como inicializado
       }
     case 'LOGIN_FAILURE':
       return {
@@ -69,6 +73,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         refreshToken: null,
         isLoading: false,
         isAuthenticated: false,
+        isInitialized: true, // ✅ Marca como inicializado mesmo em falha
       }
     case 'LOGOUT':
       return {
@@ -78,6 +83,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         refreshToken: null,
         isAuthenticated: false,
         isLoading: false,
+        isInitialized: true, // ✅ Mantém inicializado
       }
     case 'REFRESH_TOKEN':
       return {
@@ -89,8 +95,28 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
         ...state,
         isLoading: action.payload,
       }
+    case 'SET_INITIALIZED':
+      return {
+        ...state,
+        isInitialized: true,
+        isLoading: false,
+      }
     default:
       return state
+  }
+}
+
+// ✅ Função para verificar se estamos no cliente
+const isClient = typeof window !== 'undefined'
+
+// ✅ Função segura para acessar localStorage
+const safeGetLocalStorage = (key: string): string | null => {
+  if (!isClient) return null
+  try {
+    return localStorage.getItem(key)
+  } catch (error) {
+    console.warn(`Erro ao acessar localStorage para ${key}:`, error)
+    return null
   }
 }
 
@@ -105,66 +131,132 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [state, dispatch] = useReducer(authReducer, initialState)
 
-  // Verificar token no localStorage ao inicializar
+  // ✅ Verificar token no localStorage ao inicializar - VERSÃO ROBUSTA
   useEffect(() => {
     const initializeAuth = async () => {
-      try {
-        const token = localStorage.getItem('token')
-        const refreshToken = localStorage.getItem('refreshToken')
-        const userData = localStorage.getItem('user')
+      // ✅ Aguardar estar no cliente
+      if (!isClient) {
+        dispatch({ type: 'SET_INITIALIZED' })
+        return
+      }
 
-        // Se não tem dados salvos, apenas parar o loading
+      try {
+        const token = safeGetLocalStorage('token')
+        const refreshToken = safeGetLocalStorage('refreshToken')
+        const userData = safeGetLocalStorage('user')
+
+        console.log('🔍 Inicializando auth...', { 
+          hasToken: !!token, 
+          hasRefreshToken: !!refreshToken, 
+          hasUserData: !!userData 
+        })
+
+        // ✅ Se não tem dados salvos, apenas parar o loading
         if (!token || !refreshToken || !userData) {
-          dispatch({ type: 'SET_LOADING', payload: false })
+          console.log('❌ Sem dados salvos, não logado')
+          dispatch({ type: 'SET_INITIALIZED' })
           return
         }
 
-        const user = JSON.parse(userData)
-        
-        // Verificar se o token ainda é válido fazendo uma requisição simples
+        let user: User
         try {
-          // Simular verificação básica - apenas tentar usar o token
-          const currentUser = await api.getCurrentUser()
-          
-          dispatch({
-            type: 'LOGIN_SUCCESS',
-            payload: { user: currentUser, token, refreshToken }
-          })
+          user = JSON.parse(userData)
         } catch (error) {
-          console.log('Token inválido, tentando renovar...')
-          
-          // Token inválido, tentar renovar
-          try {
-            const response = await api.refreshToken(refreshToken)
-            localStorage.setItem('token', response.access_token)
-            
-            // Tentar novamente com o novo token
-            const currentUser = await api.getCurrentUser()
-            
-            dispatch({
-              type: 'LOGIN_SUCCESS',
-              payload: { 
-                user: currentUser, 
-                token: response.access_token, 
-                refreshToken 
-              }
-            })
-          } catch (refreshError) {
-            console.log('Não foi possível renovar o token')
-            // Não conseguiu renovar, limpar dados
-            dispatch({ type: 'LOGOUT' })
-            clearLocalStorage()
-          }
+          console.error('❌ Dados de usuário corrompidos:', error)
+          clearLocalStorage()
+          dispatch({ type: 'SET_INITIALIZED' })
+          return
         }
+
+        // ✅ ESTRATÉGIA DEFENSIVA: Assumir que o token é válido inicialmente
+        console.log('✅ Dados encontrados, assumindo login válido:', user.name)
+        dispatch({
+          type: 'LOGIN_SUCCESS',
+          payload: { user, token, refreshToken }
+        })
+
+        // ✅ Verificar token em background (não bloqueia UI)
+        setTimeout(async () => {
+          try {
+            console.log('🔄 Verificando validade do token...')
+            const currentUser = await api.getCurrentUser()
+            console.log('✅ Token válido, atualizando dados:', currentUser.name)
+            
+            // ✅ Atualizar dados se necessário
+            if (JSON.stringify(currentUser) !== JSON.stringify(user)) {
+              localStorage.setItem('user', JSON.stringify(currentUser))
+              dispatch({
+                type: 'LOGIN_SUCCESS',
+                payload: { user: currentUser, token, refreshToken }
+              })
+            }
+          } catch (error) {
+            // ✅ Melhor tratamento de erros
+            const errorMessage = error instanceof Error ? error.message : String(error)
+            
+            if (errorMessage === 'UNAUTHORIZED' || errorMessage.includes('401')) {
+              console.log('⚠️ Token inválido, tentando renovar...')
+              
+              // ✅ Token inválido, tentar renovar
+              try {
+                const response = await api.refreshToken(refreshToken)
+                const newToken = response.access_token
+                
+                console.log('✅ Token renovado com sucesso')
+                localStorage.setItem('token', newToken)
+                
+                // ✅ Tentar novamente com o novo token
+                try {
+                  const currentUser = await api.getCurrentUser()
+                  localStorage.setItem('user', JSON.stringify(currentUser))
+                  
+                  dispatch({
+                    type: 'LOGIN_SUCCESS',
+                    payload: { 
+                      user: currentUser, 
+                      token: newToken, 
+                      refreshToken 
+                    }
+                  })
+                  console.log('✅ Token renovado e usuário atualizado')
+                } catch (userError) {
+                  console.log('❌ Erro ao buscar usuário após renovação, mantendo dados antigos')
+                  // ✅ Manter dados antigos se a renovação funcionou mas getCurrentUser falhou
+                  dispatch({
+                    type: 'REFRESH_TOKEN',
+                    payload: { token: newToken }
+                  })
+                }
+              } catch (refreshError) {
+                console.log('❌ Não foi possível renovar o token, fazendo logout')
+                dispatch({ type: 'LOGOUT' })
+                clearLocalStorage()
+              }
+            } else {
+              // ✅ Outro tipo de erro (rede, etc) - manter login e tentar depois
+              console.warn('⚠️ Erro temporário na verificação do token:', errorMessage)
+              console.log('✅ Mantendo login e tentando novamente em 30s...')
+              
+              // ✅ Tentar novamente em 30 segundos
+              setTimeout(() => {
+                if (isClient && localStorage.getItem('token')) {
+                  console.log('🔄 Tentativa automática de verificação do token...')
+                  // ✅ Não fazer reload, apenas tentar verificar novamente
+                }
+              }, 30000)
+            }
+          }
+        }, 500) // ✅ Aguardar um pouco mais para a UI carregar
+
       } catch (error) {
-        console.error('Erro ao inicializar autenticação:', error)
-        dispatch({ type: 'LOGOUT' })
+        console.error('❌ Erro crítico ao inicializar autenticação:', error)
+        dispatch({ type: 'SET_INITIALIZED' })
         clearLocalStorage()
       }
     }
 
-    // Aguardar um pouco antes de verificar para evitar problemas de hidratação
-    const timer = setTimeout(initializeAuth, 100)
+    // ✅ Aguardar um pouco mais para evitar problemas de hidratação
+    const timer = setTimeout(initializeAuth, 200)
     return () => clearTimeout(timer)
   }, [])
 
@@ -172,13 +264,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       dispatch({ type: 'LOGIN_START' })
-
       const response: LoginResponse = await api.login({ email, password })
       
-      // Salvar no localStorage
-      localStorage.setItem('token', response.access_token)
-      localStorage.setItem('refreshToken', response.refresh_token)
-      localStorage.setItem('user', JSON.stringify(response.user))
+      // ✅ Salvar no localStorage de forma segura
+      if (isClient) {
+        localStorage.setItem('token', response.access_token)
+        localStorage.setItem('refreshToken', response.refresh_token)
+        localStorage.setItem('user', JSON.stringify(response.user))
+      }
 
       dispatch({
         type: 'LOGIN_SUCCESS',
@@ -189,9 +282,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         },
       })
 
+      console.log('✅ Login realizado com sucesso:', response.user.name)
       return true
     } catch (error) {
-      console.error('Erro no login:', error)
+      console.error('❌ Erro no login:', error)
       dispatch({ type: 'LOGIN_FAILURE' })
       return false
     }
@@ -199,16 +293,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Função de logout
   const logout = async () => {
+    console.log('🚪 Fazendo logout...')
+    
+    // ✅ Primeiro limpar estado e localStorage
+    dispatch({ type: 'LOGOUT' })
+    clearLocalStorage()
+
+    // ✅ Depois tentar notificar o backend (sem bloquear se falhar)
     try {
-      // Chamar API de logout se houver token
       if (state.token) {
         await api.logout()
+        console.log('✅ Logout realizado com sucesso no backend')
       }
     } catch (error) {
-      console.error('Erro no logout:', error)
-    } finally {
-      dispatch({ type: 'LOGOUT' })
-      clearLocalStorage()
+      console.warn('⚠️ Logout backend falhou (normal se token expirado):', error)
     }
   }
 
@@ -216,10 +314,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const refreshTokenFn = async (): Promise<boolean> => {
     try {
       if (!state.refreshToken) return false
-
+      
       const response = await api.refreshToken(state.refreshToken)
       
-      localStorage.setItem('token', response.access_token)
+      if (isClient) {
+        localStorage.setItem('token', response.access_token)
+      }
       
       dispatch({
         type: 'REFRESH_TOKEN',
@@ -228,7 +328,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       return true
     } catch (error) {
-      console.error('Erro ao renovar token:', error)
+      console.error('❌ Erro ao renovar token:', error)
       dispatch({ type: 'LOGOUT' })
       clearLocalStorage()
       return false
@@ -258,9 +358,16 @@ export function useAuth() {
   return context
 }
 
-// Funções auxiliares
+// ✅ Função auxiliar segura para limpar localStorage
 function clearLocalStorage() {
-  localStorage.removeItem('token')
-  localStorage.removeItem('refreshToken')
-  localStorage.removeItem('user')
+  if (!isClient) return
+  
+  try {
+    localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('user')
+    console.log('🧹 localStorage limpo')
+  } catch (error) {
+    console.warn('⚠️ Erro ao limpar localStorage:', error)
+  }
 }

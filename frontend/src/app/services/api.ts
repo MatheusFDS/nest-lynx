@@ -21,6 +21,9 @@ import type {
   Category,
   CreateCategoryDto,
   UpdateCategoryDto,
+  Direction,
+  CreateDirectionDto,
+  UpdateDirectionDto,
   Statistics,
   Tenant,
   UpdateTenantDto,
@@ -57,13 +60,18 @@ class ApiService {
     try {
       const response = await fetch(url, { ...options, headers })
 
-      if (response.status === 401 && !endpoint.includes('/auth/')) {
-        // Token expirado, redirecionar para login
-        if (typeof window !== 'undefined') {
-          localStorage.clear()
-          window.location.href = '/login'
+      // ✅ Tratamento melhorado para 401
+      if (response.status === 401) {
+        if (endpoint.includes('/auth/')) {
+          // ✅ Erro de auth (login/logout) - retornar erro sem redirecionar
+          const errorData = await response.json().catch(() => ({ message: 'Unauthorized' }))
+          throw new Error(errorData.message || 'Unauthorized')
+        } else {
+          // ✅ Token expirado em rota protegida - NÃO redirecionar automaticamente
+          // Deixar o AuthContext gerenciar isso
+          console.warn('Token expired, letting AuthContext handle refresh...')
+          throw new Error('UNAUTHORIZED')
         }
-        throw new Error('Token expirado')
       }
 
       if (!response.ok) {
@@ -73,7 +81,12 @@ class ApiService {
 
       return await response.json()
     } catch (error) {
-      console.error('API Request Error:', error)
+      // ✅ Log menos verboso para erros de autenticação esperados
+      if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+        console.debug('Auth check failed (expected during initialization):', endpoint)
+      } else {
+        console.error('API Request Error:', error)
+      }
       throw error
     }
   }
@@ -145,8 +158,14 @@ class ApiService {
   }
 
   // POST /auth/logout
-  logout = (): Promise<void> => {
-    return this.post('/auth/logout')
+  logout = async (): Promise<void> => {
+    try {
+      await this.post('/auth/logout')
+    } catch (error) {
+      // ✅ Ignorar erros de logout - comum se token expirou
+      console.debug('Logout backend failed (expected if token expired):', error instanceof Error ? error.message : 'Unknown error')
+      // Não relançar o erro - logout deve sempre "funcionar" no frontend
+    }
   }
 
   // ==============================================
@@ -389,6 +408,35 @@ class ApiService {
   // DELETE /category/:id
   deleteCategory = (id: string): Promise<void> => {
     return this.delete(`/category/${id}`)
+  }
+
+  // ==============================================
+  // DIREÇÕES/REGIÕES
+  // ==============================================
+
+  // GET /directions
+  getDirections = (): Promise<Direction[]> => {
+    return this.get<Direction[]>('/directions')
+  }
+
+  // GET /directions/:id
+  getDirection = (id: string): Promise<Direction> => {
+    return this.get<Direction>(`/directions/${id}`)
+  }
+
+  // POST /directions
+  createDirection = (directionData: CreateDirectionDto): Promise<Direction> => {
+    return this.post<Direction>('/directions', directionData)
+  }
+
+  // PATCH /directions/:id
+  updateDirection = (id: string, directionData: UpdateDirectionDto): Promise<Direction> => {
+    return this.patch<Direction>(`/directions/${id}`, directionData)
+  }
+
+  // DELETE /directions/:id
+  deleteDirection = (id: string): Promise<void> => {
+    return this.delete(`/directions/${id}`)
   }
 
   // ==============================================

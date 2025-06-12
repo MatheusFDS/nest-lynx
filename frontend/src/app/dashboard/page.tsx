@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react'
 import {
   Box,
-  Grid,
   Card,
   CardContent,
   Typography,
@@ -10,10 +9,8 @@ import {
   Alert,
 } from '@mui/material'
 import {
-  Dashboard as DashboardIcon,
   LocalShipping as DeliveryIcon,
   Assignment as OrdersIcon,
-  People as DriversIcon,
   Payment as PaymentsIcon,
 } from '@mui/icons-material'
 import { useAuth } from '../contexts/AuthContext'
@@ -121,7 +118,6 @@ export default function DashboardPage() {
     <AuthGuard>
       <AppLayout>
         <Box sx={{ flexGrow: 1 }}>
-          {/* Header */}
           <Box mb={4}>
             <Typography variant="h4" component="h1" gutterBottom>
               Dashboard
@@ -131,53 +127,61 @@ export default function DashboardPage() {
             </Typography>
           </Box>
 
-          {/* Error Alert */}
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
               {error}
             </Alert>
           )}
 
-          {/* Statistics Cards */}
-          <Grid container spacing={3} mb={4}>
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 3,
+              mb: 4,
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'repeat(2, 1fr)',
+                md: 'repeat(3, 1fr)',
+                lg: 'repeat(6, 1fr)',
+              },
+            }}
+          >
             {getStatCards().map((card, index) => (
-              <Grid item xs={12} sm={6} md={4} lg={2} key={index}>
-                <Card 
-                  sx={{ 
-                    height: '100%',
-                    transition: 'transform 0.2s',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: 4
-                    }
-                  }}
-                >
-                  <CardContent>
-                    <Box display="flex" alignItems="center" mb={2}>
-                      <Box 
-                        sx={{ 
-                          color: card.color,
-                          mr: 2
-                        }}
-                      >
-                        {card.icon}
-                      </Box>
+              <Card 
+                key={index}
+                sx={{ 
+                  height: '100%',
+                  transition: 'transform 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: 4
+                  }
+                }}
+              >
+                <CardContent>
+                  <Box display="flex" alignItems="center" mb={2}>
+                    <Box 
+                      sx={{ 
+                        color: card.color,
+                        mr: 2
+                      }}
+                    >
+                      {card.icon}
                     </Box>
-                    <Typography variant="h4" component="div" gutterBottom>
-                      {card.value}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {card.title}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
+                  </Box>
+                  <Typography variant="h4" component="div" gutterBottom>
+                    {card.value}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {card.title}
+                  </Typography>
+                </CardContent>
+              </Card>
             ))}
-          </Grid>
+          </Box>
 
-          {/* Quick Actions */}
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+          <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
+            <Box sx={{ flex: 1 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -202,9 +206,9 @@ export default function DashboardPage() {
                   </Box>
                 </CardContent>
               </Card>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12} md={6}>
+            <Box sx={{ flex: 1 }}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -229,8 +233,8 @@ export default function DashboardPage() {
                   </Box>
                 </CardContent>
               </Card>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </Box>
       </AppLayout>
     </AuthGuard>

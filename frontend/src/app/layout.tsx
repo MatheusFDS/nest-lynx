@@ -1,14 +1,31 @@
-import type { Metadata } from 'next'
+'use client'
+import type { ReactNode } from 'react'
 import { Inter } from 'next/font/google'
+import { Box, CircularProgress } from '@mui/material'
 import ThemeProvider from './components/theme/ThemeProvider'
-import { AuthProvider } from './contexts/AuthContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
-export const metadata: Metadata = {
-  title: 'Sistema de Delivery',
-  description: 'Sistema de gestão de entregas e logística',
+function AppInitializer({ children }: { children: ReactNode }) {
+  const { isInitialized } = useAuth()
+
+  if (!isInitialized) {
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="100vh"
+        bgcolor="background.default"
+      >
+        <CircularProgress size={60} />
+      </Box>
+    )
+  }
+
+  return <>{children}</>
 }
 
 export default function RootLayout({
@@ -21,7 +38,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider>
           <AuthProvider>
-            {children}
+            <AppInitializer>{children}</AppInitializer>
           </AuthProvider>
         </ThemeProvider>
       </body>

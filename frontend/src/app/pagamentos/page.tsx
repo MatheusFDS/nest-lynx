@@ -26,11 +26,11 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
-  Grid,
   Tooltip,
   Checkbox,
   Avatar,
   InputAdornment,
+  Stack,
 } from '@mui/material'
 import {
   Add as AddIcon,
@@ -39,9 +39,6 @@ import {
   Payment as PaymentIcon,
   GroupWork as GroupIcon,
   UnfoldMore as UngroupIcon,
-  AccountBalance as BankIcon,
-  Person as PersonIcon,
-  AttachMoney as MoneyIcon,
 } from '@mui/icons-material'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../services/api'
@@ -57,17 +54,14 @@ export default function PagamentosPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Create/Edit Dialog
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null)
   const [submitting, setSubmitting] = useState(false)
   
-  // Form fields
   const [amount, setAmount] = useState('')
   const [status, setStatus] = useState('Pendente')
   const [motoristaId, setMotoristaId] = useState('')
 
-  // Group payments
   const [selectedPayments, setSelectedPayments] = useState<string[]>([])
   const [grouping, setGrouping] = useState(false)
 
@@ -258,16 +252,6 @@ export default function PagamentosPage() {
     }).format(value)
   }
 
-  const getStatusColor = (status: string) => {
-    const statusColors: { [key: string]: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' } = {
-      'Pendente': 'warning',
-      'Pago': 'success',
-      'Baixado': 'info',
-      'Cancelado': 'error',
-    }
-    return statusColors[status] || 'default'
-  }
-
   const getDriverName = (driverId: string) => {
     const driver = drivers.find(d => d.id === driverId)
     return driver?.name || 'Driver não encontrado'
@@ -277,19 +261,6 @@ export default function PagamentosPage() {
     setError('')
     setSuccess('')
   }
-
-  const getPaymentStats = () => {
-    const total = payments.length
-    const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0)
-    const pending = payments.filter(p => p.status === 'Pendente').length
-    const paid = payments.filter(p => p.status === 'Pago').length
-    const grouped = payments.filter(p => p.isGroup).length
-    const pendingAmount = payments.filter(p => p.status === 'Pendente').reduce((sum, p) => sum + p.amount, 0)
-    
-    return { total, totalAmount, pending, paid, grouped, pendingAmount }
-  }
-
-  const stats = getPaymentStats()
 
   if (loading) {
     return (
@@ -305,17 +276,10 @@ export default function PagamentosPage() {
     <AuthGuard requiredRoles={['admin']}>
       <AppLayout>
         <Box sx={{ flexGrow: 1 }}>
-          {/* Header */}
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-            <div>
-              <Typography variant="h4" component="h1" gutterBottom>
-                Pagamentos
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Gerencie pagamentos de fretes e comissões
-              </Typography>
-            </div>
-            
+            <Typography variant="h6">
+              Lista de Pagamentos ({payments.length})
+            </Typography>
             <Box display="flex" gap={2}>
               {selectedPayments.length >= 2 && (
                 <Button
@@ -337,7 +301,6 @@ export default function PagamentosPage() {
             </Box>
           </Box>
 
-          {/* Messages */}
           {error && (
             <Alert severity="error" sx={{ mb: 3 }} onClose={clearMessages}>
               {error}
@@ -350,99 +313,13 @@ export default function PagamentosPage() {
             </Alert>
           )}
 
-          {/* Summary Cards */}
-          <Grid container spacing={3} mb={4}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center">
-                    <PaymentIcon sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
-                    <div>
-                      <Typography color="textSecondary" gutterBottom>
-                        Total de Pagamentos
-                      </Typography>
-                      <Typography variant="h4">
-                        {stats.total}
-                      </Typography>
-                    </div>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center">
-                    <MoneyIcon sx={{ fontSize: 40, color: 'success.main', mr: 2 }} />
-                    <div>
-                      <Typography color="textSecondary" gutterBottom>
-                        Valor Total
-                      </Typography>
-                      <Typography variant="h5">
-                        {formatCurrency(stats.totalAmount)}
-                      </Typography>
-                    </div>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center">
-                    <BankIcon sx={{ fontSize: 40, color: 'warning.main', mr: 2 }} />
-                    <div>
-                      <Typography color="textSecondary" gutterBottom>
-                        Pendentes
-                      </Typography>
-                      <Typography variant="h4">
-                        {stats.pending}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatCurrency(stats.pendingAmount)}
-                      </Typography>
-                    </div>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center">
-                    <GroupIcon sx={{ fontSize: 40, color: 'info.main', mr: 2 }} />
-                    <div>
-                      <Typography color="textSecondary" gutterBottom>
-                        Agrupados
-                      </Typography>
-                      <Typography variant="h4">
-                        {stats.grouped}
-                      </Typography>
-                    </div>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-
-          {/* Payments Table */}
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Lista de Pagamentos ({payments.length})
-              </Typography>
-              
               {payments.length === 0 ? (
                 <Box textAlign="center" py={4}>
                   <PaymentIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
                   <Typography variant="body1" color="text.secondary">
                     Nenhum pagamento encontrado
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" mt={1}>
-                    Crie pagamentos para gerenciar as finanças
                   </Typography>
                 </Box>
               ) : (
@@ -578,7 +455,6 @@ export default function PagamentosPage() {
             </CardContent>
           </Card>
 
-          {/* Create/Edit Payment Dialog */}
           <Dialog
             open={dialogOpen}
             onClose={() => !submitting && setDialogOpen(false)}
@@ -589,8 +465,8 @@ export default function PagamentosPage() {
               {editingPayment ? 'Editar Pagamento' : 'Novo Pagamento'}
             </DialogTitle>
             <DialogContent>
-              <Grid container spacing={3} sx={{ mt: 1 }}>
-                <Grid item xs={12} sm={6}>
+              <Stack spacing={3} sx={{ mt: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
                   <TextField
                     fullWidth
                     label="Valor"
@@ -603,9 +479,6 @@ export default function PagamentosPage() {
                     }}
                     placeholder="0,00"
                   />
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
                   <FormControl fullWidth required>
                     <InputLabel>Status</InputLabel>
                     <Select
@@ -619,25 +492,22 @@ export default function PagamentosPage() {
                       <MenuItem value="Cancelado">Cancelado</MenuItem>
                     </Select>
                   </FormControl>
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <FormControl fullWidth required>
-                    <InputLabel>Motorista</InputLabel>
-                    <Select
-                      value={motoristaId}
-                      onChange={(e) => setMotoristaId(e.target.value)}
-                      disabled={submitting || !!editingPayment}
-                    >
-                      {drivers.map((driver) => (
-                        <MenuItem key={driver.id} value={driver.id}>
-                          {driver.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
+                </Box>
+                <FormControl fullWidth required>
+                  <InputLabel>Motorista</InputLabel>
+                  <Select
+                    value={motoristaId}
+                    onChange={(e) => setMotoristaId(e.target.value)}
+                    disabled={submitting || !!editingPayment}
+                  >
+                    {drivers.map((driver) => (
+                      <MenuItem key={driver.id} value={driver.id}>
+                        {driver.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Stack>
             </DialogContent>
             <DialogActions>
               <Button
