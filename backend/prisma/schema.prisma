@@ -57,6 +57,8 @@ model Tenant {
   approvals            Approval[] // Relação com aprovações no contexto deste tenant
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+
+  OptimizedRoute OptimizedRoute[]
 }
 
 model UserSettings {
@@ -257,4 +259,21 @@ model DeliveryProof {
   Tenant    Tenant   @relation(fields: [tenantId], references: [id])
   proofUrl  String
   createdAt DateTime @default(now())
+}
+
+model OptimizedRoute {
+  id             String   @id @default(uuid())
+  tenantId       String
+  startingPoint  String
+  routeData      String   // JSON com dados da rota otimizada
+  mapUrl         String?  // URL do mapa estático
+  totalDistance  Float    // Distância total em metros
+  totalTime      Int      // Tempo total em segundos
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  Tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  
+  @@index([tenantId])
+  @@index([createdAt])
 }

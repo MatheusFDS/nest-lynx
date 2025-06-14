@@ -17,6 +17,46 @@ export interface LoginResponse {
   }
 }
 
+export interface OptimizeRouteRequest {
+  startingPoint: string
+  orders: Array<{
+    id: string
+    address: string
+    cliente: string
+    numero: string
+  }>
+}
+
+export interface OptimizedOrder {
+  id: string
+  optimizedOrder: number
+  address: string
+  cliente: string
+  numero: string
+  distanceFromPrevious?: number
+  estimatedTime?: number
+}
+
+export interface OptimizeRouteResponse {
+  success: boolean
+  optimizedOrders?: OptimizedOrder[]
+  totalDistance?: number
+  totalTime?: number
+  mapUrl?: string
+  error?: string
+}
+
+export interface DistanceCalculationResponse {
+  distance: {
+    text: string
+    value: number
+  }
+  duration: {
+    text: string
+    value: number
+  }
+}
+
 // Tipos de Usuário
 export interface User {
   id: string

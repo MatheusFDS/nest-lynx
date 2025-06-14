@@ -13,7 +13,6 @@ import {
   Container,
   IconButton,
   InputAdornment,
-  Divider,
 } from '@mui/material'
 import {
   Visibility,
@@ -86,9 +85,9 @@ export default function LoginPage() {
         justifyContent="center"
         alignItems="center"
         minHeight="100vh"
-        bgcolor="background.default"
+        bgcolor="#fafafa"
       >
-        <CircularProgress size={60} />
+        <CircularProgress size={40} />
       </Box>
     )
   }
@@ -102,48 +101,44 @@ export default function LoginPage() {
     <Box
       sx={{
         minHeight: '100vh',
-        backgroundColor: 'background.default',
-        backgroundImage: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        backgroundColor: '#fafafa',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         p: 2,
       }}
     >
-      <Container maxWidth="sm">
+      <Container maxWidth="xs">
         <Card
-          elevation={24}
+          elevation={2}
           sx={{
-            borderRadius: 4,
-            overflow: 'hidden',
-            backdropFilter: 'blur(10px)',
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            backgroundColor: 'white',
           }}
         >
-          <CardContent sx={{ p: 6 }}>
+          <CardContent sx={{ p: 4 }}>
             {/* Logo e Título */}
-            <Box display="flex" alignItems="center" justifyContent="center" mb={3}>
-              <DeliveryIcon sx={{ fontSize: 48, color: 'primary.main', mr: 2 }} />
-              <Typography variant="h4" component="h1" fontWeight="bold">
+            <Box display="flex" flexDirection="column" alignItems="center" mb={3}>
+              <DeliveryIcon sx={{ fontSize: 32, color: 'primary.main', mb: 1 }} />
+              <Typography variant="h5" component="h1" fontWeight="600" color="text.primary">
                 Delivery System
               </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                textAlign="center"
+                mt={0.5}
+              >
+                Acesse sua conta
+              </Typography>
             </Box>
-
-            <Typography
-              variant="h6"
-              color="text.secondary"
-              textAlign="center"
-              mb={4}
-            >
-              Acesse sua conta para continuar
-            </Typography>
-
-            <Divider sx={{ mb: 4 }} />
 
             {/* Formulário */}
             <Box component="form" onSubmit={handleSubmit}>
               {error && (
-                <Alert severity="error" sx={{ mb: 3 }}>
+                <Alert severity="error" sx={{ mb: 2, fontSize: '0.875rem' }}>
                   {error}
                 </Alert>
               )}
@@ -165,7 +160,8 @@ export default function LoginPage() {
                 autoFocus
                 autoComplete="email"
                 disabled={isSubmitting}
-                sx={{ mb: 2 }}
+                size="medium"
+                sx={{ mb: 1.5 }}
               />
 
               <TextField
@@ -178,6 +174,7 @@ export default function LoginPage() {
                 required
                 autoComplete="current-password"
                 disabled={isSubmitting}
+                size="medium"
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -186,62 +183,54 @@ export default function LoginPage() {
                         onClick={() => setShowPassword(!showPassword)}
                         edge="end"
                         disabled={isSubmitting}
+                        size="small"
                       >
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     </InputAdornment>
                   ),
                 }}
-                sx={{ mb: 4 }}
+                sx={{ mb: 3 }}
               />
 
               <Button
                 type="submit"
                 fullWidth
                 variant="contained"
-                size="large"
+                size="medium"
                 disabled={!isFormValid() || isSubmitting}
                 sx={{
-                  py: 1.5,
-                  fontSize: '1.1rem',
-                  fontWeight: 'bold',
-                  borderRadius: 2,
+                  py: 1.2,
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  borderRadius: 1.5,
                   textTransform: 'none',
+                  mb: 2,
                 }}
               >
                 {isSubmitting ? (
-                  <CircularProgress size={24} color="inherit" />
+                  <CircularProgress size={20} color="inherit" />
                 ) : (
                   'Entrar'
                 )}
               </Button>
             </Box>
 
-            {/* Informações adicionais */}
-            <Box mt={4} textAlign="center">
-              <Typography variant="body2" color="text.secondary">
-                Esqueceu sua senha?{' '}
-                <Button
-                  variant="text"
-                  size="small"
-                  disabled={isSubmitting}
-                  sx={{ textTransform: 'none' }}
-                >
-                  Recuperar senha
-                </Button>
-              </Typography>
+            {/* Link para recuperar senha */}
+            <Box textAlign="center">
+              <Button
+                variant="text"
+                size="small"
+                disabled={isSubmitting}
+                sx={{ 
+                  textTransform: 'none',
+                  fontSize: '0.875rem',
+                  color: 'text.secondary'
+                }}
+              >
+                Esqueceu sua senha?
+              </Button>
             </Box>
-
-            {/* Demo credentials para desenvolvimento */}
-            {process.env.NODE_ENV === 'development' && (
-              <Box mt={3} p={2} bgcolor="grey.100" borderRadius={2}>
-                <Typography variant="body2" color="text.secondary" textAlign="center">
-                  <strong>Demo:</strong><br />
-                  Admin: admin@sistema.com / 123456<br />
-                  Motorista: motorista@sistema.com / 123456
-                </Typography>
-              </Box>
-            )}
           </CardContent>
         </Card>
       </Container>

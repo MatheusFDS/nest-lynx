@@ -16,6 +16,8 @@ import { MetadataModule } from './meta/metadata.module';
 import { RolesModule } from './roles/roles.module';
 import { PlatformAdminModule } from './platform-admin/platform-admin.module';
 import { MobileModule } from './mobile/mobile.module';
+import { RouterModule } from '@nestjs/core';
+import { RoutesModule } from './routes/routes.module';
 
 @Module({
   imports: [
@@ -36,6 +38,7 @@ import { MobileModule } from './mobile/mobile.module';
     RolesModule,
     PlatformAdminModule,
     MobileModule,
+    RoutesModule,
   ],
 })
 export class AppModule {}

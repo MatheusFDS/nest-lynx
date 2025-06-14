@@ -40,7 +40,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
 import RoleGuard from '../guards/RoleGuard'
 
-const drawerWidth = 280
+const drawerWidth = 230
 
 interface MenuItem {
   text: string

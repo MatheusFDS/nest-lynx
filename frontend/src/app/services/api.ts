@@ -29,7 +29,10 @@ import type {
   UpdateTenantDto,
   MobileProfile,
   MobileRoute,
-  ApiResponse
+  ApiResponse,
+  OptimizeRouteRequest,
+  OptimizeRouteResponse,
+  DistanceCalculationResponse
 } from '../types/api'
 
 class ApiService {
@@ -44,12 +47,11 @@ class ApiService {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`
-    
+
     const defaultHeaders: HeadersInit = {
       'Content-Type': 'application/json',
     }
 
-    // Adicionar token se disponível (exceto para rotas de auth)
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
     if (token && !endpoint.includes('/auth/')) {
       defaultHeaders.Authorization = `Bearer ${token}`
@@ -60,15 +62,11 @@ class ApiService {
     try {
       const response = await fetch(url, { ...options, headers })
 
-      // ✅ Tratamento melhorado para 401
       if (response.status === 401) {
         if (endpoint.includes('/auth/')) {
-          // ✅ Erro de auth (login/logout) - retornar erro sem redirecionar
           const errorData = await response.json().catch(() => ({ message: 'Unauthorized' }))
           throw new Error(errorData.message || 'Unauthorized')
         } else {
-          // ✅ Token expirado em rota protegida - NÃO redirecionar automaticamente
-          // Deixar o AuthContext gerenciar isso
           console.warn('Token expired, letting AuthContext handle refresh...')
           throw new Error('UNAUTHORIZED')
         }
@@ -81,7 +79,6 @@ class ApiService {
 
       return await response.json()
     } catch (error) {
-      // ✅ Log menos verboso para erros de autenticação esperados
       if (error instanceof Error && error.message === 'UNAUTHORIZED') {
         console.debug('Auth check failed (expected during initialization):', endpoint)
       } else {
@@ -91,7 +88,6 @@ class ApiService {
     }
   }
 
-  // Métodos HTTP básicos
   private async get<T = any>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'GET' })
   }
@@ -121,11 +117,10 @@ class ApiService {
     return this.request<T>(endpoint, { method: 'DELETE' })
   }
 
-  // Upload de arquivos
   private async upload<T = any>(endpoint: string, formData: FormData): Promise<T> {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
     const headers: HeadersInit = {}
-    
+
     if (token) {
       headers.Authorization = `Bearer ${token}`
     }
@@ -146,27 +141,83 @@ class ApiService {
   // ==============================================
   // AUTENTICAÇÃO
   // ==============================================
-  
-  // POST /auth/login
+
   login = (credentials: LoginCredentials): Promise<LoginResponse> => {
     return this.post<LoginResponse>('/auth/login', credentials)
   }
 
-  // POST /auth/refresh-token
   refreshToken = (refreshToken: string): Promise<{ access_token: string }> => {
     return this.post('/auth/refresh-token', { refresh_token: refreshToken })
   }
 
-  // POST /auth/logout
   logout = async (): Promise<void> => {
     try {
       await this.post('/auth/logout')
     } catch (error) {
-      // ✅ Ignorar erros de logout - comum se token expirou
       console.debug('Logout backend failed (expected if token expired):', error instanceof Error ? error.message : 'Unknown error')
-      // Não relançar o erro - logout deve sempre "funcionar" no frontend
     }
   }
+
+  // ==============================================
+  // ROTAS E MAPAS
+  // ==============================================
+
+  optimizeRoute = (data: OptimizeRouteRequest): Promise<OptimizeRouteResponse> => {
+    return this.post<OptimizeRouteResponse>('/routes/optimize', data)
+  }
+
+  calculateDistance = (origin: string, destination: string): Promise<DistanceCalculationResponse> => {
+    return this.post<DistanceCalculationResponse>('/routes/calculate-distance', { origin, destination })
+  }
+
+  getRouteMap = (routeId: string): Promise<{ mapUrl: string }> => {
+    return this.get<{ mapUrl: string }>(`/routes/map/${routeId}`)
+  }
+
+  getGoogleMapsApiKey = (): Promise<{ apiKey: string }> => {
+    return this.get('/routes/config/maps-key');
+  }
+
+  geocodeAddresses = (addresses: string[]): Promise<Array<{
+    address: string
+    lat: number
+    lng: number
+    formatted_address: string
+    success: boolean
+    error?: string
+  }>> => {
+    return this.post('/routes/geocode', { addresses })
+  }
+
+  calculateInteractiveRoute = (data: {
+    origin: { lat: number; lng: number }
+    destination: { lat: number; lng: number }
+    waypoints?: Array<{ lat: number; lng: number }>
+  }): Promise<{
+    distance: number
+    duration: number
+    polyline: string
+    legs: Array<{
+      distance: number
+      duration: number
+      start_address: string
+      end_address: string
+    }>
+  }> => {
+    return this.post('/routes/calculate-route', data)
+  }
+
+  generateStaticMap = (data: {
+    markers?: Array<{ lat: number; lng: number; label?: string; color?: string }>
+    path?: Array<{ lat: number; lng: number }>
+    center?: { lat: number; lng: number }
+    zoom?: number
+    size?: string
+    polyline?: string
+  }): Promise<{ mapUrl: string }> => {
+    return this.post('/routes/static-map', data)
+  }
+
 
   // ==============================================
   // USUÁRIOS
@@ -298,6 +349,10 @@ class ApiService {
     return this.post<Delivery>('/delivery', deliveryData)
   }
 
+  calculateFreightPreview = (data: { orderIds: string[]; vehicleId: string }): Promise<{ calculatedFreight: number }> => {
+    return this.post('/delivery/calculate-freight-preview', data);
+  }
+
   // PATCH /delivery/:id
   updateDelivery = (id: string, deliveryData: UpdateDeliveryDto): Promise<Delivery> => {
     return this.patch<Delivery>(`/delivery/${id}`, deliveryData)
@@ -325,9 +380,9 @@ class ApiService {
 
   // PATCH /delivery/order/:orderId/status
   updateOrderStatus = (
-    orderId: string, 
-    status: string, 
-    motivoNaoEntrega?: string, 
+    orderId: string,
+    status: string,
+    motivoNaoEntrega?: string,
     codigoMotivoNaoEntrega?: string
   ): Promise<ApiResponse> => {
     return this.patch<ApiResponse>(`/delivery/order/${orderId}/status`, {
@@ -519,9 +574,9 @@ class ApiService {
 
   // PATCH /mobile/v1/orders/:id/status
   updateMobileOrderStatus = (
-    orderId: string, 
-    status: string, 
-    motivoNaoEntrega?: string, 
+    orderId: string,
+    status: string,
+    motivoNaoEntrega?: string,
     codigoMotivoNaoEntrega?: string
   ): Promise<ApiResponse> => {
     return this.patch<ApiResponse>(`/mobile/v1/orders/${orderId}/status`, {
@@ -547,5 +602,4 @@ class ApiService {
   }
 }
 
-// Instância única exportada
 export const api = new ApiService()

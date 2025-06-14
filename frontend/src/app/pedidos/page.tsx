@@ -71,12 +71,12 @@ export default function PedidosPage() {
 
   const getStatusColor = (status: string) => {
     const statusColors: { [key: string]: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' } = {
-      'SEM_ROTA': 'warning',
-      'EM_ROTA_AGUARDANDO_LIBERACAO': 'info',
-      'EM_ROTA': 'primary',
-      'EM_ENTREGA': 'secondary',
-      'ENTREGUE': 'success',
-      'NAO_ENTREGUE': 'error',
+      'Sem rota': 'warning',
+      'Em rota, aguardando liberação': 'info',
+      'Em rota': 'primary',
+      'Em entrega': 'secondary',
+      'Entregue': 'success',
+      'Não entregue': 'error',
     }
     return statusColors[status] || 'default'
   }

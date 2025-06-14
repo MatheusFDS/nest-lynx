@@ -1,14 +1,17 @@
-// Conteúdo para: src/delivery/delivery.controller.ts
-
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Logger, BadRequestException, HttpCode, HttpStatus, ForbiddenException } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { UpdateDeliveryDto } from './dto/update-delivery.dto';
-import { RejeitarRoteiroDto } from './dto/reject-delivery.dto'; // Reintroduzido
+import { RejeitarRoteiroDto } from './dto/reject-delivery.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { OrderStatus, DeliveryStatus } from '../types/status.enum';
+
+export class CalculateFreightDto {
+  orderIds: string[];
+  vehicleId: string;
+}
 
 @Controller('delivery')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -18,7 +21,7 @@ export class DeliveryController {
   constructor(private readonly deliveryService: DeliveryService) {}
 
   @Post()
-  @Roles('admin', 'superadmin') // Apenas usuários com essas roles podem criar
+  @Roles('admin', 'superadmin')
   async create(@Body() createDeliveryDto: CreateDeliveryDto, @Req() req) {
     const tenantId = req.user.tenantId;
     const userId = req.user.userId;
@@ -26,12 +29,17 @@ export class DeliveryController {
     return this.deliveryService.create(createDeliveryDto, tenantId, userId);
   }
 
+  @Post('calculate-freight-preview')
+  @Roles('admin', 'superadmin')
+  async calculateFreightPreview(@Body() calculateFreightDto: CalculateFreightDto, @Req() req) {
+    const tenantId = req.user.tenantId;
+    return this.deliveryService.calculateFreightPreview(calculateFreightDto, tenantId);
+  }
+
   @Get()
   @Roles('admin', 'superadmin', 'driver', 'user')
   async findAll(@Req() req) {
     const tenantId = req.user.tenantId;
-    // Se for motorista, o serviço poderia filtrar para apenas seus roteiros.
-    // Por enquanto, o serviço busca todos do tenant.
     return this.deliveryService.findAll(tenantId);
   }
 
@@ -40,7 +48,6 @@ export class DeliveryController {
   async findOne(@Param('id') id: string, @Req() req) {
     const tenantId = req.user.tenantId;
     const delivery = await this.deliveryService.findOne(id, tenantId);
-    // Se for motorista, verificar se o roteiro pertence a ele.
     if (req.user.role === 'driver' && delivery.motoristaId !== req.user.driverId) {
         throw new ForbiddenException("Você não tem permissão para acessar este roteiro.");
     }
@@ -83,7 +90,6 @@ export class DeliveryController {
     return this.deliveryService.removeOrderFromDelivery(deliveryId, orderId, tenantId, userId);
   }
 
-  // Endpoint para motorista atualizar status de um pedido
   @Patch('order/:orderId/status')
   @Roles('driver')
   async updateOrderStatus(
@@ -110,9 +116,8 @@ export class DeliveryController {
     );
   }
 
-  // Endpoints para Liberação de Roteiro
   @Patch(':id/liberar')
-  @Roles('admin', 'superadmin') // Apenas admin/gerente podem liberar
+  @Roles('admin', 'superadmin')
   async liberarRoteiro(@Param('id') deliveryId: string, @Req() req) {
     const tenantId = req.user.tenantId;
     const userId = req.user.userId;
@@ -121,7 +126,7 @@ export class DeliveryController {
   }
 
   @Patch(':id/rejeitar')
-  @Roles('admin', 'superadmin') // Apenas admin/gerente podem rejeitar
+  @Roles('admin', 'superadmin')
   async rejeitarRoteiro(
     @Param('id') deliveryId: string,
     @Body() rejeitarRoteiroDto: RejeitarRoteiroDto,
